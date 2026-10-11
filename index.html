@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MKS Pizzaria — Pizzas, hambúrgueres e porções com delivery</title>
+  <meta name="description" content="Cardápio digital da MKS Pizzaria: pizzas tradicionais, nobres e especiais, hambúrgueres e porções. Fazemos delivery. Peça pelo cardápio oficial.">
+  <meta name="theme-color" content="#160a08">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="MKS Pizzaria">
+  <meta property="og:description" content="Pizzas, hambúrgueres e porções. Fazemos delivery.">
+  <meta property="og:locale" content="pt_BR">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23a00000'/%3E%3Ctext x='50' y='64' font-size='42' text-anchor='middle' fill='%23f4c04a' font-family='Arial Black'%3EM%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"Restaurant","name":"MKS Pizzaria","servesCuisine":["Pizza","Hambúrguer"],"hasMenu":"https://pedir.delivery/app/mkspizzaria/menu","sameAs":["https://www.instagram.com/mks_pizzaria/"]}
+  </script>
+</head>
+<body>
+  <a class="skip" href="#cardapio">Ir para o cardápio</a>
+
+  <header class="topbar" id="topbar">
+    <a class="brand" href="#inicio" aria-label="MKS Pizzaria — início">
+      <span class="brand-mark" aria-hidden="true">MKS</span><span class="brand-name">Pizzaria</span>
+    </a>
+    <nav id="nav" class="nav" aria-label="Principal">
+      <a href="#como-fazemos">Como fazemos</a>
+      <a href="#cardapio">Cardápio</a>
+      <a href="#galeria">Galeria</a>
+      <a href="#sobre">Sobre</a>
+      <a class="btn btn-gold btn-sm nav-cta" data-order href="https://pedir.delivery/app/mkspizzaria/menu" target="_blank" rel="noopener">Fazer pedido</a>
+    </nav>
+    <button class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="nav" aria-label="Abrir menu"><span></span><span></span><span></span></button>
+  </header>
+
+  <main id="inicio">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">Pizzas · Hambúrgueres · Porções</p>
+        <h1>Pizza de verdade,<br><em>do forno à sua porta.</em></h1>
+        <p class="lead">Sabores tradicionais, nobres e especiais, além de hambúrgueres e porções. Fazemos delivery.</p>
+        <div class="cta-row">
+          <a class="btn btn-gold" href="#cardapio">Ver cardápio</a>
+          <a class="btn btn-ghost" data-order href="https://pedir.delivery/app/mkspizzaria/menu" target="_blank" rel="noopener">Fazer pedido</a>
+        </div>
+        <a class="insta-link" href="https://www.instagram.com/mks_pizzaria/" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.3" cy="6.7" r="1.2" fill="currentColor"/></svg>
+          @mks_pizzaria no Instagram
+        </a>
+      </div>
+      <div class="hero-visual" aria-hidden="false">
+        <img class="hp hp1" src="images/hero/calabresa.webp" alt="Pizza de calabresa da MKS" width="530" height="308" fetchpriority="high">
+        <img class="hp hp2" src="images/hero/portuguesa.webp" alt="Pizza portuguesa da MKS" width="530" height="308">
+        <img class="hp hp3" src="images/hero/marguerita.webp" alt="Pizza marguerita da MKS" width="530" height="308">
+      </div>
+    </section>
+
+    <!-- PIZZA SENDO MONTADA -->
+    <section class="build" id="como-fazemos" aria-labelledby="build-title">
+      <div class="build-sticky">
+        <div class="build-copy">
+          <p class="eyebrow">Como fazemos</p>
+          <h2 id="build-title">Camada por camada</h2>
+          <ol class="steps" id="buildSteps">
+            <li data-step="0"><strong>Massa</strong><span>Tudo começa na massa, aberta para receber a pizza.</span></li>
+            <li data-step="1"><strong>Molho da casa</strong><span>Todas as pizzas do cardápio levam o molho da casa.</span></li>
+            <li data-step="2"><strong>Mussarela</strong><span>A camada de queijo que une os sabores.</span></li>
+            <li data-step="3"><strong>Ingredientes</strong><span>Calabresa, presunto, ovo, bacon, frango… você escolhe no cardápio.</span></li>
+            <li data-step="4"><strong>Orégano</strong><span>O toque final que fecha todas as receitas.</span></li>
+            <li data-step="5"><strong>Pronta!</strong><span>Pizza real da MKS, pronta para pedir.</span></li>
+          </ol>
+          <p class="fine">Montagem ilustrativa; a foto final é uma pizza real da MKS.</p>
+        </div>
+        <div class="build-stage" id="buildStage" role="img" aria-label="Animação de uma pizza sendo montada: massa, molho, queijo, ingredientes, orégano e pizza pronta">
+          <svg id="pizzaSvg" viewBox="0 0 400 400" aria-hidden="true"></svg>
+          <img id="pizzaReal" src="images/hero/calabresa.webp" alt="Pizza de calabresa da MKS, pronta" width="536" height="328" loading="lazy">
+        </div>
+      </div>
+    </section>
+
+    <!-- DESTAQUES -->
+    <section class="section" aria-labelledby="dest-title">
+      <div class="wrap">
+        <p class="eyebrow">Destaques do cardápio</p>
+        <h2 id="dest-title">Para matar a fome</h2>
+        <div class="feature-grid" id="featureGrid"></div>
+      </div>
+    </section>
+
+    <!-- CARDÁPIO -->
+    <section class="section menu" id="cardapio" aria-labelledby="menu-title">
+      <div class="wrap">
+        <p class="eyebrow">Cardápio</p>
+        <h2 id="menu-title">Escolha o seu</h2>
+        <div class="menu-tools">
+          <div class="chips" id="chips" role="tablist" aria-label="Categorias"></div>
+          <label class="search"><span class="sr">Buscar no cardápio</span>
+            <input type="search" id="search" placeholder="Buscar sabor ou ingrediente…" autocomplete="off">
+          </label>
+        </div>
+        <p class="menu-note" id="menuNote"></p>
+        <div class="menu-grid" id="menuGrid" aria-live="polite"></div>
+        <p class="empty" id="empty" hidden>Nenhum item encontrado. Tente outra busca.</p>
+        <div class="center">
+          <a class="btn btn-gold" data-order href="https://pedir.delivery/app/mkspizzaria/menu" target="_blank" rel="noopener">Ver cardápio completo e pedir</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- GALERIA -->
+    <section class="section gallery" id="galeria" aria-labelledby="gal-title">
+      <div class="wrap">
+        <p class="eyebrow">Galeria</p>
+        <h2 id="gal-title">Fotos das nossas pizzas</h2>
+        <div class="gallery-grid" id="galleryGrid"></div>
+      </div>
+    </section>
+
+    <!-- SOBRE -->
+    <section class="section about" id="sobre" aria-labelledby="about-title">
+      <div class="wrap about-grid">
+        <div>
+          <p class="eyebrow">A MKS Pizzaria</p>
+          <h2 id="about-title">Pizzas, hambúrgueres e porções</h2>
+          <p>A MKS Pizzaria prepara pizzas tradicionais, nobres e especiais, hambúrgueres e porções de batata. E você pode pedir sem sair de casa: <strong>fazemos delivery</strong>.</p>
+          <p>Veja as novidades e fotos no nosso Instagram.</p>
+          <div class="cta-row">
+            <a class="btn btn-gold" data-order href="https://pedir.delivery/app/mkspizzaria/menu" target="_blank" rel="noopener">Pedir agora</a>
+            <a class="btn btn-ghost" href="https://www.instagram.com/mks_pizzaria/" target="_blank" rel="noopener">Ver Instagram</a>
+          </div>
+        </div>
+        <ul class="facts">
+          <li><strong data-count="pizzas">–</strong><span>sabores de pizza listados no cardápio</span></li>
+          <li><strong data-count="hamburgueres">–</strong><span>opções de hambúrguer</span></li>
+          <li><strong data-count="porcoes">–</strong><span>porções de batata</span></li>
+          <li><strong>Delivery</strong><span>pedido pelo cardápio oficial</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="final-cta">
+      <h2>Bateu a fome?</h2>
+      <p>Faça seu pedido pelo cardápio oficial da MKS Pizzaria.</p>
+      <a class="btn btn-gold btn-lg" data-order href="https://pedir.delivery/app/mkspizzaria/menu" target="_blank" rel="noopener">Fazer pedido</a>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-grid">
+      <div><span class="brand-mark" aria-hidden="true">MKS</span> <strong>Pizzaria</strong>
+        <p>Pizzas, hambúrgueres e porções. Fazemos delivery.</p></div>
+      <nav aria-label="Rodapé">
+        <a href="#cardapio">Cardápio</a>
+        <a href="#galeria">Galeria</a>
+        <a href="#sobre">Sobre</a>
+        <a data-order href="https://pedir.delivery/app/mkspizzaria/menu" target="_blank" rel="noopener">Cardápio oficial</a>
+        <a href="https://www.instagram.com/mks_pizzaria/" target="_blank" rel="noopener">Instagram</a>
+      </nav>
+    </div>
+    <p class="copy">© <span id="year"></span> MKS Pizzaria. Imagens e cardápio: materiais da própria MKS.</p>
+  </footer>
+
+  <dialog id="modal" aria-labelledby="mTitle">
+    <button class="modal-close" id="modalClose" aria-label="Fechar">×</button>
+    <div class="modal-body">
+      <img id="mImg" alt="" width="245" height="180">
+      <div class="modal-info">
+        <p class="eyebrow" id="mCat"></p>
+        <h3 id="mTitle"></h3>
+        <p id="mDesc"></p>
+        <p class="price" id="mPrice"></p>
+        <div class="modal-actions">
+          <a class="btn btn-gold" id="mOrder" data-order href="https://pedir.delivery/app/mkspizzaria/menu" target="_blank" rel="noopener">Pedir no cardápio oficial</a>
+          <button class="btn btn-ghost" id="mBack" type="button">Voltar ao cardápio</button>
+        </div>
+        <p class="fine" id="mFine"></p>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="data/menu.js"></script>
+  <script src="js/pizza.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

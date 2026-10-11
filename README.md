@@ -44,6 +44,9 @@ Qualquer hospedagem estática serve (GitHub Pages, Netlify, Vercel, Cloudflare P
 - Grafia "cheedar" nas capturas foi padronizada para "cheddar". Na pizza 4 Queijos a descrição não lista mussarela; mantido como está.
 - Nas fotos, "Frango", "Moda da Casa" e "Especial da Casa" não têm correspondente exato no texto do cardápio.
 
+## Verificação
+A transcrição do cardápio foi conferida de forma independente contra as imagens enviadas: 50 pizzas, 7 hambúrgueres e 5 porções com nomes, ingredientes e preços batendo (divergências só de pontuação/grafia normalizadas). O código foi testado no Chromium (390 px e 1280 px, teclado, busca, modal, movimento reduzido); os problemas encontrados (modal exibindo foto do item anterior, menu mobile focável quando fechado, alvos de toque, busca com espaços, enquadramento de fotos etc.) foram corrigidos.
+
 ## Pedidos
 Todos os botões "Fazer pedido / Pedir agora / Ver cardápio completo" abrem `https://pedir.delivery/app/mkspizzaria/menu` (definido em `data/menu.js` → `orderUrl`). **Não há carrinho, pagamento nem envio de pedido no site**; isso acontece somente na plataforma oficial. Não investiguei integração oficial por não ter acesso à plataforma.
 

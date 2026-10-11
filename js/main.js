@@ -3,6 +3,7 @@
   const M = window.MKS_MENU;
   const $ = (s, r = document) => r.querySelector(s);
   const brl = (n) => "R$ " + n.toFixed(2).replace(".", ",");
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   // Garante que todo botão de pedido aponte para o cardápio oficial definido em data/menu.js
   if (M) document.querySelectorAll("[data-order]").forEach((a) => (a.href = M.orderUrl));
@@ -19,7 +20,14 @@
   };
   toggle.addEventListener("click", () => setNav(!nav.classList.contains("open")));
   nav.addEventListener("click", (e) => { if (e.target.closest("a")) setNav(false); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") setNav(false); });
+  document.addEventListener("click", (e) => { if (nav.classList.contains("open") && !e.target.closest("#nav, #menuToggle")) setNav(false); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !nav.classList.contains("open")) return;
+    const inside = nav.contains(document.activeElement);
+    setNav(false);
+    if (inside) toggle.focus();
+  });
+  window.matchMedia("(min-width: 861px)").addEventListener("change", (e) => { if (e.matches) setNav(false); });
 
   if (!M || !Array.isArray(M.items)) {
     $("#menuGrid").innerHTML = '<p class="empty">Não foi possível carregar o cardápio. Use o botão "Ver cardápio completo e pedir".</p>';
@@ -38,34 +46,38 @@
   let current = "all", query = "";
   const norm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-  function cardHTML(i, idx) {
+  function cardHTML(i) {
     const img = i.image
-      ? `<div class="card-img"><img src="${i.image}" alt="${i.name}" width="245" height="180" loading="lazy"></div>`
-      : `<div class="card-img ph" aria-hidden="true">${i.name.charAt(0)}</div>`;
+      ? `<span class="card-img"><img src="${esc(i.image)}" alt="" width="245" height="180" loading="lazy"></span>`
+      : `<span class="card-img ph" aria-hidden="true">${esc(i.name.charAt(0))}</span>`;
     const price = typeof i.price === "number" ? `<span class="price">${brl(i.price)}</span>` : `<span class="no-price">Consulte o valor</span>`;
-    return `<button class="card" type="button" data-id="${i.id}" aria-label="${i.name}, ver detalhes">${img}
-      <span class="card-body"><h3>${i.name}</h3>${i.desc ? `<p>${i.desc}</p>` : ""}
+    return `<button class="card" type="button" data-id="${esc(i.id)}">${img}
+      <span class="card-body"><span class="card-title">${esc(i.name)}</span>${i.desc ? `<span class="card-desc">${esc(i.desc)}</span>` : ""}
       <span class="card-foot">${price}<span class="more">Detalhes →</span></span></span></button>`;
   }
 
   function renderMenu() {
-    const q = norm(query);
-    const list = M.items.filter((i) => (current === "all" || i.category === current) && (!q || norm(i.name + " " + (i.desc || "")).includes(q)));
+    const terms = norm(query).trim().split(/\s+/).filter(Boolean);
+    const list = M.items.filter((i) => {
+      if (current !== "all" && i.category !== current) return false;
+      const text = norm(i.name + " " + (i.desc || ""));
+      return terms.every((t) => text.includes(t));
+    });
     $("#menuGrid").innerHTML = list.map(cardHTML).join("");
     $("#empty").hidden = list.length > 0;
-    const noPrice = list.some((i) => i.price == null);
-    $("#menuNote").textContent = noPrice
+    $("#menuStatus").textContent = list.length ? `${list.length} ${list.length === 1 ? "item encontrado" : "itens encontrados"}` : "Nenhum item encontrado";
+    $("#menuNote").textContent = list.some((i) => i.price == null)
       ? "Os valores das pizzas e seus tamanhos estão no cardápio oficial; use o botão de pedido para ver e escolher."
       : "";
   }
 
   const chips = $("#chips");
   chips.innerHTML = [{ id: "all", label: "Todos" }, ...M.categories]
-    .map((c) => `<button class="chip" role="tab" type="button" data-cat="${c.id}" aria-selected="${c.id === "all"}">${c.label}</button>`).join("");
+    .map((c) => `<button class="chip" type="button" data-cat="${esc(c.id)}" aria-pressed="${c.id === "all"}">${esc(c.label)}</button>`).join("");
   chips.addEventListener("click", (e) => {
     const b = e.target.closest(".chip"); if (!b) return;
     current = b.dataset.cat;
-    chips.querySelectorAll(".chip").forEach((x) => x.setAttribute("aria-selected", x === b));
+    chips.querySelectorAll(".chip").forEach((x) => x.setAttribute("aria-pressed", x === b));
     renderMenu();
   });
   $("#search").addEventListener("input", (e) => { query = e.target.value; renderMenu(); });
@@ -75,15 +87,16 @@
   $("#featureGrid").innerHTML = featured.map((id) => M.items.find((i) => i.id === id)).filter(Boolean).map(cardHTML).join("");
 
   // ---- detalhe ----
-  const modal = $("#modal");
+  const modal = $("#modal"), mImg = $("#mImg");
   function openItem(id) {
     const i = M.items.find((x) => x.id === id); if (!i) return;
     $("#mTitle").textContent = i.name;
     $("#mCat").textContent = catLabel[i.category] || "";
     $("#mDesc").textContent = i.desc || "";
     $("#mPrice").textContent = typeof i.price === "number" ? brl(i.price) : "";
-    const img = $("#mImg");
-    if (i.image) { img.src = i.image; img.alt = i.name; img.hidden = false; } else img.hidden = true;
+    modal.classList.toggle("no-img", !i.image);
+    if (i.image) { mImg.src = i.image; mImg.alt = i.name; mImg.hidden = false; }
+    else { mImg.removeAttribute("src"); mImg.alt = ""; mImg.hidden = true; }
     $("#mFine").textContent = typeof i.price === "number"
       ? "Pedido e pagamento são feitos no cardápio oficial."
       : "Valor e tamanhos disponíveis no cardápio oficial. Pedido e pagamento são feitos lá.";
@@ -92,11 +105,16 @@
   const closeModal = () => (modal.close ? modal.close() : modal.removeAttribute("open"));
   document.addEventListener("click", (e) => { const c = e.target.closest(".card[data-id]"); if (c) openItem(c.dataset.id); });
   $("#modalClose").addEventListener("click", closeModal);
-  $("#mBack").addEventListener("click", () => { closeModal(); $("#cardapio").scrollIntoView(); });
+  $("#mBack").addEventListener("click", () => {
+    closeModal();
+    const target = chips.querySelector('.chip[aria-pressed="true"]') || $("#search");
+    target.focus({ preventScroll: true });
+    $("#cardapio").scrollIntoView();
+  });
   modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 
   // ---- galeria ----
-  $("#galleryGrid").innerHTML = M.gallery.map((g) => `<img src="${g.image}" alt="Pizza ${g.name} da MKS" width="245" height="180" loading="lazy">`).join("");
+  $("#galleryGrid").innerHTML = M.gallery.map((g) => `<img src="${esc(g.image)}" alt="Pizza ${esc(g.name)} da MKS" width="245" height="180" loading="lazy">`).join("");
 
   renderMenu();
 })();

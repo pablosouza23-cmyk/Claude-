@@ -37,6 +37,7 @@
   </header>
 
   <main id="inicio">
+    <noscript><p class="noscript">Ative o JavaScript para ver o cardápio aqui, ou <a data-order href="https://pedir.delivery/app/mkspizzaria/menu">acesse o cardápio oficial</a>.</p></noscript>
     <!-- HERO -->
     <section class="hero">
       <div class="hero-text">
@@ -53,9 +54,9 @@
         </a>
       </div>
       <div class="hero-visual" aria-hidden="false">
-        <img class="hp hp1" src="images/hero/calabresa.webp" alt="Pizza de calabresa da MKS" width="530" height="308" fetchpriority="high">
-        <img class="hp hp2" src="images/hero/portuguesa.webp" alt="Pizza portuguesa da MKS" width="530" height="308">
-        <img class="hp hp3" src="images/hero/marguerita.webp" alt="Pizza marguerita da MKS" width="530" height="308">
+        <img class="hp hp1" src="images/hero/calabresa.webp" alt="Pizza de calabresa da MKS" width="536" height="328" fetchpriority="high">
+        <img class="hp hp2" src="images/hero/portuguesa.webp" alt="Pizza portuguesa da MKS" width="536" height="328">
+        <img class="hp hp3" src="images/hero/marguerita.webp" alt="Pizza marguerita da MKS" width="536" height="328">
       </div>
     </section>
 
@@ -97,13 +98,14 @@
         <p class="eyebrow">Cardápio</p>
         <h2 id="menu-title">Escolha o seu</h2>
         <div class="menu-tools">
-          <div class="chips" id="chips" role="tablist" aria-label="Categorias"></div>
+          <div class="chips" id="chips" role="group" aria-label="Categorias do cardápio"></div>
           <label class="search"><span class="sr">Buscar no cardápio</span>
             <input type="search" id="search" placeholder="Buscar sabor ou ingrediente…" autocomplete="off">
           </label>
         </div>
         <p class="menu-note" id="menuNote"></p>
-        <div class="menu-grid" id="menuGrid" aria-live="polite"></div>
+        <p class="sr" id="menuStatus" role="status"></p>
+        <div class="menu-grid" id="menuGrid"></div>
         <p class="empty" id="empty" hidden>Nenhum item encontrado. Tente outra busca.</p>
         <div class="center">
           <a class="btn btn-gold" data-order href="https://pedir.delivery/app/mkspizzaria/menu" target="_blank" rel="noopener">Ver cardápio completo e pedir</a>

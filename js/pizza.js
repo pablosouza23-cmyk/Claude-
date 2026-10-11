@@ -11,6 +11,14 @@
   const stepEls = document.querySelectorAll("#buildSteps li");
   if (!section || !svg) return;
 
+  // Movimento reduzido: o CSS transforma a secao em lista estatica com a foto final; nada de animar.
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    stepEls.forEach((li) => li.classList.add("on"));
+    const stage = document.getElementById("buildStage");
+    if (stage) stage.setAttribute("aria-label", "Pizza de calabresa da MKS, pronta");
+    return;
+  }
+
   const NS = "http://www.w3.org/2000/svg";
   const el = (name, attrs = {}, parent = svg) => {
     const n = document.createElementNS(NS, name);

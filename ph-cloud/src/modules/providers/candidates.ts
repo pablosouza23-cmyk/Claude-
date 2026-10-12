@@ -62,9 +62,9 @@ export const PROVIDER_CANDIDATES: ProviderCandidate[] = [
       "Usam a API privada da Microsoft com a conta do próprio usuário. Não usados: violam os termos do serviço, expõem as contas dos usuários e quebram a cada atualização.",
   },
   {
-    name: "PH Cloud — jogos próprios (SDK)",
+    name: "Jogos de parceiros no próprio site (SDK do PH Cloud)",
     status: "integrated_disabled",
-    summary: "Jogos HTML5 servidos pelo site com controles na tela, controle, teclado e mouse via SDK do PH Cloud. Demonstração desativada por padrão.",
+    summary: "Estrutura pronta para hospedar jogos HTML5 licenciados por parceiros, com controles na tela e controle via SDK. Nenhum jogo cadastrado.",
   },
   {
     name: "itch.io",

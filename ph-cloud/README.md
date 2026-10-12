@@ -48,7 +48,7 @@ Sem nenhuma configuração o site funciona com banco embutido em `.data/` (conta
 - **Configurações** de entrada, áudio e vídeo, salvas no navegador e na conta.
 - **Painel administrativo**: números reais, estado das integrações, pesquisa de provedores, ativar/destacar jogos, **cadastrar jogos de nuvem** com validação dos links oficiais, avisos (sino de notificações) e usuários.
 - **Segurança**: CSP com nonce, cabeçalhos de segurança, verificação de origem nas APIs, segredos só no servidor.
-- **SDK de jogos próprios** (`games/_sdk`) com protocolo `postMessage`, servido por rota com token assinado e CSP própria. Há uma demonstração (Neon Drift) **desativada por padrão**. O player com barra flutuante e controles na tela, usado por esses jogos e pela estação de streaming própria, ainda está em desenvolvimento.
+- **SDK para jogos de parceiros** (`games/_sdk`) com protocolo `postMessage`, servido por rota com token assinado e CSP própria — pronto para quando houver jogos licenciados para rodar no site. Nenhum jogo foi criado pelo PH Cloud: o catálogo é só de jogos reais dos serviços oficiais.
 
 ## O que depende de você (credenciais, contratos, decisões)
 

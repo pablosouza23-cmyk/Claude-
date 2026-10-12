@@ -53,6 +53,6 @@ test("jogos de nuvem: ids únicos, links oficiais válidos, capas existentes", (
   }
 });
 
-test("jogo de demonstração do SDK vem desativado", () => {
-  assert.ok(ORIGINALS.every((g) => !g.enabled));
+test("nenhum jogo gerado pelo PH Cloud no catálogo", () => {
+  assert.equal(ORIGINALS.length, 0);
 });

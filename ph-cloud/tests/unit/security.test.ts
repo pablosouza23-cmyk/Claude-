@@ -26,21 +26,22 @@ test("limite de tentativas bloqueia e libera após a janela", () => {
 
 test("token de jogo: válido, adulterado, vencido e com outro segredo", () => {
   const secret = "s".repeat(40);
-  const t = createGameToken("neon-drift", null, secret, 1_000_000);
-  assert.equal(verifyGameToken(t, secret, 1_000_000)?.g, "neon-drift");
+  const t = createGameToken("jogo-parceiro", null, secret, 1_000_000);
+  assert.equal(verifyGameToken(t, secret, 1_000_000)?.g, "jogo-parceiro");
   assert.equal(verifyGameToken(t + "x", secret, 1_000_000), null);
   assert.equal(verifyGameToken(t, "o".repeat(40), 1_000_000), null);
   assert.equal(verifyGameToken(t, secret, 1_000_000 + 5 * 3600 * 1000), null);
 });
 
 test("arquivos de jogo: bloqueia saída da pasta e outros jogos", () => {
-  assert.ok(resolveGameFile(["neon-drift", "index.html"], "neon-drift"));
-  assert.ok(resolveGameFile(["_sdk", "phc-sdk.js"], "neon-drift"));
-  assert.equal(resolveGameFile(["..", "package.json"], "neon-drift"), null);
-  assert.equal(resolveGameFile(["neon-drift", "..", "..", "package.json"], "neon-drift"), null);
-  assert.equal(resolveGameFile(["outro-jogo", "index.html"], "neon-drift"), null);
-  assert.equal(resolveGameFile(["neon-drift", ".env"], "neon-drift"), null);
-  assert.equal(resolveGameFile(["neon-drift", "server.ts"], "neon-drift"), null);
+  const g = "jogo-parceiro";
+  assert.ok(resolveGameFile([g, "index.html"], g));
+  assert.ok(resolveGameFile(["_sdk", "phc-sdk.js"], g));
+  assert.equal(resolveGameFile(["..", "package.json"], g), null);
+  assert.equal(resolveGameFile([g, "..", "..", "package.json"], g), null);
+  assert.equal(resolveGameFile(["outro-jogo", "index.html"], g), null);
+  assert.equal(resolveGameFile([g, ".env"], g), null);
+  assert.equal(resolveGameFile([g, "server.ts"], g), null);
 });
 
 test("CSP: nonce, frame-ancestors e frames só dos provedores ativos", () => {

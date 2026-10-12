@@ -16,6 +16,7 @@ const STATUS: Record<string, { kind: "success" | "warning" | "danger"; text: str
   indisponivel: { kind: "warning", text: "Este plano não está disponível para assinatura no momento." },
   "ja-assinante": { kind: "warning", text: "Você já tem uma assinatura ativa. Use “Gerenciar assinatura” para trocar de plano." },
   erro: { kind: "danger", text: "Não foi possível falar com o sistema de pagamentos. Tente de novo em instantes." },
+  limite: { kind: "warning", text: "Você usou todos os minutos de Cloud Play do mês. Eles renovam no início do próximo mês." },
 };
 
 export default async function PlansPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {

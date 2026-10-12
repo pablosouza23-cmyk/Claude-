@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b1033"/><stop offset=".35" stop-color="#6b2a6e"/><stop offset=".62" stop-color="#e2574c"/><stop offset=".78" stop-color="#ffb35c"/><stop offset="1" stop-color="#2a1424"/></linearGradient>
+    <radialGradient id="sun" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff2c2"/><stop offset=".5" stop-color="#ffc35c"/><stop offset="1" stop-color="#ff7a3d" stop-opacity="0"/></radialGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9674f"/><stop offset="1" stop-color="#1c0f1f"/></linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <circle cx="1120" cy="560" r="260" fill="url(#sun)"/>
+  <path d="M0 610l160-90 120 50 200-150 160 110 140-60 180 90 160-140 180 120 160-70 140 80v70H0z" fill="#3a1a3a" opacity=".85"/>
+  <g fill="#1e0e22">
+    <rect x="760" y="420" width="60" height="230"/><rect x="830" y="360" width="80" height="290"/><rect x="920" y="300" width="70" height="350"/><rect x="1000" y="380" width="56" height="270"/><rect x="1064" y="250" width="90" height="400"/><rect x="1164" y="330" width="64" height="320"/><rect x="1236" y="410" width="80" height="240"/><rect x="1324" y="360" width="60" height="290"/><rect x="1392" y="450" width="90" height="200"/>
+    <path d="M1100 250l9-60 9 60z"/>
+  </g>
+  <g fill="#ffcf7a" opacity=".55">
+    <rect x="845" y="380" width="8" height="10"/><rect x="865" y="410" width="8" height="10"/><rect x="935" y="330" width="8" height="10"/><rect x="955" y="370" width="8" height="10"/><rect x="1080" y="280" width="8" height="10"/><rect x="1110" y="320" width="8" height="10"/><rect x="1130" y="360" width="8" height="10"/><rect x="1180" y="350" width="8" height="10"/><rect x="1250" y="430" width="8" height="10"/><rect x="1340" y="390" width="8" height="10"/>
+  </g>
+  <rect y="650" width="1600" height="250" fill="url(#sea)"/>
+  <g stroke="#ffd9a0" stroke-width="3" opacity=".5"><line x1="980" y1="690" x2="1260" y2="690"/><line x1="1020" y1="720" x2="1220" y2="720"/><line x1="1060" y1="760" x2="1180" y2="760"/></g>
+  <g fill="#120814">
+    <path d="M560 900c10-160 20-260 6-390" stroke="#120814" stroke-width="16" fill="none"/>
+    <path d="M566 510c-70-30-150-20-200 20 70-10 130 0 200 0zM566 510c60-50 150-60 220-30-80 0-140 10-220 30zM566 510c-30-60-100-90-170-90 60 30 110 60 170 90zM566 510c30-70 100-110 180-110-70 30-120 70-180 110zM566 510c-80 10-140 60-160 120 50-60 100-90 160-120z"/>
+    <path d="M1540 900c-6-180-24-280-50-400" stroke="#120814" stroke-width="14" fill="none"/>
+    <path d="M1490 500c-70-20-140 0-180 40 60-15 120-15 180-40zM1490 500c50-50 130-70 200-50-70 10-130 30-200 50zM1490 500c-20-60-80-100-150-100 50 30 100 60 150 100z"/>
+  </g>
+  <g filter="url(#glow)"><rect x="1280" y="820" width="70" height="8" rx="4" fill="#ff3d5a"/><rect x="1380" y="820" width="70" height="8" rx="4" fill="#ff3d5a"/></g>
+</svg>

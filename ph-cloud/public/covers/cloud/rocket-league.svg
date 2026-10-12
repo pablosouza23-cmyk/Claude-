@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  <defs>
+    <radialGradient id="bg" cx=".65" cy=".35" r=".9"><stop offset="0" stop-color="#1d2f63"/><stop offset=".6" stop-color="#0b1330"/><stop offset="1" stop-color="#04060f"/></radialGradient>
+    <linearGradient id="pitch" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1f7a3d"/><stop offset="1" stop-color="#0b2e17"/></linearGradient>
+    <radialGradient id="ball" cx=".38" cy=".35" r=".7"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#c9d3e6"/><stop offset="1" stop-color="#6d7a96"/></radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <g fill="#ffffff" opacity=".08"><rect x="0" y="150" width="1600" height="16"/><rect x="0" y="210" width="1600" height="10"/></g>
+  <g fill="#fff" opacity=".6"><circle cx="300" cy="120" r="3"/><circle cx="1200" cy="90" r="3"/><circle cx="800" cy="70" r="3"/></g>
+  <polygon points="0,900 1600,900 1600,560 0,620" fill="url(#pitch)"/>
+  <g stroke="#ffffff" stroke-opacity=".35" stroke-width="4" fill="none"><path d="M0 760 1600 690"/><ellipse cx="820" cy="730" rx="220" ry="50"/></g>
+  <path d="M1250 560v-140h300v140" fill="none" stroke="#ff8a2a" stroke-width="10" filter="url(#glow)"/>
+  <g stroke="#ff8a2a" stroke-opacity=".3" stroke-width="2"><path d="M1270 430v120M1310 430v120M1350 430v120M1390 430v120M1430 430v120M1470 430v120M1510 430v120"/></g>
+  <circle cx="1080" cy="330" r="120" fill="url(#ball)"/>
+  <g stroke="#2a3550" stroke-width="5" fill="none" opacity=".6"><path d="M1000 260l80 30 70-40M1080 290v90M1010 390l70-10 60 40"/></g>
+  <g transform="translate(760 560) rotate(-18)" filter="url(#glow)">
+    <path d="M-260 30c-80-6-160 0-240 20 80 4 160 4 240 0z" fill="#6fc8ff" opacity=".7"/>
+    <path d="M-150 30c0-24 14-40 38-46l30-34c8-9 20-14 32-14h70c14 0 28 6 36 18l26 36c30 6 44 22 44 40v14h-276z" fill="#0f1c3a" stroke="#4aa8ff" stroke-width="5"/>
+    <circle cx="-100" cy="48" r="22" fill="#05080f" stroke="#4aa8ff" stroke-width="4"/><circle cx="80" cy="48" r="22" fill="#05080f" stroke="#4aa8ff" stroke-width="4"/>
+  </g>
+</svg>

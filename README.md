@@ -1,3 +1,5 @@
+> **Este repositório também contém o PH Cloud**, portal de jogos na nuvem, na pasta [`ph-cloud/`](ph-cloud/README.md). O site da pizzaria abaixo continua na raiz, sem alterações.
+
 # MKS Pizzaria — site
 
 Site estático (HTML + CSS + JavaScript puro, sem build e sem dependências) com cardápio digital, animação da pizza sendo montada na rolagem, galeria e acesso ao pedido oficial.

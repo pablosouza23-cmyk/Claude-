@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f1f4a"/><stop offset=".5" stop-color="#3b5fb0"/><stop offset=".8" stop-color="#9fd0e8"/><stop offset="1" stop-color="#2b4d6e"/></linearGradient>
+    <linearGradient id="isle" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fd38a"/><stop offset=".25" stop-color="#3b8a52"/><stop offset=".3" stop-color="#8a7a63"/><stop offset="1" stop-color="#3a3030" stop-opacity="0"/></linearGradient>
+    <radialGradient id="star" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff8d9"/><stop offset="1" stop-color="#ffd67a" stop-opacity="0"/></radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="blur"><feGaussianBlur stdDeviation="16"/></filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <g fill="#fff" opacity=".85"><circle cx="200" cy="100" r="2"/><circle cx="520" cy="70" r="1.6"/><circle cx="880" cy="120" r="2"/><circle cx="1450" cy="90" r="1.8"/><circle cx="1250" cy="50" r="1.4"/></g>
+  <circle cx="1240" cy="220" r="120" fill="url(#star)"/>
+  <g opacity=".55" fill="#fff" filter="url(#blur)"><ellipse cx="400" cy="640" rx="380" ry="60"/><ellipse cx="1200" cy="700" rx="420" ry="70"/></g>
+  <g>
+    <path d="M820 470c80-40 360-50 500-10 30 10 30 30 0 40-60 20-90 120-160 170-60 40-130 30-170-10-60-60-120-140-170-170-20-12-20-14 0-20z" fill="url(#isle)"/>
+    <path d="M1040 470v-120l30-40 30 40v120z" fill="#e8e0cf"/><path d="M1030 310l40-60 40 60z" fill="#c04848"/>
+    <rect x="1060" y="380" width="20" height="30" fill="#4a3a2a"/>
+    <path d="M300 380c40-20 180-24 240-4 14 4 14 14 0 20-30 10-50 60-80 84-30 20-64 16-84-4-30-30-60-70-84-86-10-6-10-8 0-10z" fill="url(#isle)" opacity=".85"/>
+    <path d="M1380 600c30-14 130-18 170-4 10 4 10 10 0 14-20 8-36 44-56 60-22 14-46 12-60-2-20-22-42-50-60-60-8-4-8-6 0-8z" fill="url(#isle)" opacity=".8"/>
+  </g>
+  <g transform="translate(1080 640)" filter="url(#glow)" opacity=".9">
+    <circle r="110" fill="none" stroke="#7fe0ff" stroke-width="3"/>
+    <circle r="80" fill="none" stroke="#7fe0ff" stroke-width="2" stroke-dasharray="6 10"/>
+    <path d="M0-110 95 55H-95z" fill="none" stroke="#b6f0ff" stroke-width="2"/>
+  </g>
+  <g fill="#ffe28a" filter="url(#glow)"><circle cx="960" cy="420" r="5"/><circle cx="1180" cy="400" r="4"/><circle cx="1290" cy="520" r="5"/></g>
+</svg>

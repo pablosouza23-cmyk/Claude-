@@ -1,0 +1,1 @@
+ALTER TABLE "catalog_entries" ADD COLUMN "streams" jsonb DEFAULT '[]'::jsonb NOT NULL;

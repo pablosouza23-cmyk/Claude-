@@ -1,7 +1,7 @@
 /* Corte Livre — estilos do editor. Tema escuro, layout em grade (desktop) e em coluna (celular). */
 :root{
   --bg:#0f1115; --bg2:#161920; --card:#1d212a; --line:#2a2f3a; --text:#e9edf3; --muted:#9aa3b2;
-  --accent:#00c2a8; --accent2:#00e0c2; --danger:#ff5d6c; --clip:#2f6fdb; --txt:#b04ad8; --aud:#2fa86a;
+  --accent:#00c2a8; --accent2:#00e0c2; --danger:#ff5d6c; --clip:#2f6fdb; --txt:#b04ad8; --aud:#2fa86a; --ovl:#d0802a;
   --radius:10px; --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --tl-h:230px;
 }
 *{box-sizing:border-box}
@@ -36,6 +36,7 @@ select{min-height:34px;padding:0 .5rem}
 .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
 .add-text{display:flex;gap:.4rem;margin-bottom:.8rem}
 .add-text .btn{flex:1}
+.btn.wide{width:100%;margin-bottom:.8rem}
 .media-list{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
 .media-list.drop{outline:2px dashed var(--accent);outline-offset:4px;border-radius:8px}
 .empty{grid-column:1/-1;color:var(--muted);font-size:.85rem;margin:.4rem 0}
@@ -44,9 +45,10 @@ select{min-height:34px;padding:0 .5rem}
 .media .thumb{aspect-ratio:16/10;background:#000 center/cover no-repeat;display:grid;place-items:center;font-size:1.6rem;color:var(--muted)}
 .media .meta{padding:.25rem .4rem;font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .media .dur{position:absolute;top:4px;left:4px;background:#000a;padding:0 .3rem;border-radius:4px;font-size:.7rem}
-.media .add,.media .rm{position:absolute;top:4px;width:24px;height:24px;border-radius:50%;border:0;display:grid;place-items:center;cursor:pointer;font-weight:800}
+.media .add,.media .rm,.media .ov{position:absolute;top:4px;width:24px;height:24px;border-radius:50%;border:0;display:grid;place-items:center;cursor:pointer;font-weight:800}
 .media .add{right:4px;background:var(--accent);color:#04201c}
-.media .rm{right:32px;background:#000a;color:#fff;opacity:0}
+.media .ov{right:32px;background:var(--ovl);color:#fff}
+.media .rm{right:60px;background:#000a;color:#fff;opacity:0}
 .media:hover .rm,.media:focus-within .rm{opacity:1}
 
 .stage{display:flex;flex-direction:column;min-width:0;min-height:0}
@@ -80,7 +82,7 @@ select{min-height:34px;padding:0 .5rem}
 .ruler{position:relative;height:22px;border-bottom:1px solid var(--line);cursor:pointer;touch-action:none}
 .tick{position:absolute;top:0;height:100%;border-left:1px solid var(--line);padding-left:3px;font-size:.68rem;color:var(--muted);font-variant-numeric:tabular-nums;pointer-events:none}
 .track{position:relative;height:50px;margin-top:6px;background:#12151b;border-top:1px solid #1a1e26;border-bottom:1px solid #1a1e26}
-.track.text,.track.audio{height:36px}
+.track.text,.track.audio,.track.overlay{height:36px}
 .track-label{position:sticky;left:0;z-index:3;display:inline-block;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);background:#12151bcc;padding:2px 6px;border-radius:0 0 6px 0;pointer-events:none}
 .track:has(.block) .track-label{display:none}
 .track .hint{position:absolute;left:80px;top:50%;transform:translateY(-50%);font-size:.75rem;color:#5d6676;pointer-events:none;white-space:nowrap}
@@ -90,6 +92,8 @@ select{min-height:34px;padding:0 .5rem}
 .block.clip .lbl{background:#000a;border-radius:4px;padding:0 4px}
 .block.text{background:var(--txt);align-items:center}
 .block.audio{background:var(--aud);align-items:center}
+.block.overlay{background:var(--ovl) left/auto 100% repeat-x;align-items:center}
+.block.overlay .lbl{background:#000a;border-radius:4px;padding:0 4px}
 .block.sel{border-color:#fff;box-shadow:0 0 0 2px var(--accent)}
 .block .lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;max-width:100%}
 .block .h-l,.block .h-r{position:absolute;top:0;bottom:0;width:9px;cursor:ew-resize;background:#ffffff33}
@@ -107,6 +111,7 @@ select{min-height:34px;padding:0 .5rem}
 dialog{background:var(--bg2);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:1.2rem 1.4rem;width:min(420px,92vw)}
 dialog::backdrop{background:#000b}
 dialog p{color:var(--muted)}
+dialog .cap-info{color:var(--text);font-size:.85rem}
 dialog progress{width:100%;height:10px;accent-color:var(--accent)}
 .dlg-actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem}
 

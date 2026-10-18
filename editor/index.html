@@ -13,6 +13,7 @@
   <header class="bar">
     <div class="brand"><span class="logo" aria-hidden="true">▶</span> <span class="brand-name">Corte Livre</span></div>
     <div class="bar-actions">
+      <button class="btn small" id="newBtn" title="Começar um projeto novo">Novo</button>
       <button class="btn icon" id="undoBtn" title="Desfazer (Ctrl+Z)" aria-label="Desfazer">↶</button>
       <button class="btn icon" id="redoBtn" title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer">↷</button>
       <label class="aspect">
@@ -39,6 +40,7 @@
         <button class="btn small" id="addTitle">+ Título</button>
         <button class="btn small" id="addCaption">+ Legenda</button>
       </div>
+      <button class="btn small wide" id="autoCapBtn">🎤 Legendas automáticas</button>
       <div id="mediaList" class="media-list">
         <p class="empty">Arraste vídeos, fotos ou músicas para cá, ou toque em <b>+ Importar</b>. Nada é enviado para a internet: tudo fica no seu aparelho.</p>
       </div>
@@ -69,6 +71,7 @@
       <div class="tl-inner" id="tlInner">
         <div class="ruler" id="ruler"></div>
         <div class="track video" id="trackV"><span class="track-label">Vídeo</span></div>
+        <div class="track overlay" id="trackO"><span class="track-label">Sobreposição</span></div>
         <div class="track text" id="trackT"><span class="track-label">Texto</span></div>
         <div class="track audio" id="trackA"><span class="track-label">Áudio</span></div>
         <div class="playhead" id="playhead"></div>
@@ -86,6 +89,33 @@
     <div class="dlg-actions">
       <a class="btn primary" id="exDownload" hidden>Baixar vídeo</a>
       <button class="btn" id="exClose">Cancelar</button>
+    </div>
+  </dialog>
+
+  <dialog id="capDlg" aria-labelledby="capTitle">
+    <h2 id="capTitle">Legendas automáticas</h2>
+    <p>A fala dos clipes de vídeo é transcrita <b>no seu aparelho</b> (Whisper, código aberto). Na primeira vez o modelo é baixado e fica guardado no navegador.</p>
+    <label class="field">Idioma da fala
+      <select id="capLang">
+        <option value="portuguese">Português</option>
+        <option value="english">Inglês</option>
+        <option value="spanish">Espanhol</option>
+        <option value="">Detectar automaticamente</option>
+      </select>
+    </label>
+    <label class="field">Qualidade
+      <select id="capModel">
+        <option value="onnx-community/whisper-tiny">Rápida (baixa ~40 MB)</option>
+        <option value="onnx-community/whisper-base" selected>Boa (baixa ~80 MB)</option>
+        <option value="onnx-community/whisper-small">Ótima, mais lenta (baixa ~250 MB)</option>
+      </select>
+    </label>
+    <label class="field check"><input type="checkbox" id="capMusic"><span>Incluir também as trilhas de áudio</span></label>
+    <p id="capInfo" class="cap-info" hidden></p>
+    <progress id="capProgress" max="1" value="0" hidden></progress>
+    <div class="dlg-actions">
+      <button class="btn" id="capClose">Fechar</button>
+      <button class="btn primary" id="capStart">Gerar legendas</button>
     </div>
   </dialog>
 

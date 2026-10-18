@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Corte Livre — editor de vídeo grátis no navegador</title>
+  <meta name="description" content="Editor de vídeo gratuito e de código aberto que roda no navegador: cortar, dividir, textos, filtros, velocidade, música e exportação sem marca d'água.">
+  <meta name="theme-color" content="#0f1115">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='6' y='6' width='88' height='88' rx='22' fill='%2300c2a8'/%3E%3Cpath d='M38 30v40l32-20z' fill='%230f1115'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/editor.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="brand"><span class="logo" aria-hidden="true">▶</span> <span class="brand-name">Corte Livre</span></div>
+    <div class="bar-actions">
+      <button class="btn icon" id="undoBtn" title="Desfazer (Ctrl+Z)" aria-label="Desfazer">↶</button>
+      <button class="btn icon" id="redoBtn" title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer">↷</button>
+      <label class="aspect">
+        <span class="sr">Formato do vídeo</span>
+        <select id="aspect">
+          <option value="16:9">16:9 YouTube</option>
+          <option value="9:16">9:16 Reels/TikTok</option>
+          <option value="1:1">1:1 Quadrado</option>
+          <option value="4:5">4:5 Feed</option>
+        </select>
+      </label>
+      <button class="btn primary" id="exportBtn">Exportar</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="panel library" aria-label="Mídia">
+      <div class="panel-head">
+        <h2>Mídia</h2>
+        <label class="btn primary small" for="fileInput">+ Importar</label>
+        <input id="fileInput" type="file" accept="video/*,image/*,audio/*" multiple hidden>
+      </div>
+      <div class="add-text">
+        <button class="btn small" id="addTitle">+ Título</button>
+        <button class="btn small" id="addCaption">+ Legenda</button>
+      </div>
+      <div id="mediaList" class="media-list">
+        <p class="empty">Arraste vídeos, fotos ou músicas para cá, ou toque em <b>+ Importar</b>. Nada é enviado para a internet: tudo fica no seu aparelho.</p>
+      </div>
+    </aside>
+
+    <section class="stage" aria-label="Pré-visualização">
+      <div class="viewport" id="viewport"><canvas id="preview" width="1280" height="720"></canvas></div>
+      <div class="controls">
+        <button class="btn icon" id="toStart" title="Início (Home)" aria-label="Voltar ao início">⏮</button>
+        <button class="btn icon play" id="playBtn" title="Reproduzir (Espaço)" aria-label="Reproduzir">▶</button>
+        <span class="time" id="timeLabel">0:00.00 / 0:00.00</span>
+        <span class="spacer"></span>
+        <button class="btn small" id="splitBtn" title="Dividir no cursor (S)">✂ Dividir</button>
+        <button class="btn small" id="dupBtn" title="Duplicar (Ctrl+D)">⧉ Duplicar</button>
+        <button class="btn small danger" id="delBtn" title="Excluir (Delete)">🗑 Excluir</button>
+      </div>
+    </section>
+
+    <aside class="panel props" id="props" aria-label="Propriedades"></aside>
+  </main>
+
+  <section class="timeline" aria-label="Linha do tempo">
+    <div class="tl-tools">
+      <span class="tl-title">Linha do tempo</span>
+      <label class="zoom">Zoom <input type="range" id="zoom" min="10" max="240" value="60"></label>
+    </div>
+    <div class="tl-scroll" id="tlScroll">
+      <div class="tl-inner" id="tlInner">
+        <div class="ruler" id="ruler"></div>
+        <div class="track video" id="trackV"><span class="track-label">Vídeo</span></div>
+        <div class="track text" id="trackT"><span class="track-label">Texto</span></div>
+        <div class="track audio" id="trackA"><span class="track-label">Áudio</span></div>
+        <div class="playhead" id="playhead"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="pool" id="pool" aria-hidden="true"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <dialog id="exportDlg" aria-labelledby="exTitle">
+    <h2 id="exTitle">Exportando vídeo</h2>
+    <p id="exInfo">Mantenha esta aba aberta e visível. A exportação acontece em tempo real, no seu aparelho.</p>
+    <progress id="exProgress" max="1" value="0"></progress>
+    <div class="dlg-actions">
+      <a class="btn primary" id="exDownload" hidden>Baixar vídeo</a>
+      <button class="btn" id="exClose">Cancelar</button>
+    </div>
+  </dialog>
+
+  <script src="js/editor.js"></script>
+</body>
+</html>

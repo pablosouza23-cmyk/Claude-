@@ -8,6 +8,9 @@ Abra `index.html` no navegador, ou sirva a pasta:
 python3 -m http.server 8000   # http://localhost:8000
 ```
 
+## Editor de vídeo (Corte Livre)
+O repositório também traz um editor de vídeo gratuito que roda no navegador, em [`editor/`](editor/README.md) (abra `http://localhost:8000/editor/`).
+
 ## Como publicar
 Qualquer hospedagem estática serve (GitHub Pages, Netlify, Vercel, Cloudflare Pages): publique a pasta inteira. **O site ainda não está publicado.**
 

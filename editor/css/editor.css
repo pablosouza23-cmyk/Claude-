@@ -2,7 +2,7 @@
 :root{
   --bg:#0f1115; --bg2:#161920; --card:#1d212a; --line:#2a2f3a; --text:#e9edf3; --muted:#9aa3b2;
   --accent:#00c2a8; --accent2:#00e0c2; --danger:#ff5d6c; --clip:#2f6fdb; --txt:#b04ad8; --aud:#2fa86a; --ovl:#d0802a;
-  --radius:10px; --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --tl-h:230px;
+  --radius:10px; color-scheme:dark; --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --tl-h:230px;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -50,6 +50,8 @@ select{min-height:34px;padding:0 .5rem}
 .media .ov{right:32px;background:var(--ovl);color:#fff}
 .media .rm{right:60px;background:#000a;color:#fff;opacity:0}
 .media:hover .rm,.media:focus-within .rm{opacity:1}
+@media (hover:none){.media .rm{opacity:1}}
+.btn.danger-on{border-color:var(--danger);color:var(--danger)}
 
 .stage{display:flex;flex-direction:column;min-width:0;min-height:0}
 .viewport{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:.8rem;background:repeating-conic-gradient(#12151b 0 25%,#0f1115 0 50%) 0 0/24px 24px}
@@ -85,7 +87,7 @@ select{min-height:34px;padding:0 .5rem}
 .track.text,.track.audio,.track.overlay{height:36px}
 .track-label{position:sticky;left:0;z-index:3;display:inline-block;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);background:#12151bcc;padding:2px 6px;border-radius:0 0 6px 0;pointer-events:none}
 .track:has(.block) .track-label{display:none}
-.track .hint{position:absolute;left:80px;top:50%;transform:translateY(-50%);font-size:.75rem;color:#5d6676;pointer-events:none;white-space:nowrap}
+.track .hint{position:absolute;left:120px;top:50%;transform:translateY(-50%);font-size:.75rem;color:#5d6676;pointer-events:none;white-space:nowrap}
 .block{position:absolute;top:3px;bottom:3px;border-radius:6px;overflow:hidden;cursor:grab;touch-action:none;color:#fff;font-size:.72rem;display:flex;align-items:flex-end;padding:0 10px 3px;border:2px solid transparent;user-select:none}
 .block:active{cursor:grabbing}
 .block.clip{background:var(--clip) left/auto 100% repeat-x;align-items:flex-end}
@@ -105,7 +107,7 @@ select{min-height:34px;padding:0 .5rem}
 
 .pool{position:fixed;left:0;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}
 .pool video{width:1px;height:1px}
-.toast{position:fixed;left:50%;bottom:calc(var(--tl-h) + 16px);transform:translateX(-50%) translateY(10px);background:#000d;border:1px solid var(--line);padding:.5rem 1rem;border-radius:999px;opacity:0;transition:.2s;pointer-events:none;z-index:50;max-width:90vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(var(--tl-h) + 16px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%) translateY(10px);background:#000d;border:1px solid var(--line);padding:.5rem 1rem;border-radius:999px;opacity:0;transition:.2s;pointer-events:none;z-index:50;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%)}
 
 dialog{background:var(--bg2);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:1.2rem 1.4rem;width:min(420px,92vw)}
@@ -118,10 +120,12 @@ dialog progress{width:100%;height:10px;accent-color:var(--accent)}
 @media (max-width:900px){
   /* No celular: prévia, linha do tempo, mídia e propriedades empilhadas. */
   body{display:flex;flex-direction:column;overflow:auto;height:auto;min-height:100%}
-  .bar{position:sticky;top:0;z-index:20;flex:none;height:52px;padding:0 .5rem}
+  .bar{position:sticky;top:env(safe-area-inset-top, 0px);z-index:20;flex:none;height:52px;padding:0 .5rem}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:21;background:var(--bg2)}
   .brand-name{display:none}
   .bar-actions{gap:.3rem}
-  .aspect select{max-width:118px}
+  .aspect select{max-width:96px}
+  .bar .btn.primary{padding:.35rem .6rem}
   .workspace{display:contents}
   .stage{order:1}
   .viewport{height:min(56vh,480px);flex:none;padding:.5rem}
@@ -129,7 +133,7 @@ dialog progress{width:100%;height:10px;accent-color:var(--accent)}
   .library{order:3;border:0;border-top:1px solid var(--line);overflow:visible}
   .props{order:4;border:0;border-top:1px solid var(--line);overflow:visible}
   .media-list{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
-  .toast{bottom:16px}
+  .toast{bottom:calc(16px + env(safe-area-inset-bottom, 0px))}
   .controls .btn.small{padding:.25rem .5rem}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}

@@ -153,10 +153,47 @@
         if (recs.length) toast("Projeto anterior reaberto.");
       }
     } catch (e) { /* sem IndexedDB: segue sem salvar */ }
+    if (!state.media.length) await loadExample();
     renderAll();
   }
+  // Projeto de exemplo (slides gerados na hora, não ficam salvos), para o editor não abrir vazio.
+  async function loadExample() {
+    const slides = [
+      ["#0b6e63", "#00c2a8", "Corte Livre", "editor de vídeo grátis"],
+      ["#3a2a7a", "#7a5cff", "Importe seus vídeos", "fotos e músicas também"],
+      ["#7a2a3a", "#ff7a59", "Exporte sem marca d'água", "tudo no seu aparelho"],
+    ];
+    const motions = ["zoomIn", "panL", "zoomOut"], trans = ["none", "deslizar", "fade"];
+    for (let i = 0; i < slides.length; i++) {
+      const [c1, c2, big, small] = slides[i], c = document.createElement("canvas");
+      c.width = 1280; c.height = 720;
+      const g = c.getContext("2d"), grad = g.createLinearGradient(0, 0, 1280, 720);
+      grad.addColorStop(0, c1); grad.addColorStop(1, c2);
+      g.fillStyle = grad; g.fillRect(0, 0, 1280, 720);
+      g.fillStyle = "#ffffff22";
+      for (let k = 0; k < 6; k++) { g.beginPath(); g.arc(200 + k * 190, 560 - (k % 2) * 300, 60 + k * 14, 0, Math.PI * 2); g.fill(); }
+      g.fillStyle = "#fff"; g.textAlign = "center"; g.font = "800 92px system-ui, sans-serif"; g.fillText(big, 640, 360);
+      g.font = "500 44px system-ui, sans-serif"; g.fillStyle = "#ffffffcc"; g.fillText(small, 640, 440);
+      const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+      if (!blob) return;
+      const id = "exemplo" + i;
+      addMedia(blob, `exemplo-${i + 1}.png`, "image", id, false);
+      state.clips.push(withClipDefaults({ id: uid(), mediaId: id, in: 0, out: 2.5, speed: 1, volume: 1, fit: "cover", motion: motions[i], trans: trans[i] }));
+    }
+    state.texts.push(textItem("caption", { start: 0, dur: 7.5, y: 88, size: 34, text: "Exemplo: toque em Novo para começar o seu", anim: "fade" }));
+    lastSaved = projectJSON(); // o exemplo não é salvo até você mexer
+  }
+  let newArmed = 0;
   async function newProject() {
-    if (total() && !confirm("Começar um projeto novo? O projeto atual e as mídias importadas serão apagados deste navegador.")) return;
+    // Confirmação na própria página (confirm() não funciona em todo lugar): tocar duas vezes.
+    const btn = $("#newBtn");
+    if ((total() || state.media.length) && Date.now() - newArmed > 4000) {
+      newArmed = Date.now(); btn.textContent = "Apagar tudo?"; btn.classList.add("danger-on");
+      toast("Toque em \"Apagar tudo?\" de novo para começar do zero.");
+      setTimeout(() => { btn.textContent = "Novo"; btn.classList.remove("danger-on"); }, 4000);
+      return;
+    }
+    newArmed = 0; btn.textContent = "Novo"; btn.classList.remove("danger-on");
     pause();
     els.forEach(disposeEl); els.clear();
     state.media.forEach((m) => URL.revokeObjectURL(m.url));
@@ -215,7 +252,7 @@
     renderLibrary();
   }
   function addMedia(blob, name, type, id, persist) {
-    const m = { id, name, type, url: URL.createObjectURL(blob), duration: type === "image" ? Infinity : 0, ready: false, thumb: null };
+    const m = { id, name, type, blob, url: URL.createObjectURL(blob), duration: type === "image" ? Infinity : 0, ready: false, thumb: null };
     if (type === "image") {
       const img = new Image();
       img.onload = () => { m.ready = true; m.thumb = m.url; renderLibrary(); };
@@ -921,7 +958,7 @@
     const decode = async (m) => {
       if (!cache.has(m.id)) {
         let buf = null;
-        try { buf = await off.decodeAudioData(await (await fetch(m.url)).arrayBuffer()); } catch (e) { /* vídeo sem áudio */ }
+        try { buf = await off.decodeAudioData(await m.blob.arrayBuffer()); } catch (e) { /* vídeo sem áudio */ }
         cache.set(m.id, buf);
       }
       return cache.get(m.id);
@@ -986,6 +1023,7 @@
   async function runCaptions() {
     const info = $("#capInfo"), bar = $("#capProgress"), btn = $("#capStart");
     const say = (msg, p) => { info.hidden = false; info.textContent = msg; bar.hidden = p == null; if (p != null) bar.value = p; };
+    if (inViewer) return say("Nesta versão publicada o navegador bloqueia o download do modelo de fala. As legendas automáticas funcionam na versão do editor aberta direto no navegador (pasta editor/ do repositório).");
     if (!state.clips.length && !state.overlays.length && !state.audios.length) return say("Adicione vídeos à linha do tempo primeiro.");
     btn.disabled = true;
     say("Separando o áudio da linha do tempo…", 0);
@@ -1026,6 +1064,11 @@
   $("#capClose").addEventListener("click", () => $("#capDlg").close());
 
   // ---- exportação ----
+  // Publicado no claude.ai, o download direto é bloqueado; lá o arquivo é oferecido pela
+  // capacidade "downloads". Fora dele, window.claude não existe e vale o link normal.
+  const host = window.claude && typeof window.claude.use === "function" ? window.claude : null;
+  const downloadsCap = host ? host.use("downloads").catch(() => null) : Promise.resolve(null);
+  const inViewer = !!host && window.top !== window;
   function pickMime() {
     if (!window.MediaRecorder) return null;
     return ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4;codecs=avc1,mp4a", "video/mp4;codecs=avc1,opus", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"]
@@ -1051,6 +1094,7 @@
       const ext = /mp4/.test(ex.mime) ? "mp4" : "webm";
       const blob = new Blob(ex.chunks, { type: ex.mime.split(";")[0] || "video/webm" });
       const a = $("#exDownload");
+      a._blob = blob;
       if (a.href) URL.revokeObjectURL(a.href);
       a.href = URL.createObjectURL(blob);
       a.download = `corte-livre-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.${ext}`;
@@ -1075,6 +1119,17 @@
     $("#exportDlg").close();
   }
   $("#exClose").addEventListener("click", closeExport);
+  $("#exDownload").addEventListener("click", async (e) => {
+    const a = e.currentTarget, dl = await Promise.race([downloadsCap, new Promise((r) => setTimeout(() => r(null), 300))]);
+    if (!dl) { if (inViewer) { e.preventDefault(); toast("Salvar arquivos não está disponível nesta visualização."); } return; }
+    e.preventDefault();
+    try { await dl.save({ filename: a.download, data: a._blob }); toast("Vídeo salvo."); }
+    catch (err) {
+      const code = err && err.code;
+      if (code === "declined") return;
+      toast(code === "rate_limited" ? "Já existe um pedido de salvar aberto. Aguarde e tente de novo." : "Não foi possível salvar o vídeo aqui.");
+    }
+  });
   $("#exportDlg").addEventListener("cancel", (e) => { e.preventDefault(); closeExport(); });
 
   // ---- ligações da interface ----

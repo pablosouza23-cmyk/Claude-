@@ -287,7 +287,7 @@ CH.setGuns = function (ch, inHand, onBack) {
     if (inHand) {
       const p = WPN.build(inHand);
       ch.gunMesh.geometry = p.g; ch.gunGlow.geometry = p.glow || _emptyGeo;
-      ch.muzzle.position.set(0, 0.03, p.len + 0.02);
+      ch.muzzle.position.set(0, p.muzzleY !== undefined ? p.muzzleY : 0.03, p.len + 0.02);
       ch.grip = p;
     }
     ch.gun.visible = !!inHand;
@@ -598,7 +598,7 @@ CH.animate = function (ch, dt, s) {
     _fw.copy(fwd).multiplyScalar(0.55).addScaledVector(upg, -0.75).normalize();
     orientHand(B.Bip01_R_Hand, ch.av.rig.R, _fw, leftG);
     curlFingers(ch, 'R', 0.85, 0.35);
-    if (pistol) gp(0.02, -0.09, g.gripZ + 0.0, _tgt); else gp(0.0, -0.035, g.foreZ, _tgt);
+    if (pistol) gp(0.02, -0.09, g.gripZ + 0.0, _tgt); else gp(0.0, g.foreY !== undefined ? g.foreY - 0.02 : -0.035, g.foreZ, _tgt);
     _pole.copy(_bodyR).multiplyScalar(-0.6).addScaledVector(UP, -1);
     _tgt.addScaledVector(fwd, -0.05).addScaledVector(leftG, 0.03).addScaledVector(upg, -0.03);
     ik2(B.Bip01_L_UpperArm, B.Bip01_L_Forearm, B.Bip01_L_Hand, _tgt, _pole);

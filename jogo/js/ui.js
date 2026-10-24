@@ -99,7 +99,7 @@ function setFPWeapon(id) {
   const p = WPN.build(id);
   fpGun.userData.sightY = p.sightY; fpGun.userData.sightZ = p.sightZ;
   const sec = WEAPONS[id].secondary;
-  fpGun.userData.hL.position.set(0.0, -0.07, sec ? 0.0 : Math.min(0.3, p.len * 0.5));
+  fpGun.userData.hL.position.set(0.0, p.foreY !== undefined ? p.foreY - 0.03 : -0.07, sec ? 0.0 : (p.foreZ !== undefined ? p.foreZ : Math.min(0.3, p.len * 0.5)));
   fpGun.userData.hL.visible = !sec;
 }
 
@@ -1048,7 +1048,7 @@ function boot() {
   };
   $('loadTip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
   const steps = W.buildSteps(scene, G.settings.quality);
-  steps.unshift(['Personagens', () => CH.load()]);
+  steps.unshift(['Personagens', () => CH.load()], ['Armas', () => WPN.load()]);
   steps.push(['Efeitos', () => FX.init(scene)]);
   steps.push(['Personagem', () => { setupShowcase(); G.player = G.show; }]);
   let i = 0;

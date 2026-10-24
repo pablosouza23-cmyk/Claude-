@@ -43,8 +43,131 @@ WPN.ICON = {
   revolver: 'M14 8h14l3-2h16v4H31l-1 4h-5l-4 11h-7l3-11h-3l-2-2z',
 };
 
+// ---------- modelos 3D (Ultimate Gun Pack da Quaternius, CC0; convertidos no Blender) ----------
+// frações medidas no modelo: [de trás para frente, de baixo para cima]
+// grip = mão direita no cabo, fore = mão de apoio, top = onde a mira vai montada, sight = mira já do modelo
+WPN.MDL = {
+  FUZIL: { src: 'AssaultRifle_2', len: 0.88, grip: [0.30, 0.57], fore: [0.67, 0.80], top: [0.45, 0.94], muzzle: 0.84 },
+  CARABINA: { src: 'AssaultRifle2_1', len: 0.84, grip: [0.29, 0.53], fore: [0.64, 0.77], top: [0.42, 0.86], muzzle: 0.77, tint: [0.62, 0.62, 0.66] },
+  SMG: { src: 'SubmachineGun_3', len: 0.62, grip: [0.46, 0.54], fore: [0.85, 0.55], top: [0.6, 0.98], muzzle: 0.81 },
+  PRECISAO: { src: 'SniperRifle_2', len: 1.15, grip: [0.26, 0.40], fore: [0.54, 0.58], sight: [0.27, 0.91], muzzle: 0.72 },
+  ESCOPETA: { src: 'Shotgun_2', len: 1.0, grip: [0.29, 0.53], fore: [0.57, 0.62], sight: [0.55, 0.92], muzzle: 0.85 },
+  METRALHADORA: { src: 'AssaultRifle2_2', len: 1.0, grip: [0.31, 0.46], fore: [0.67, 0.75], top: [0.45, 0.86], muzzle: 0.76, tint: [0.78, 0.86, 0.66], bipod: [0.9, 0.72] },
+  PISTOLA: { src: 'Pistol_1', len: 0.2, grip: [0.15, 0.46], sight: [0.06, 0.97], muzzle: 0.86, pistol: true },
+  REVOLVER: { src: 'Revolver_1', len: 0.28, grip: [0.17, 0.56], sight: [0.1, 0.97], muzzle: 0.86, pistol: true },
+  FUTURISTA: { src: 'Bullpup_2', len: 0.74, grip: [0.27, 0.48], fore: [0.82, 0.61], top: [0.5, 0.98], muzzle: 0.81, tint: [0.55, 0.7, 1.15], glowLine: [0.3, 0.86, 0.74] },
+  BLASTER: { src: 'Bullpup_3', len: 0.75, grip: [0.37, 0.50], fore: [0.68, 0.62], top: [0.5, 0.98], muzzle: 0.88, tint: [0.75, 0.68, 0.62], glowRings: [0.72, 0.95, 0.8] },
+};
+WPN.models = null;
+WPN.load = async function () {
+  try {
+    const r = await fetch(CH.url('assets/guns.bin'));
+    if (!r.ok) throw new Error('sem armas');
+    const buf = await r.arrayBuffer(), dv = new DataView(buf), hl = dv.getUint32(4, true);
+    const H = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 8, hl)).replace(/[\0 ]+$/, '')), base = 8 + hl;
+    const out = {};
+    for (const k in H.models) {
+      const e = H.models[k];
+      const p = new Float32Array(buf, base + e.pos, e.v * 3), n = new Int16Array(buf, base + e.nor, e.v * 3), c = new Uint8Array(buf, base + e.col, e.v * 3), ix = new Uint16Array(buf, base + e.idx, e.i);
+      // Blender (z para cima, cano em +x) -> jogo (y para cima, cano em +z)
+      const P = new Float32Array(e.v * 3), N = new Float32Array(e.v * 3), C = new Float32Array(e.v * 3);
+      for (let i = 0; i < e.v; i++) {
+        P[i * 3] = p[i * 3 + 1]; P[i * 3 + 1] = p[i * 3 + 2]; P[i * 3 + 2] = p[i * 3];
+        N[i * 3] = n[i * 3 + 1] / 32767; N[i * 3 + 1] = n[i * 3 + 2] / 32767; N[i * 3 + 2] = n[i * 3] / 32767;
+      }
+      const col = new THREE.Color();
+      for (let i = 0; i < e.v; i++) { col.setRGB(c[i * 3] / 255, c[i * 3 + 1] / 255, c[i * 3 + 2] / 255, THREE.SRGBColorSpace); C[i * 3] = col.r; C[i * 3 + 1] = col.g; C[i * 3 + 2] = col.b; }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(P, 3));
+      g.setAttribute('normal', new THREE.BufferAttribute(N, 3));
+      g.setAttribute('color', new THREE.BufferAttribute(C, 3));
+      g.setIndex(new THREE.BufferAttribute(ix, 1));
+      g.computeBoundingBox();
+      out[k] = g;
+    }
+    WPN.models = out;
+    WPN.cache = {};
+  } catch (e) { console.warn('armas 3D indisponíveis, usando modelos simples', e); }
+};
+
+WPN.buildModel = function (id) {
+  const cfg = WPN.MDL[id], def = WPN.DEF[id];
+  const src = WPN.models[cfg.src];
+  const bb = src.boundingBox;
+  const L = bb.max.z - bb.min.z, Hh = bb.max.y - bb.min.y, s = cfg.len / L;
+  const at = (f) => new THREE.Vector3(0, (bb.min.y + f[1] * Hh) * s, (bb.min.z + f[0] * L) * s);
+  const gripZ = cfg.pistol ? -0.03 : -0.1;
+  const g0 = at(cfg.grip);
+  const off = new THREE.Vector3(-(bb.min.x + bb.max.x) / 2 * s, -0.06 - g0.y, gripZ - g0.z);
+  const pt = f => at(f).add(off);
+  const m = new THREE.Matrix4().makeTranslation(off.x, off.y, off.z).multiply(new THREE.Matrix4().makeScale(s, s, s));
+  const body = src.toNonIndexed();
+  body.applyMatrix4(m);
+  if (cfg.tint) {
+    const c = body.attributes.color;
+    for (let i = 0; i < c.count; i++) c.setXYZ(i, Math.min(1, c.getX(i) * cfg.tint[0]), Math.min(1, c.getY(i) * cfg.tint[1]), Math.min(1, c.getZ(i) * cfg.tint[2]));
+  }
+  U.projectUV(body, TX.SCALE.gun);
+  const P = [body], GL = [];
+  const K = 0x2c2e33, K2 = 0x45484f;
+  const add = (geo, c, mm, glow) => { const pp = U.part(geo, c, mm, 'radial', 'gun'); (glow ? GL : P).push(pp.g); };
+  const B = (w, h, d, c, x, y, z, rx, ry, rz, glow) => add(new THREE.BoxGeometry(w, h, d), c, U.mat4(x, y, z, rx || 0, ry || 0, rz || 0), glow);
+  const holo = (z, y, frame, glowC, wide) => {
+    const w = wide ? 0.07 : 0.056;
+    B(w, 0.012, 0.075, frame, 0, y, z);
+    B(0.009, 0.06, 0.065, frame, w / 2 - 0.004, y + 0.036, z); B(0.009, 0.06, 0.065, frame, -w / 2 + 0.004, y + 0.036, z);
+    B(w + 0.004, 0.011, 0.07, frame, 0, y + 0.068, z);
+    B(w - 0.016, 0.018, 0.026, K2, 0, y + 0.012, z - 0.05);
+    if (glowC) { B(0.004, 0.05, 0.004, glowC, w / 2 - 0.002, y + 0.036, z + 0.034, 0, 0, 0, true); B(0.004, 0.05, 0.004, glowC, -w / 2 + 0.002, y + 0.036, z + 0.034, 0, 0, 0, true); }
+    return y + 0.036;
+  };
+  let sightY, sightZ;
+  if (cfg.sight) { const sp = pt(cfg.sight); sightY = sp.y; sightZ = sp.z; }
+  else {
+    const tp = pt(cfg.top);
+    if (def.sight === 'diamond') {
+      const y = tp.y + 0.04, GLW = def.glow;
+      B(0.07, 0.012, 0.07, 0x2c3d63, 0, tp.y + 0.004, tp.z);
+      for (let i = 0; i < 8; i++) {
+        const a = i / 8 * Math.PI * 2 + Math.PI / 8;
+        B(0.03, 0.008, 0.02, 0x2c3d63, Math.cos(a) * 0.034, y + Math.sin(a) * 0.034, tp.z, 0, 0, a + Math.PI / 2);
+        B(0.03, 0.003, 0.004, GLW, Math.cos(a) * 0.03, y + Math.sin(a) * 0.03, tp.z + 0.011, 0, 0, a + Math.PI / 2, true);
+      }
+      sightY = y; sightZ = tp.z;
+    } else {
+      const gl = def.sight === 'brackets' ? 0xff2a2a : def.sight === 'cyan' ? 0x39e0ff : def.sight === 'orange' ? def.glow : null;
+      sightY = holo(tp.z, tp.y + 0.006, K, gl, def.sight === 'cyan' || def.sight === 'orange'); sightZ = tp.z;
+    }
+  }
+  // detalhes de energia e acessórios
+  if (cfg.glowLine) {
+    const a = pt([cfg.glowLine[0], cfg.glowLine[2]]), b = pt([cfg.glowLine[1], cfg.glowLine[2]]);
+    for (const sx of [-1, 1]) B(0.004, 0.008, b.z - a.z, def.glow, sx * (WPN.halfW(src, s) + 0.002), a.y, (a.z + b.z) / 2, 0, 0, 0, true);
+  }
+  if (cfg.glowRings) {
+    const a = pt([cfg.glowRings[0], cfg.glowRings[2]]), b = pt([cfg.glowRings[1], cfg.glowRings[2]]);
+    for (let i = 0; i < 4; i++) { const z = U.lerp(a.z, b.z, i / 3); add(new THREE.TorusGeometry(WPN.halfW(src, s) + 0.012, 0.006, 6, 18), def.glow, U.mat4(0, a.y, z), true); }
+  }
+  if (cfg.bipod && WPN.models['Accessories/Bipod']) {
+    const bp = WPN.models['Accessories/Bipod'].toNonIndexed(), q = pt(cfg.bipod), k = s * 0.7;
+    bp.applyMatrix4(new THREE.Matrix4().makeTranslation(q.x, q.y, q.z).multiply(new THREE.Matrix4().makeScale(k * 0.55, k, k)).multiply(new THREE.Matrix4().makeRotationX(-0.5)));
+    U.projectUV(bp, TX.SCALE.gun);
+    P.push(bp);
+  }
+  const front = pt([1, cfg.muzzle]);
+  const pair = { g: U.merge(P), glow: GL.length ? U.merge(GL) : null };
+  pair.o = pair.g;
+  pair.len = front.z; pair.muzzleY = front.y; pair.sightY = sightY; pair.sightZ = sightZ;
+  pair.gripZ = gripZ; pair.pistol = !!cfg.pistol;
+  if (cfg.fore) { const f = pt(cfg.fore); pair.foreZ = f.z; pair.foreY = f.y; } else { pair.foreZ = gripZ; pair.foreY = -0.09; }
+  WPN.cache[id] = pair;
+  return pair;
+};
+WPN.halfW = (g, s) => (g.boundingBox.max.x - g.boundingBox.min.x) / 2 * s;
+
 WPN.build = function (id) {
   if (WPN.cache[id]) return WPN.cache[id];
+  if (WPN.models && WPN.MDL[id] && WPN.models[WPN.MDL[id].src]) return WPN.buildModel(id);
   const P = [], GL = [];
   const K = 0x34363c, K2 = 0x4a4e56, STEEL = 0x707780, BRASS = 0xc9a24a;
   const push = (geo, c, m, glow, mode) => (glow ? GL : P).push(U.part(geo, c, m, mode || 'radial', 'gun'));
@@ -181,7 +304,7 @@ WPN.build = function (id) {
 
 // material das armas: cores por vértice + textura de desgaste, com brilho metálico
 WPN.gunMat = function () {
-  if (!WPN._gun) WPN._gun = new THREE.MeshStandardMaterial({ vertexColors: true, map: TX.tex('gun'), roughness: 0.36, metalness: 0.6, envMapIntensity: 1.1 });
+  if (!WPN._gun) WPN._gun = new THREE.MeshStandardMaterial({ vertexColors: true, map: TX.tex('gun'), roughness: 0.48, metalness: 0.3, envMapIntensity: 0.9 });
   return WPN._gun;
 };
 

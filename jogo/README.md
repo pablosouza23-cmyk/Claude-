@@ -2,7 +2,15 @@
 
 Battle royale 3D para celular, que roda no navegador (Chrome Android) e pode ser instalado como app. Foi feito em HTML, CSS, JavaScript e Three.js (r160, incluído na pasta). Não tem etapa de build nem dependências para instalar.
 
-**Partida:** 25 jogadores (você + 24 bots) saltam de um avião sobre a ilha. Depois cada um pega armas e equipamentos, enquanto a zona segura fecha. Ganha quem ficar por último.
+**Partida:** 25 jogadores (você e seus amigos + bots) saltam de um avião sobre a ilha. Depois cada um pega armas e equipamentos, enquanto a zona segura fecha. Ganha quem ficar por último.
+
+## Jogar com os amigos (multiplayer)
+1. Toque em **JOGAR → CRIAR SALA**. Aparece um código de 5 letras (ex.: `K7Q2M`).
+2. Mande o código, ou toque em **CONVIDAR** pra mandar o link pelo WhatsApp.
+3. Os amigos tocam em **JOGAR → ENTRAR NA SALA** e digitam o código. Quem abre o link entra direto.
+4. Cada um escolhe o personagem nas setas embaixo. Quem criou a sala toca em **COMEÇAR**. Dá pra completar com bots até 25 ou jogar só entre amigos (até 8 pessoas).
+
+Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca PeerJS). O servidor gratuito da PeerJS só ajuda a se encontrarem, e não precisa pagar servidor. O celular de quem criou a sala roda os bots, a zona e o loot, então ele precisa ficar com o jogo aberto na tela até o fim. O multiplayer precisa de internet e do jogo aberto por um endereço `https://` (GitHub Pages serve).
 
 ## Como rodar
 - **No computador:** `cd jogo && python3 -m http.server 8000` e abra `http://localhost:8000`. Para testar no celular na mesma rede Wi-Fi, use `http://<ip-do-computador>:8000`.
@@ -46,13 +54,12 @@ Battle royale 3D para celular, que roda no navegador (Chrome Android) e pode ser
   | Carabina Tática | lendário | 40/160 | colchetes vermelhos |
 
   Ao mirar, a visão passa para primeira pessoa pela mira da arma.
-- **Personagem do jogador:**
-  - cabelo cacheado com degradê, bigode e brinco;
-  - corrente, camiseta preta larga e colete com alças;
-  - mochila tática, luvas sem dedo e tatuagem no antebraço;
-  - calça cargo com coldre na perna e tênis cano alto cinza e branco.
-
-  Os bots usam variações do mesmo estilo. Os logos de marca dos tênis da referência ficaram de fora de propósito, porque marca registrada impede a publicação.
+- **Personagens realistas** (Microsoft Rocketbox): cacheado de barba e jaqueta (o padrão), SWAT, soldados, soldada e civis. Dá pra escolher o seu na sala.
+  - Animações de captura de movimento: parado, andar, trotar, correr e agachar.
+  - O quadril gira para andar de lado e de costas sem deslizar.
+  - As mãos seguram a arma por IK (cinemática inversa) e os dedos fecham no cabo.
+  - Poses próprias para pulo, prancha, paraquedas, soco e queda.
+- **Armas em 3D** (Ultimate Gun Pack da Quaternius, convertido no Blender com bordas chanfradas). Por cima de cada modelo vão a mira holográfica, as faixas de energia e o bipé.
 - **Mapa:**
   - Vila Central (praça, chafariz, caixa d'água);
   - Bairro Tropical (casas com interior);
@@ -84,8 +91,18 @@ Hoje o jogo **não tem anúncios nem compras dentro do app**. Para monetizar, h�
 
 As raridades e o arsenal já servem de base para vender skins.
 
+### Créditos e licenças (todas permitem uso comercial)
+| O quê | Autor | Licença |
+|---|---|---|
+| Personagens e animações (`assets/chars/`) | [Microsoft Rocketbox Avatar Library](https://github.com/microsoft/Microsoft-Rocketbox) | MIT |
+| Modelos das armas (`assets/guns.bin`) | [Ultimate Gun Pack](https://quaternius.com/packs/ultimategun.html), da Quaternius | CC0 (domínio público) |
+| Motor 3D (`js/three.min.js`) | three.js | MIT |
+| Multiplayer (`js/peerjs.min.js`) | PeerJS | MIT |
+
+A licença MIT pede que o aviso de copyright vá junto com o jogo. Deixe esta tabela no README e coloque uma linha de créditos na página da loja ou numa tela "Sobre". Os textos das licenças estão em `js/THREE_LICENSE.txt` e `js/PEERJS_LICENSE.txt`; o da Rocketbox está no repositório dela.
+
 ### Antes de publicar
-- **Imagem do personagem:** o personagem é baseado nas fotos que você mandou. Se a pessoa não for você, tenha autorização dela.
+- **Personagem:** os personagens são da biblioteca Rocketbox. Nenhum é cópia da pessoa das fotos de referência.
 - **Nome:** o nome "Battle Island" é genérico. Confira se não há outro app com o mesmo nome na loja antes de registrar.
 - **Celular de verdade:** os testes rodaram num Chromium simulando celular. Teste em aparelhos reais antes de publicar. Se travar, use **Qualidade: Baixa**.
 
@@ -100,7 +117,10 @@ As raridades e o arsenal já servem de base para vender skins.
 | `js/textures.js` | Texturas desenhadas por código (chão, reboco, telha, madeira, pedra, metal, folhas, tecido, desgaste de arma) |
 | `js/world.js` | Ilha, vilas, construções, vegetação, mar, céu, colisões e raios |
 | `js/weapons.js` | As 10 armas: atributos, raridade, mira e modelos |
-| `js/character.js` | Personagem com esqueleto, roupas e animação |
+| `js/character.js` | Carrega os personagens, mistura as animações e faz o IK de braços e pernas |
 | `js/effects.js` | Efeitos visuais e sons |
 | `js/game.js` | Regras: jogador, armas, granada, gel, loot, zona, suprimento, avião, bots |
+| `js/net.js` | Multiplayer: salas, sincronização de bonecos, tiros, dano, loot e zona |
+| `assets/chars/` | Personagens (malha + texturas) e animações, em formato binário compacto |
+| `assets/guns.bin` | Os 10 modelos de arma e o bipé |
 | `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |

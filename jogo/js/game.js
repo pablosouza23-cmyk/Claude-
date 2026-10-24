@@ -56,17 +56,19 @@ function initRenderer() {
   renderer.setPixelRatio(q === 'baixa' ? Math.min(dpr, 1) * 0.75 : q === 'media' ? Math.min(dpr, 1.3) : Math.min(dpr, 2));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.shadowMap.enabled = q !== 'baixa';
-  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.type = q === 'alta' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.92;
 
   scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xcfe9fb, 90, 520);
+  scene.fog = new THREE.Fog(0xb9d0e3, 90, 520);
   camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.08, 1500);
   camera.rotation.order = 'YXZ';
   scene.add(camera);
 
-  hemi = new THREE.HemisphereLight(0xd8eeff, 0x74a344, 1.35);
+  hemi = new THREE.HemisphereLight(0xdcecff, 0x5d6b3e, 0.55);
   scene.add(hemi);
-  sun = new THREE.DirectionalLight(0xfff1d6, 2.3);
+  sun = new THREE.DirectionalLight(0xfff0d8, 2.9);
   sun.castShadow = renderer.shadowMap.enabled;
   const sz = q === 'alta' ? 2048 : 1024;
   sun.shadow.mapSize.set(sz, sz);
@@ -933,7 +935,7 @@ function buildPlane() {
   const pack = U.buildBy(P);
   const g = new THREE.Group();
   for (const k in pack.mats) g.add(new THREE.Mesh(pack.mats[k], TX.mat(k)));
-  g.add(new THREE.Mesh(pack.o, U.outlineMat(0.06)));
+  if (pack.o) g.add(new THREE.Mesh(pack.o, U.outlineMat(0.06)));
   g.userData.props = [];
   const disc = new THREE.MeshBasicMaterial({ color: 0x9aa3ad, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false });
   for (const x of [-3.7, 3.7]) {

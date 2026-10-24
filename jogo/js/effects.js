@@ -26,7 +26,7 @@ FX.init = function (scene) {
   FX.MAXS = 320;
   const cg = U.part(new THREE.BoxGeometry(1, 1, 1), 0xffffff, null, 'radial');
   FX.shardMesh = new THREE.InstancedMesh(cg.g, U.toon({ color: 0xeaf6ff, emissive: 0x2a3a4a }), FX.MAXS);
-  FX.shardOl = new THREE.InstancedMesh(cg.o, U.outlineMat(0.045), FX.MAXS);
+  FX.shardOl = new THREE.InstancedMesh(cg.o || cg.g, U.outlineMat(0.045), FX.MAXS);
   FX.shardMesh.count = 0; FX.shardOl.count = 0;
   FX.shardMesh.frustumCulled = false; FX.shardOl.frustumCulled = false;
   FX.shardMesh.castShadow = true;

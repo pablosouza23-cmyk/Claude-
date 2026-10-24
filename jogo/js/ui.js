@@ -65,7 +65,7 @@ function buildFP() {
   fpGun.userData.holder = new THREE.Group();
   fpGun.add(fpGun.userData.holder);
   // mãos com luva sem dedo
-  const glove = U.toon({ color: 0x1b1c1f }), skin = U.toon({ color: CH.PLAYER_PAL.skin });
+  const glove = new THREE.MeshStandardMaterial({ color: 0x1d1e21, roughness: 0.7 }), skin = new THREE.MeshStandardMaterial({ color: 0x7a4b33, roughness: 0.6 });
   const hand = (x, y, z, rz) => {
     const g = new THREE.Group();
     const m = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), glove); m.scale.set(0.9, 0.75, 1.3); g.add(m);
@@ -157,8 +157,7 @@ function updateCamera(dt) {
     const close = G.camDist < 0.95;
     if (p.ch._close !== close) {
       p.ch._close = close;
-      p.ch.mat.transparent = close; p.ch.mat.opacity = close ? 0.35 : 1; p.ch.mat.needsUpdate = true;
-      CH.setOutlinesVisible(p.ch, !close);
+      CH.setOpacity(p.ch, close ? 0.35 : 1);
     }
   }
   if (G.shake > 0) {
@@ -951,6 +950,7 @@ function frame() {
   if (G.ads && fpScene && fpGun.visible && G.state !== 'end') {
     renderer.autoClear = false;
     renderer.clearDepth();
+    fpScene.environment = scene.environment;
     renderer.render(fpScene, fpCam);
     renderer.autoClear = true;
   }
@@ -973,6 +973,7 @@ function boot() {
   };
   $('loadTip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
   const steps = W.buildSteps(scene, G.settings.quality);
+  steps.unshift(['Personagens', () => CH.load()]);
   steps.push(['Efeitos', () => FX.init(scene)]);
   steps.push(['Personagem', () => { setupShowcase(); G.player = G.show; }]);
   let i = 0;
@@ -986,7 +987,11 @@ function boot() {
     const s = steps[i++];
     $('loadStep').textContent = s[0] + '…';
     $('loadBar').style.width = Math.round(i / steps.length * 100) + '%';
-    setTimeout(() => { s[1](); next(); }, 16);
+    setTimeout(() => {
+      const r = s[1]();
+      if (r && r.then) r.then(next, e => { $('errorBox').textContent = 'Erro ao carregar: ' + e.message; $('errorBox').classList.remove('hidden'); });
+      else next();
+    }, 16);
   };
   next();
 }

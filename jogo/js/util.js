@@ -52,13 +52,20 @@ U.gradient = (function () {
   return t;
 })();
 
+// Material padrão do jogo (PBR). O nome ficou da versão desenho; hoje é iluminação realista.
 U.toon = function (opts) {
-  return new THREE.MeshToonMaterial(Object.assign({ gradientMap: U.gradient }, opts || {}));
+  const o = Object.assign({ roughness: 0.9, metalness: 0, envMapIntensity: 0.55 }, opts || {});
+  delete o.gradientMap;
+  return new THREE.MeshStandardMaterial(o);
 };
+// contornos de desenho desligados no visual realista
+U.OUTLINES = false;
+U._hidden = new THREE.MeshBasicMaterial({ visible: false });
 
 // Contorno preto estilo desenho: casca invertida deslocada ao longo da normal.
 U.outlineMats = {};
 U.outlineMat = function (thick, color) {
+  if (!U.OUTLINES) return U._hidden;
   const key = thick.toFixed(3) + '_' + (color || 0x1b1b22);
   if (U.outlineMats[key]) return U.outlineMats[key];
   const m = new THREE.MeshBasicMaterial({ color: color || 0x1b1b22, side: THREE.BackSide });
@@ -90,6 +97,11 @@ U.part = function (geo, color, matrix, mode, mat) {
   const cols = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) { cols[i * 3] = col.r; cols[i * 3 + 1] = col.g; cols[i * 3 + 2] = col.b; }
   g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  if (!U.OUTLINES) {
+    if (matrix) g.applyMatrix4(matrix);
+    U.projectUV(g, (typeof TX !== 'undefined' && TX.SCALE[mat || 'plain']) || 0.5);
+    return { g: g, o: null, mat: mat || 'plain' };
+  }
   const o = g.clone();
   if (mode === 'radial') {
     const p = o.attributes.position, nn = o.attributes.normal;
@@ -152,7 +164,8 @@ U.merge = function (list) {
 
 // Monta um par {main, outline} a partir de várias peças.
 U.build = function (parts) {
-  return { g: U.merge(parts.map(p => p.g)), o: U.merge(parts.map(p => p.o)) };
+  const g = U.merge(parts.map(p => p.g));
+  return { g: g, o: U.OUTLINES ? U.merge(parts.map(p => p.o)) : g };
 };
 
 // Agrupa as peças por textura: {mats: {chave: geometria}, o: contorno único}
@@ -161,7 +174,7 @@ U.buildBy = function (parts) {
   for (const p of parts) (by[p.mat] = by[p.mat] || []).push(p.g);
   const mats = {};
   for (const k in by) mats[k] = U.merge(by[k]);
-  return { mats: mats, o: U.merge(parts.map(p => p.o)) };
+  return { mats: mats, o: U.OUTLINES ? U.merge(parts.map(p => p.o)) : null };
 };
 
 U.blob = function (r, detail) {

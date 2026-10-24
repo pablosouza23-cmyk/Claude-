@@ -196,6 +196,61 @@ TX.drawers = {
       });
     }
   },
+  // cacho de folhas com fundo transparente (cartões das copas)
+  foliage(g, S, r) {
+    g.clearRect(0, 0, S, S);
+    const cx = S / 2, cy = S / 2;
+    for (let i = 0; i < 520; i++) {
+      const a = r() * Math.PI * 2, d = Math.pow(r(), 0.6) * S * 0.46;
+      const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d * 0.9;
+      const l = S * (0.028 + r() * 0.03), ang = a + (r() - 0.5) * 1.6;
+      const k = 0.55 + r() * 0.45 - d / S * 0.5;
+      const R = Math.floor(70 * k + 20 * r()), G = Math.floor(120 * k + 40), B = Math.floor(40 * k + 10);
+      g.fillStyle = 'rgb(' + R + ',' + G + ',' + B + ')';
+      g.beginPath();
+      g.moveTo(x - Math.cos(ang) * l, y - Math.sin(ang) * l);
+      g.quadraticCurveTo(x + Math.cos(ang + 1.57) * l * 0.45, y + Math.sin(ang + 1.57) * l * 0.45, x + Math.cos(ang) * l, y + Math.sin(ang) * l);
+      g.quadraticCurveTo(x - Math.cos(ang + 1.57) * l * 0.45, y - Math.sin(ang + 1.57) * l * 0.45, x - Math.cos(ang) * l, y - Math.sin(ang) * l);
+      g.fill();
+      g.strokeStyle = 'rgba(30,50,15,0.35)'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(x - Math.cos(ang) * l * 0.8, y - Math.sin(ang) * l * 0.8); g.lineTo(x + Math.cos(ang) * l * 0.8, y + Math.sin(ang) * l * 0.8); g.stroke();
+    }
+    // galhinhos
+    g.strokeStyle = 'rgba(70,50,30,0.8)'; g.lineWidth = 2;
+    for (let i = 0; i < 6; i++) { const a = r() * 6.28; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * S * 0.3, cy + Math.sin(a) * S * 0.3); g.stroke(); }
+  },
+  // folha de coqueiro: nervura central com folíolos (u ao longo da folha)
+  frond(g, S, r) {
+    g.clearRect(0, 0, S, S);
+    const mid = S / 2;
+    for (let i = 0; i < 70; i++) {
+      const t = i / 70, x = 6 + t * (S - 12);
+      const len = S * 0.46 * Math.sin(Math.min(1, t * 1.15) * Math.PI * 0.95 + 0.1);
+      for (const sd of [-1, 1]) {
+        const k = 0.7 + r() * 0.3;
+        g.strokeStyle = 'rgb(' + Math.floor(60 * k) + ',' + Math.floor(125 * k + 20) + ',' + Math.floor(35 * k) + ')';
+        g.lineWidth = S / 70 * 0.9;
+        g.beginPath(); g.moveTo(x, mid); g.quadraticCurveTo(x + len * 0.25, mid + sd * len * 0.6, x + len * 0.45, mid + sd * len); g.stroke();
+      }
+    }
+    g.strokeStyle = 'rgb(140,120,60)'; g.lineWidth = S / 64;
+    g.beginPath(); g.moveTo(0, mid); g.lineTo(S, mid); g.stroke();
+  },
+  // galho de pinheiro com agulhas
+  needle(g, S, r) {
+    g.clearRect(0, 0, S, S);
+    const mid = S / 2;
+    for (let i = 0; i < 900; i++) {
+      const t = r(), x = t * S, w = S * 0.42 * (1 - t * 0.7);
+      const y = mid + (r() - 0.5) * 2 * w;
+      const k = 0.6 + r() * 0.4;
+      g.strokeStyle = 'rgb(' + Math.floor(35 * k) + ',' + Math.floor(85 * k + 15) + ',' + Math.floor(40 * k) + ')';
+      g.lineWidth = 1.4;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + S * 0.05, y + (y > mid ? 1 : -1) * S * 0.03); g.stroke();
+    }
+    g.strokeStyle = 'rgb(80,60,40)'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(0, mid); g.lineTo(S, mid); g.stroke();
+  },
   glass(g, S) {
     const gr = g.createLinearGradient(0, 0, S, S);
     gr.addColorStop(0, gray(255)); gr.addColorStop(0.5, gray(200)); gr.addColorStop(1, gray(235));
@@ -204,7 +259,7 @@ TX.drawers = {
   },
 };
 
-TX.SIZE = { ground: 512, leaf: 256, roof: 256, wood: 256, stone: 256, plaster: 256, metal: 128, bark: 128, fabric: 64, gun: 128, plain: 256, glass: 64 };
+TX.SIZE = { foliage: 256, frond: 256, needle: 256, ground: 512, leaf: 256, roof: 256, wood: 256, stone: 256, plaster: 256, metal: 128, bark: 128, fabric: 64, gun: 128, plain: 256, glass: 64 };
 
 TX.tex = function (key) {
   const d = TX.drawers[key] || TX.drawers.plain;
@@ -212,10 +267,16 @@ TX.tex = function (key) {
 };
 
 // material toon com textura de detalhe + cor por vértice (compartilhado por chave)
+// cartões com transparência recortada (folhas)
+TX.CARD = { foliage: 1, frond: 1, needle: 1 };
+TX.ROUGH = { metal: 0.5, glass: 0.15, gun: 0.45, roof: 0.75, stone: 0.85 };
 TX.mat = function (key, opts) {
   const k = key + (opts ? JSON.stringify(opts) : '');
   if (TX.mats[k]) return TX.mats[k];
-  const m = U.toon(Object.assign({ vertexColors: true, map: TX.tex(key) }, opts || {}));
+  const base = { vertexColors: true, map: TX.tex(key), roughness: TX.ROUGH[key] || 0.9 };
+  if (TX.CARD[key]) { base.alphaTest = 0.42; base.map.wrapS = base.map.wrapT = THREE.ClampToEdgeWrapping; }
+  if (key === 'metal') base.metalness = 0.35;
+  const m = U.toon(Object.assign(base, opts || {}));
   TX.mats[k] = m;
   return m;
 };

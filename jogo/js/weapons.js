@@ -46,13 +46,14 @@ WPN.ICON = {
 WPN.build = function (id) {
   if (WPN.cache[id]) return WPN.cache[id];
   const P = [], GL = [];
-  const K = 0x24262b, K2 = 0x34373d, STEEL = 0x707780, BRASS = 0xc9a24a;
+  const K = 0x34363c, K2 = 0x4a4e56, STEEL = 0x707780, BRASS = 0xc9a24a;
   const push = (geo, c, m, glow, mode) => (glow ? GL : P).push(U.part(geo, c, m, mode || 'radial', 'gun'));
   const B = (w, h, d, c, x, y, z, rx, ry, rz, glow) => push(new THREE.BoxGeometry(w, h, d), c, U.mat4(x, y, z, rx || 0, ry || 0, rz || 0), glow);
   const C = (r, l, c, x, y, z, seg, glow) => push(new THREE.CylinderGeometry(r, r, l, seg || 10).rotateX(Math.PI / 2), c, U.mat4(x, y, z), glow, null);
   const Cv = (r, l, c, x, y, z, rx, seg) => push(new THREE.CylinderGeometry(r, r, l, seg || 8), c, U.mat4(x, y, z, rx || 0), false, null);
   const rail = (z0, len, y) => { B(0.03, 0.012, len, K, 0, y, z0); for (let i = 0; i < Math.floor(len / 0.03); i++) B(0.036, 0.008, 0.012, K2, 0, y + 0.01, z0 - len / 2 + 0.015 + i * 0.03); };
-  const grip = (z, c) => { B(0.038, 0.12, 0.05, c || K, 0, -0.095, z, -0.35); B(0.01, 0.028, 0.07, K, 0, -0.06, z + 0.07); B(0.006, 0.025, 0.006, K2, 0, -0.045, z + 0.065); };
+  let gripZ = -0.1, foreZ = 0.27, pistol = false;
+  const grip = (z, c) => { gripZ = z; B(0.038, 0.12, 0.05, c || K, 0, -0.095, z, -0.35); B(0.01, 0.028, 0.07, K, 0, -0.06, z + 0.07); B(0.006, 0.025, 0.006, K2, 0, -0.045, z + 0.065); };
   const curvedMag = (z, c, base) => {
     B(0.045, 0.09, 0.068, c, 0, -0.1, z, 0.1); B(0.045, 0.09, 0.068, c, 0, -0.18, z + 0.018, 0.25); B(0.045, 0.08, 0.068, c, 0, -0.25, z + 0.045, 0.4);
     B(0.05, 0.02, 0.075, base || c, 0, -0.29, z + 0.065, 0.42);
@@ -122,7 +123,7 @@ WPN.build = function (id) {
     B(0.032, 0.026, 0.16, K2, 0, 0.005, 0.05); B(0.036, 0.11, 0.05, K, 0, -0.055, -0.03, 0, 0, 0); B(0.038, 0.09, 0.04, 0x151618, 0, -0.06, -0.03, -0.2);
     B(0.008, 0.03, 0.045, K, 0, -0.02, 0.04); C(0.011, 0.02, K2, 0, 0.035, 0.145);
     B(0.006, 0.012, 0.01, K, 0, 0.062, 0.13); B(0.024, 0.012, 0.012, K, 0, 0.062, -0.05); B(0.012, 0.02, 0.012, K2, 0, 0.055, -0.07);
-    sightY = 0.068; sightZ = -0.05; len = 0.16;
+    sightY = 0.068; sightZ = -0.05; len = 0.16; gripZ = -0.03; pistol = true;
   } else if (id === 'METRALHADORA') {
     const BOX = 0x5a6b3a, WOOD = 0x8a4f2a;
     B(0.08, 0.1, 0.32, K, 0, 0.02, 0); C(0.032, 0.36, K2, 0, 0.04, 0.33, 12);
@@ -167,13 +168,21 @@ WPN.build = function (id) {
     B(0.026, 0.055, 0.07, STEEL, 0, 0.03, -0.03); B(0.032, 0.1, 0.045, WD, 0, -0.045, -0.065, -0.35);
     B(0.008, 0.03, 0.04, STEEL, 0, -0.012, 0.005); B(0.008, 0.02, 0.015, STEEL, 0, 0.068, -0.055, 0.5);
     B(0.006, 0.014, 0.012, STEEL, 0, 0.075, 0.2); B(0.02, 0.01, 0.01, STEEL, 0, 0.068, -0.04);
-    sightY = 0.074; sightZ = -0.04; len = 0.22;
+    sightY = 0.074; sightZ = -0.04; len = 0.22; gripZ = -0.06; pistol = true;
   }
   const pair = U.build(P);
   pair.glow = GL.length ? U.merge(GL.map(p => p.g)) : null;
   pair.len = len; pair.sightY = sightY; pair.sightZ = sightZ;
+  pair.gripZ = gripZ; pair.pistol = pistol;
+  pair.foreZ = { SMG: 0.17, PRECISAO: 0.24, ESCOPETA: 0.28, METRALHADORA: 0.26, FUTURISTA: 0.18, BLASTER: 0.16 }[id] || 0.22;
   WPN.cache[id] = pair;
   return pair;
+};
+
+// material das armas: cores por vértice + textura de desgaste, com brilho metálico
+WPN.gunMat = function () {
+  if (!WPN._gun) WPN._gun = new THREE.MeshStandardMaterial({ vertexColors: true, map: TX.tex('gun'), roughness: 0.36, metalness: 0.6, envMapIntensity: 1.1 });
+  return WPN._gun;
 };
 
 WPN.glowMat = function () {
@@ -185,7 +194,7 @@ WPN.glowMat = function () {
 WPN.mesh = function (id, olThick) {
   const p = WPN.build(id);
   const g = new THREE.Group();
-  const m = new THREE.Mesh(p.g, TX.mat('gun')); m.castShadow = true;
+  const m = new THREE.Mesh(p.g, WPN.gunMat()); m.castShadow = true;
   g.add(m);
   g.add(new THREE.Mesh(p.o, U.outlineMat(olThick || 0.012)));
   if (p.glow) g.add(new THREE.Mesh(p.glow, WPN.glowMat()));

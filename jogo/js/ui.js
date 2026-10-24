@@ -34,7 +34,17 @@ const ICON = {
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/>',
   chute: '<path d="M2 10C2 5.6 6.5 2 12 2s10 3.6 10 8zm2 1 8 8 8-8h-2l-6 6-6-6zm6 9h4v2h-4z"/>',
   board: '<path d="M3 15c4-3 14-7 18-6 .7 1.6-1.2 3.4-4 4.5C13 15 6 16.4 3 15zm2 3h14v2H5z"/>',
+  users: '<circle cx="9" cy="7" r="3.5"/><path d="M2 20c0-4 3.1-6.5 7-6.5s7 2.5 7 6.5z"/><circle cx="17" cy="8" r="2.8"/><path d="M17 12.5c3 0 5 2.1 5 5.5h-4.3c-.2-2.2-1-4-2.4-5.3.5-.1 1.1-.2 1.7-.2z"/>',
+  enter: '<path d="M10 3h9a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-9v-2h9V5h-9zM10 7l5 5-5 5-1.4-1.4 2.6-2.6H3v-2h8.2L8.6 8.4z"/>',
+  copy: '<path d="M8 3h11a2 2 0 0 1 2 2v11h-2V5H8zM4 7h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zm1 2v10h9V9z"/>',
+  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.7 6.8-4 1 1.7-6.8 4zm0 2.6 1-1.7 6.8 4-1 1.7z"/>',
+  left: '<path d="M15.4 4 7.4 12l8 8 1.4-1.4L10.2 12l6.6-6.6z"/>',
+  right: '<path d="M8.6 4 7.2 5.4 13.8 12l-6.6 6.6L8.6 20l8-8z"/>',
+  crown: '<path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5zm2 13h14v2H5z"/>',
 };
+// nomes dos personagens que dá para escolher
+const SKINS = [['heroi', 'Cacheado'], ['swat', 'SWAT'], ['soldado', 'Soldado'], ['soldado2', 'Sargento'], ['bone', 'Boné'], ['camisa', 'Camiseta'], ['jeans', 'Jeans'], ['soldada', 'Soldada']];
+const skinName = k => (SKINS.find(x => x[0] === k) || SKINS[0])[1];
 const icon = (n, cls) => '<svg class="ico ' + (cls || '') + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICON[n] || '') + '</svg>';
 
 // retículas de cada mira (ADS), como nas referências
@@ -213,7 +223,7 @@ function setupShowcase() {
   if (G.show) return;
   const a = W.A.FAROL;
   const sp = { x: a.x - 6, z: a.z + 9 };
-  const s = makeActor(G.settings.name, CH.PLAYER_PAL, true);
+  const s = makeActor(G.settings.name, G.settings.avatar || CH.PLAYER_PAL, true);
   s.pos.set(sp.x, W.groundAt(sp.x, sp.z, 80), sp.z);
   s.ch.root.position.copy(s.pos);
   s.ch.root.visible = true;
@@ -221,6 +231,12 @@ function setupShowcase() {
   giveWeapon(s, 'FUZIL');
   G.show = s;
   if (!planeObj) { planeObj = buildPlane(); scene.add(planeObj); }
+}
+
+function swapShowcase() {
+  if (G.show) { scene.remove(G.show.ch.root); if (G.player === G.show) G.player = null; G.show = null; }
+  setupShowcase();
+  if (!G.player) G.player = G.show;
 }
 
 function menuCamera(dt) {
@@ -507,7 +523,7 @@ function killFeed(killer, victim, weapon) {
 // ------------------------------------------------------------------ telas
 const UI = { screen: null };
 function showScreen(id) {
-  ['menuScr', 'lobbyScr', 'invScr', 'mapScr', 'settingsScr', 'pauseScr', 'resultScr', 'exitScr'].forEach(s => $(s).classList.toggle('hidden', s !== id));
+  ['menuScr', 'modeScr', 'joinScr', 'roomScr', 'lobbyScr', 'invScr', 'mapScr', 'settingsScr', 'pauseScr', 'resultScr', 'exitScr'].forEach(s => $(s).classList.toggle('hidden', s !== id));
   UI.screen = id === 'invScr' ? 'inv' : id === 'mapScr' ? 'map' : id;
 }
 
@@ -538,7 +554,7 @@ function goLobby() {
   lobbyIv = setInterval(tickL, 1000);
 }
 
-function beginMatch() {
+function beginMatch(msg) {
   clearInterval(lobbyIv);
   SND.init();
   SND.music(false);
@@ -551,23 +567,28 @@ function beginMatch() {
   }
   showScreen(null);
   if (G.show) G.show.ch.root.visible = false;
-  startMatch();
+  startMatch(msg && msg.seed !== undefined ? msg : null);
 }
 
-function startMatch() {
+function startMatch(msg) {
   clearMatch();
   H.cache = {};
   G.botDmgScale = 0.55;
   G.time = 0; G.vignette = 0; G.endT = -1; G.area = null; G.deathOrbit = 0; G.mouseFire = false; G.prevFire = false; G.zoneWarned = -1; G.camDist = undefined;
   for (const k in input) if (typeof input[k] === 'boolean') input[k] = false;
-  const p = makeActor(G.settings.name || 'Jogador', CH.PLAYER_PAL, true);
-  p.ch.root.visible = false;
-  G.player = p; G.actors.push(p);
-  spawnBots();
-  scatterLoot();
+  if (msg) {
+    NET.buildActors(msg);
+    scatterLoot(U.rng(msg.seed + 7));
+  } else {
+    const p = makeActor(G.settings.name || 'Jogador', G.settings.avatar || CH.PLAYER_PAL, true);
+    p.ch.root.visible = false;
+    G.player = p; G.actors.push(p);
+    spawnBots();
+    scatterLoot();
+  }
   G.airdrop = { state: 'none' };
   initZone();
-  startDrop();
+  if (msg) startDrop(msg.ang, msg.side); else startDrop();
   G.yaw = Math.atan2(G.drop.dir.x, G.drop.dir.z) + Math.PI + 1.1; G.pitch = -0.25;
   G.state = 'play';
   H.hud.classList.remove('hidden');
@@ -585,6 +606,7 @@ function pauseGame() {
   showScreen('pauseScr');
 }
 function resumeGame() { G.state = 'play'; showScreen(null); }
+// no multiplayer a partida não para: a pausa é só um menu por cima
 
 function endMatch() {
   G.state = 'end';
@@ -596,9 +618,38 @@ function endMatch() {
   $('resKills').textContent = p.kills;
   $('resDmg').textContent = Math.round(p.dmgDealt);
   $('resTime').textContent = U.fmtTime(G.time);
+  const others = NET.live && G.actors.some(a => a.human && a.alive && a !== p);
+  $('rLobby').textContent = NET.on() ? 'VOLTAR PARA A SALA' : 'VOLTAR AO LOBBY';
+  $('resNote').textContent = NET.isHost() && others ? 'Seus amigos ainda estão jogando. Voltar encerra a partida para todos.' : NET.isClient() && NET.live ? 'A partida continua para os outros.' : '';
   H.hud.classList.add('hidden'); H.touch.classList.add('hidden');
   showScreen('resultScr');
 }
+
+// ---------- sala multiplayer ----------
+function renderRoom() {
+  if (!$('roomScr')) return;
+  const host = NET.isHost();
+  $('roomCode').textContent = NET.code || '-----';
+  const list = $('roomList');
+  list.innerHTML = NET.players.map(p => '<li class="' + (p.pid === NET.pid ? 'me' : '') + '">' + icon(p.pid === 0 ? 'crown' : 'person') + '<span>' + escapeHTML(p.name) + '</span><small>' + skinName(p.av) + '</small>' + (p.pid === 0 ? '<em>ANFITRIÃO</em>' : p.pid === NET.pid ? '<em>VOCÊ</em>' : '') + '</li>').join('') +
+    (NET.players.length < 2 ? '<li><small>Ninguém entrou ainda. Mande o código.</small></li>' : '');
+  $('roomBots').checked = NET.bots;
+  $('roomBots').disabled = !host;
+  $('roomBotsRow').classList.toggle('hidden', !host && !NET.bots);
+  $('roomStart').classList.toggle('hidden', !host);
+  $('roomWait').classList.toggle('hidden', host);
+  $('skinName').textContent = skinName(G.settings.avatar || 'heroi');
+}
+function escapeHTML(t) { return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+function openRoom() { G.state = 'lobby'; showScreen('roomScr'); renderRoom(); }
+function cycleSkin(d) {
+  const i = SKINS.findIndex(x => x[0] === (G.settings.avatar || 'heroi'));
+  const k = SKINS[(i + d + SKINS.length) % SKINS.length][0];
+  if (NET.on()) NET.setAvatar(k); else { G.settings.avatar = k; G.saveSettings(); }
+  swapShowcase();
+  renderRoom();
+}
+function roomLink() { return location.origin + location.pathname + '?sala=' + NET.code; }
 
 // ---------- inventário (itens da partida) e arsenal (as 10 armas) ----------
 let invTab = 'inv';
@@ -877,7 +928,29 @@ function isTouchEvent(e) { return e.pointerType === 'touch' || (e.sourceCapabili
 
 function initScreens() {
   const click = (id, fn) => $(id).addEventListener('click', () => { SND.init(); SND.play('ui'); fn(); });
-  click('mPlay', () => goLobby());
+  click('mPlay', () => showScreen('modeScr'));
+  click('mdSolo', () => goLobby());
+  click('mdCreate', () => { NET.createRoom(); openRoom(); });
+  click('mdJoin', () => { showScreen('joinScr'); NET.setStatus(''); setTimeout(() => $('joinCode').focus(), 50); });
+  click('mdBack', () => showScreen('menuScr'));
+  click('joinGo', () => { NET.joinRoom($('joinCode').value); });
+  $('joinCode').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') NET.joinRoom($('joinCode').value); });
+  $('joinCode').addEventListener('input', () => { $('joinCode').value = $('joinCode').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+  click('joinBack', () => { NET.leave(); showScreen('modeScr'); });
+  click('roomStart', () => NET.hostStart());
+  click('roomLeave', () => { NET.leave(); G.state = 'menu'; showScreen('modeScr'); });
+  click('skinPrev', () => cycleSkin(-1));
+  click('skinNext', () => cycleSkin(1));
+  $('roomBots').addEventListener('change', () => NET.setBots($('roomBots').checked));
+  click('roomCopy', () => {
+    const t = NET.code;
+    try { navigator.clipboard.writeText(t).then(() => notify('ok', 'Código copiado: ' + t), () => notify('info', 'Código: ' + t)); } catch (e) { notify('info', 'Código: ' + t); }
+  });
+  click('roomShareBtn', () => {
+    const data = { title: 'Battle Island', text: 'Bora jogar Battle Island! Código da sala: ' + NET.code, url: roomLink() };
+    if (navigator.share) navigator.share(data).catch(() => {});
+    else { try { navigator.clipboard.writeText(data.text + ' ' + data.url); notify('ok', 'Convite copiado'); } catch (e) { notify('info', data.text); } }
+  });
   click('mInv', () => openInventory('arsenal'));
   click('mSet', () => openSettings('menu'));
   click('mExit', () => { showScreen('exitScr'); try { window.close(); } catch (e) { /* navegador pode bloquear */ } });
@@ -891,10 +964,10 @@ function initScreens() {
   document.querySelectorAll('#setTabs button').forEach(b => b.addEventListener('click', () => { setTab = b.dataset.tab; renderSettings(); SND.play('ui'); }));
   click('pResume', () => resumeGame());
   click('pSet', () => openSettings('pause'));
-  click('pLobby', () => goMenu());
-  click('pExit', () => { goMenu(); showScreen('exitScr'); });
-  click('rLobby', () => goMenu());
-  document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+  click('pLobby', () => { if (NET.isHost()) NET.hostEnd(); else if (NET.isClient()) NET.backToRoom(); else goMenu(); });
+  click('pExit', () => { NET.leave(); goMenu(); showScreen('exitScr'); });
+  click('rLobby', () => { if (NET.isHost()) NET.hostEnd(); else if (NET.isClient()) NET.backToRoom(); else goMenu(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && !NET.live) pauseGame(); });
 }
 
 // ------------------------------------------------------------------ partida
@@ -923,6 +996,7 @@ function tick(dt) {
   G.time += dt;
   updateDrop(dt);
   updatePlayer(dt);
+  for (const a of G.actors) if (a.human && a.remote) updatePuppet(a, dt);
   for (const b of G.bots) updateBot(b, dt);
   updateWalls(dt);
   updateNades(dt);
@@ -930,6 +1004,7 @@ function tick(dt) {
   updateZone(dt);
   updateAirdrop(dt);
   if (G.endT > 0) { G.endT -= dt; if (G.endT <= 0) endMatch(); }
+  NET.update(dt);
 }
 
 const clock = new THREE.Clock();
@@ -937,7 +1012,7 @@ function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), 0.05);
   if (!G.built) return;
-  if (G.state === 'play') tick(dt);
+  if (G.state === 'play' || (NET.live && G.player && G.player.ch && (G.state === 'pause' || G.state === 'end'))) tick(dt);
   const menu = G.state === 'menu' || G.state === 'lobby';
   const focus = menu ? G.show.pos : G.player.phase === 'ground' ? G.player.pos : camera.position;
   if (G.state !== 'pause') {
@@ -981,7 +1056,11 @@ function boot() {
     if (i >= steps.length) {
       G.built = true;
       $('loadBar').style.width = '100%';
-      setTimeout(() => { $('loadScr').classList.add('hidden'); goMenu(); }, 150);
+      setTimeout(() => {
+        $('loadScr').classList.add('hidden'); goMenu();
+        const code = new URLSearchParams(location.search).get('sala');
+        if (code) { showScreen('joinScr'); $('joinCode').value = code.toUpperCase().slice(0, 5); NET.joinRoom(code); }
+      }, 150);
       return;
     }
     const s = steps[i++];

@@ -189,11 +189,13 @@ function fireGun(a, o, d, spread) {
   const pd = a.pos.distanceTo(G.player.pos);
   const near = a.isPlayer || pd < 60;
   let first = null;
+  const ends = [];
   for (let i = 0; i < n; i++) {
     const sp = spread + (n > 1 ? w.spread : 0);
     _sd.set(d.x + (Math.random() - 0.5) * sp * 2, d.y + (Math.random() - 0.5) * sp * 2, d.z + (Math.random() - 0.5) * sp * 2).normalize();
     const res = traceShot(o, _sd, w.range, a);
     if (!first) first = res;
+    ends.push(res.point);
     if (a.isPlayer || pd < 140) FX.tracer(_mz, res.point);
     if (res.actor) {
       const dmg = hitDamage(res.actor, w, res.head) * (a.isPlayer ? 1 : G.botDmgScale);
@@ -212,6 +214,7 @@ function fireGun(a, o, d, spread) {
       }
     }
   }
+  if (NET.live && (a.isPlayer || NET.isHost())) NET.onShot(a, o, ends, s.id);
   for (const [t, h] of sum) {
     if (a.isPlayer) {
       FX.number(h.point, Math.round(h.dmg * (1 - VEST_RED[t.armor])), h.head ? '#ff8a1c' : '#ff3f6e');
@@ -259,6 +262,11 @@ function punch(a) {
 
 function damageActor(a, dmg, attacker, head, weapon) {
   if (!a.alive) return;
+  // no multiplayer o cliente só avisa o anfitrião dos acertos que ele mesmo fez
+  if (NET.isClient()) {
+    if (attacker === G.player && a !== G.player) NET.send({ t: 'hit', i: G.actors.indexOf(a), d: Math.round(dmg * 10) / 10, h: head ? 1 : 0, w: weapon || weaponName(attacker) });
+    return;
+  }
   const real = dmg * (1 - VEST_RED[a.armor]);
   a.hp -= real;
   a.lastHurt = G.time;
@@ -271,6 +279,7 @@ function damageActor(a, dmg, attacker, head, weapon) {
     G.vignette = Math.min(1, G.vignette + 0.35);
     if (attacker) G.hurtDir = Math.atan2(attacker.pos.x - a.pos.x, attacker.pos.z - a.pos.z);
   }
+  NET.onDamage(a, real, attacker);
   if (a.hp <= 0) killActor(a, attacker, weapon || (attacker ? weaponName(attacker) : 'Zona'));
 }
 
@@ -281,6 +290,7 @@ function killActor(a, killer, weapon) {
   else killFeed(a.name, null, 'Zona');
   // mochila caída com o que a pessoa carregava (como no vídeo)
   if (a.phase === 'ground') dropBag(a);
+  NET.onKill(a, killer, weapon);
   if (a.isPlayer) {
     G.endT = 2.5;
     G.place = aliveCount() + 1;
@@ -377,9 +387,13 @@ function drawCrack(g, x, y, ang, len, width, depth) {
   g.stroke();
 }
 
-function deployWall(owner, towardYaw) {
+function deployWall(owner, towardYaw, fromNet) {
   if (owner.gel <= 0 || owner.wallCd > 0 || !owner.alive || owner.phase !== 'ground') return false;
   owner.gel--; owner.wallCd = 0.8;
+  if (NET.live && !fromNet && (owner === G.player || NET.isHost())) {
+    const m = { t: 'wall', i: G.actors.indexOf(owner), x: owner.pos.x, y: owner.pos.y, z: owner.pos.z, yaw: towardYaw };
+    if (NET.isHost()) NET.bcast(m); else NET.send(m);
+  }
   if (!wallGeo) buildWallGeo();
   const fx = -Math.sin(towardYaw), fz = -Math.cos(towardYaw);
   const px = owner.pos.x + fx * 2.4, pz = owner.pos.z + fz * 2.4;
@@ -494,8 +508,12 @@ function nadeMesh() {
   return g;
 }
 
-function throwNade(a, vel) {
+function throwNade(a, vel, fromNet) {
   if (a.nades <= 0) return;
+  if (NET.live && !fromNet && (a === G.player || NET.isHost())) {
+    const m = { t: 'nade', i: G.actors.indexOf(a), p: [a.pos.x, a.pos.y + 1.6, a.pos.z], v: [vel.x, vel.y, vel.z] };
+    if (NET.isHost()) NET.bcast(m); else NET.send(m);
+  }
   a.nades--; a.nadeHand = false; a.fireCd = 0.6; a.lastFire = G.time; a.ch.punchT = 0.3;
   refreshGuns(a);
   const m = nadeMesh();
@@ -548,6 +566,7 @@ function explode(n) {
   if (pd < 12) G.shake = 0.35;
   const R = 6.5;
   for (const a of G.actors) {
+    if (NET.isClient()) break;
     if (!a.alive || a.phase !== 'ground') continue;
     const tp = new V3(a.pos.x, a.pos.y + 1.0, a.pos.z);
     const d = tp.distanceTo(p);
@@ -647,18 +666,20 @@ function lootMesh(type) {
   return grp;
 }
 
-function spawnLoot(type, x, z, extra) {
+function spawnLoot(type, x, z, extra, id) {
   const grp = lootMesh(type);
   const y = W.groundAt(x, z, W.height(x, z) + 1.0);
   grp.position.set(x, y, z);
   scene.add(grp);
-  const it = { type: type, grp: grp, x: x, z: z, y: y, t: Math.random() * 6, extra: extra || null, isWeapon: type.indexOf('w:') === 0 };
+  const it = { id: id !== undefined ? id : NET.lootSeq++, type: type, grp: grp, x: x, z: z, y: y, t: Math.random() * 6, extra: extra || null, isWeapon: type.indexOf('w:') === 0 };
   G.loot.push(it);
+  if (!G.scattering && id === undefined) NET.onLootAdd(it);
   return it;
 }
 
-function scatterLoot() {
-  const rnd = U.rng(Math.floor(Math.random() * 1e9));
+function scatterLoot(rnd) {
+  rnd = rnd || U.rng(Math.floor(Math.random() * 1e9));
+  G.scattering = true;
   const table = ['W', 'W', 'W', 'W', 'W', 'W', 'W',
     'vest1', 'vest1', 'vest2', 'helm1', 'helm1', 'helm2', 'kit', 'kit', 'ammo', 'ammo', 'ammo', 'gel', 'gel', 'gren', 'gren'];
   const pick = () => { const t = table[Math.floor(rnd() * table.length)]; return t === 'W' ? 'w:' + WPN.roll(rnd) : t; };
@@ -673,9 +694,22 @@ function scatterLoot() {
     const an = rnd() * 6.28, r = Math.sqrt(rnd()) * (W.LAND_R - 14);
     spawnLoot(i % 3 === 0 ? 'w:' + WPN.roll(rnd, true) : pick(), Math.cos(an) * r, Math.sin(an) * r);
   }
+  G.scattering = false;
 }
 
 function lootLabel(it) { return it.isWeapon ? WEAPONS[it.type.slice(2)].name : LOOT[it.type].label; }
+
+function lootUseful(a, it) {
+  const t = it.type;
+  if (it.isWeapon) return false;
+  if (t.indexOf('vest') === 0) return +t.slice(-1) > a.armor;
+  if (t.indexOf('helm') === 0) return +t.slice(-1) > a.helmet;
+  if (t === 'kit') return a.kits < 5;
+  if (t === 'ammo') return a.slots.some(x => x);
+  if (t === 'gel') return a.gel < 8;
+  if (t === 'gren') return a.nades < 4;
+  return false;
+}
 
 // itens que não são arma entram sozinhos ao passar por cima
 function takeLoot(a, it) {
@@ -712,6 +746,7 @@ function takeLoot(a, it) {
 function removeLoot(it) {
   scene.remove(it.grp);
   const i = G.loot.indexOf(it); if (i >= 0) G.loot.splice(i, 1);
+  NET.onLootRemove(it);
 }
 
 function nearestWeaponLoot(a, maxD) {
@@ -728,6 +763,7 @@ function playerPickup() {
   const p = G.player;
   const it = nearestWeaponLoot(p, 2.2);
   if (!it) return;
+  if (NET.isClient()) { NET.requestTake(it); return; }
   const id = it.type.slice(2);
   const old = giveWeapon(p, id, it.extra ? it.extra.mag : undefined, it.extra ? it.extra.reserve : undefined);
   removeLoot(it);
@@ -748,9 +784,12 @@ function updateLoot(dt) {
       it.grp.userData.spin.position.y = 0.12 + Math.sin(it.t * 2.5) * 0.05;
     }
     for (const a of G.actors) {
-      if (!a.alive || a.phase !== 'ground') continue;
+      if (!a.alive || a.phase !== 'ground' || a.remote) continue;
       const dx = a.pos.x - it.x, dz = a.pos.z - it.z;
-      if (dx * dx + dz * dz < 1.5 * 1.5 && Math.abs(a.pos.y - it.y) < 1.5 && takeLoot(a, it)) { removeLoot(it); break; }
+      if (dx * dx + dz * dz < 1.5 * 1.5 && Math.abs(a.pos.y - it.y) < 1.5) {
+        if (NET.isClient()) { if (a === G.player && lootUseful(a, it)) NET.requestTake(it); continue; }
+        if (takeLoot(a, it)) { removeLoot(it); break; }
+      }
     }
   }
 }
@@ -798,7 +837,9 @@ function updateZone(dt) {
   const z = G.zone;
   if (!z.marked && G.time > 7) { z.marked = true; announce('ZONA MARCADA NO MAPA'); }
   z.timer -= dt;
-  if (z.waiting) {
+  if (NET.isClient()) {
+    // o anfitrião manda a zona; aqui só desenha
+  } else if (z.waiting) {
     if (z.timer <= 0 && !z.final) { z.waiting = false; z.timer = ZONE_PHASES[z.phase].shrink; }
   } else {
     const ph = ZONE_PHASES[z.phase];
@@ -812,12 +853,14 @@ function updateZone(dt) {
   // a marcação rosa da próxima zona só aparece vista do alto (no salto), como no vídeo
   G.zoneRing.visible = !z.final && G.player.phase !== 'ground';
   for (const a of G.actors) {
+    if (NET.isClient()) break;
     if (!a.alive || a.phase !== 'ground') continue;
     if (Math.hypot(a.pos.x - z.cx, a.pos.z - z.cz) > z.r) {
       a.zoneAcc = (a.zoneAcc || 0) + dt;
       if (a.zoneAcc >= 1) {
         a.zoneAcc = 0;
         a.hp -= z.dps; a.lastHurt = G.time;
+        NET.onDamage(a, z.dps, null);
         if (a.isPlayer) { G.vignette = Math.min(1, G.vignette + 0.25); FX.number(new V3(a.pos.x, a.pos.y + 2, a.pos.z), z.dps, '#7fc4ff'); }
         if (a.hp <= 0) killActor(a, null, 'Zona');
       }
@@ -848,6 +891,16 @@ function buildAirdropMesh() {
 
 function updateAirdrop(dt) {
   const ad = G.airdrop;
+  if (NET.isClient()) {
+    if (!ad.mesh) return;
+    ad.mesh.position.y = ad.y;
+    if (ad.state === 'falling') { ad.mesh.rotation.y += dt * 0.3; return; }
+    const ch = ad.mesh.userData.chute;
+    if (ch.visible) { ch.position.y -= dt * 3; ch.scale.multiplyScalar(1 - dt * 0.8); if (ch.scale.x < 0.2) ch.visible = false; }
+    ad.smokeT = (ad.smokeT || 0) + dt;
+    if (ad.state === 'landed' || ad.smokeT < 12) { ad.puff = (ad.puff || 0) - dt; if (ad.puff <= 0) { ad.puff = 0.12; FX.smoke(new V3(ad.x, ad.gy + 1.3, ad.z), Math.random() < 0.5 ? 0xff3b30 : 0xe8473c); } }
+    return;
+  }
   if (ad.state === 'none') {
     if (G.time > 85) {
       const z = G.zone;
@@ -883,23 +936,29 @@ function updateAirdrop(dt) {
   }
 }
 
-function canOpenAirdrop() {
-  const ad = G.airdrop, p = G.player;
-  return ad.state === 'landed' && p.alive && p.phase === 'ground' && Math.hypot(p.pos.x - ad.x, p.pos.z - ad.z) < 2.8;
+function canOpenAirdropBy(a) {
+  const ad = G.airdrop;
+  return ad.state === 'landed' && a.alive && a.phase === 'ground' && Math.hypot(a.pos.x - ad.x, a.pos.z - ad.z) < 2.8;
 }
+function canOpenAirdrop() { return canOpenAirdropBy(G.player); }
 
 function openAirdrop(a) {
   const ad = G.airdrop;
   if (ad.state !== 'landed') return;
+  if (NET.isClient()) { NET.send({ t: 'open' }); return; }
   ad.state = 'opened'; ad.smokeT = Math.max(ad.smokeT, 6);
+  openAirdropGoods(a);
+  if (a.isPlayer || a.human) spawnLoot('w:CARABINA', ad.x + 1.6, ad.z), spawnLoot('w:PRECISAO', ad.x - 1.6, ad.z);
+  else if (!a.slots[0] || !a.slots[1]) giveWeapon(a, 'CARABINA');
+}
+function openAirdropGoods(a) {
   a.armor = 3; a.helmet = 3;
   a.kits = Math.min(5, a.kits + 2); a.gel = Math.min(8, a.gel + 3); a.nades = Math.min(4, a.nades + 2);
   if (a.isPlayer) {
     toast('Colete Nv. 3 e Capacete Nv. 3 Equipados');
-    spawnLoot('w:CARABINA', ad.x + 1.6, ad.z); spawnLoot('w:PRECISAO', ad.x - 1.6, ad.z);
     setTimeout(() => toast('+2 Kit  +3 Gel  +2 Granada'), 1400);
     SND.play('pick');
-  } else if (!a.slots[0] || !a.slots[1]) giveWeapon(a, 'CARABINA');
+  }
 }
 
 // ------------------------------------------------------------------ avião e salto
@@ -947,10 +1006,11 @@ function buildPlane() {
   return g;
 }
 
-function startDrop() {
-  const ang = Math.random() * Math.PI * 2;
+function startDrop(ang, sideK) {
+  if (ang === undefined) ang = Math.random() * Math.PI * 2;
+  if (sideK === undefined) sideK = Math.random() - 0.5;
   const dir = new V3(Math.cos(ang), 0, Math.sin(ang));
-  const side = new V3(-dir.z, 0, dir.x).multiplyScalar((Math.random() - 0.5) * 70);
+  const side = new V3(-dir.z, 0, dir.x).multiplyScalar(sideK * 70);
   G.drop = { dir: dir, start: dir.clone().multiplyScalar(-560).add(side), speed: 42, alt: 245, t: 0, pos: new V3(), state: 'prep', end: 19 };
   if (!planeObj) { planeObj = buildPlane(); scene.add(planeObj); }
   planeObj.visible = true;
@@ -985,13 +1045,13 @@ function updateDrop(dt) {
       if (G.player.phase === 'plane') H.jumpHint.classList.add('show');
     }
   } else if (d.state === 'go') {
-    for (const b of G.bots) if (b.phase === 'plane' && d.t >= b.ai.jumpAt) jumpOut(b);
+    if (!NET.isClient()) for (const b of G.bots) if (b.phase === 'plane' && d.t >= b.ai.jumpAt) jumpOut(b);
     if (d.t >= d.end) {
-      for (const a of G.actors) if (a.phase === 'plane') jumpOut(a);
+      for (const a of G.actors) if (a.phase === 'plane' && !a.remote) jumpOut(a);
       d.state = 'done';
     }
   } else if (d.t > d.end + 20) planeObj.visible = false;
-  for (const a of G.actors) if (a.phase === 'plane') a.pos.copy(d.pos);
+  for (const a of G.actors) if (a.phase === 'plane' && !(a.remote && a.net)) a.pos.copy(d.pos);
 }
 
 // voo de prancha e de paraquedas. c: {mx, my, open, release}
@@ -1217,25 +1277,29 @@ function updateHeal(a, dt) {
   if (a.healT <= 0) {
     a.healT = 0; a.kits--;
     a.hp = Math.min(a.maxHp, a.hp + 75);
+    if (a === G.player && NET.isClient()) NET.send({ t: 'heal' });
     if (a.isPlayer) { notify('ok', 'Vida recuperada: +75'); FX.number(new V3(a.pos.x, a.pos.y + 2, a.pos.z), '+75', '#5dff7a'); }
   }
 }
 
 // ------------------------------------------------------------------ bots
-function spawnBots() {
+function spawnBots(count, rnd) {
   G.bots = [];
-  const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5).slice(0, TOTAL - 1);
+  rnd = rnd || Math.random;
+  if (count === undefined) count = TOTAL - 1;
+  const names = BOT_NAMES.slice().map(n => [rnd(), n]).sort((x, y) => x[0] - y[0]).map(x => x[1]).slice(0, count);
+  const off = Math.floor(rnd() * CH.BOT_PALS.length);
   for (let i = 0; i < names.length; i++) {
-    const b = makeActor(names[i], CH.BOT_PALS[i % CH.BOT_PALS.length], false);
+    const b = makeActor(names[i], CH.BOT_PALS[(i + off) % CH.BOT_PALS.length], false);
     b.ch.root.visible = false;
     // destino do salto: perto de áreas nomeadas ou em qualquer ponto da ilha
     let tx, tz;
-    if (Math.random() < 0.45) {
-      const a = W.areaDefs[Math.floor(Math.random() * W.areaDefs.length)];
-      const an = Math.random() * 6.28, r = Math.random() * a.r * 0.8;
+    if (rnd() < 0.45) {
+      const a = W.areaDefs[Math.floor(rnd() * W.areaDefs.length)];
+      const an = rnd() * 6.28, r = rnd() * a.r * 0.8;
       tx = a.x + Math.cos(an) * r; tz = a.z + Math.sin(an) * r;
-    } else { const an = Math.random() * 6.28, r = Math.sqrt(Math.random()) * (W.LAND_R - 22); tx = Math.cos(an) * r; tz = Math.sin(an) * r; }
-    b.ai = { think: Math.random() * 0.3, target: null, react: 0, wp: null, strafe: Math.random() < 0.5 ? 1 : -1, strafeT: 0, stuckT: 0, last: new V3(), burst: 3, pause: 0, skill: 0.75 + Math.random() * 0.5, land: { x: tx, z: tz }, jumpAt: 99, nadeCd: 10 + Math.random() * 20 };
+    } else { const an = rnd() * 6.28, r = Math.sqrt(rnd()) * (W.LAND_R - 22); tx = Math.cos(an) * r; tz = Math.sin(an) * r; }
+    b.ai = { think: rnd() * 0.3, target: null, react: 0, wp: null, strafe: rnd() < 0.5 ? 1 : -1, strafeT: 0, stuckT: 0, last: new V3(), burst: 3, pause: 0, skill: 0.75 + rnd() * 0.5, land: { x: tx, z: tz }, jumpAt: 99, nadeCd: 10 + rnd() * 20 };
     G.bots.push(b); G.actors.push(b);
   }
 }
@@ -1297,6 +1361,7 @@ function botAirControl(b, dt) {
 }
 
 function updateBot(b, dt) {
+  if (b.remote) { updatePuppet(b, dt); return; }
   if (b.phase === 'plane') return;
   const near = b.pos.distanceTo(G.player.pos);
   if (!b.alive) { if (near < 120) CH.animate(b.ch, dt, { dead: true }); return; }

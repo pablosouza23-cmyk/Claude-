@@ -293,6 +293,48 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 #rotateHint { position: fixed; left: 50%; bottom: 40%; transform: translateX(-50%); z-index: 40; background: rgba(0,0,0,.7); padding: 8px 14px; border-radius: 4px; font-size: 14px; pointer-events: none; }
 #errorBox { position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 50; background: #b3261e; padding: 10px; border-radius: 4px; font-size: 13px; }
 
+/* ---------- modos, entrar e sala ---------- */
+#modeScr .logo, #roomScr .logo { position: absolute; top: max(14px, env(safe-area-inset-top)); left: max(24px, env(safe-area-inset-left)); }
+.modePanel { position: absolute; left: max(30px, env(safe-area-inset-left)); top: 50%; transform: translateY(-42%); width: min(380px, 80vw); display: flex; flex-direction: column; gap: 9px; }
+.modePanel h2 { margin: 0 0 4px; font-size: 18px; letter-spacing: 2px; font-weight: 600; color: var(--muted); }
+.modeCard { display: flex; align-items: center; gap: 14px; padding: 10px 16px; min-height: 64px; text-align: left; background: linear-gradient(90deg, rgba(14,24,40,.94), rgba(20,34,56,.8)); border: 1px solid var(--line); border-radius: 5px; transition: transform .1s; }
+.modeCard:active { transform: scale(.98); }
+.modeCard i { width: 42px; height: 42px; border-radius: 50%; background: #22324d; display: flex; align-items: center; justify-content: center; flex: none; }
+.modeCard i .ico { width: 24px; height: 24px; }
+.modeCard b { display: block; font-size: 21px; letter-spacing: 1.5px; } .modeCard small { color: var(--muted); font-size: 13px; }
+.modeCard.hot { border-color: #ffdf6a; background: linear-gradient(90deg, rgba(60,42,6,.95), rgba(28,22,10,.85)); box-shadow: 0 0 0 1px rgba(255,194,26,.25), 0 6px 18px rgba(240,154,12,.2); }
+.modeCard.hot i { background: linear-gradient(#ffd23c, var(--yellow2)); color: #1d1300; }
+.joinPanel input { width: 100%; height: 58px; text-align: center; font: 600 34px var(--font); letter-spacing: 10px; text-transform: uppercase; color: #fff; background: #0b1424; border: 2px solid var(--line); border-radius: 5px; outline: none; -webkit-user-select: text; user-select: text; }
+.joinPanel input:focus { border-color: var(--yellow); }
+.joinPanel .mBtn.primary { justify-content: center; }
+.netStatus { min-height: 18px; margin: 0; font-size: 14px; color: var(--muted); } .netStatus.err { color: #ff8080; }
+.roomPanel { position: absolute; right: max(20px, env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); width: min(330px, 46vw); max-height: calc(100% - 24px); overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.roomCode { text-align: center; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px 8px; }
+.roomCode small { display: block; font-size: 11px; color: var(--muted); letter-spacing: 1.5px; }
+.roomCode b { display: block; font-size: 40px; letter-spacing: 9px; color: var(--yellow); line-height: 1.15; }
+.roomShare { display: flex; gap: 6px; justify-content: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; font-size: 13px; letter-spacing: 1px; background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 14px; }
+.chip .ico { width: 15px; height: 15px; }
+#roomList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+#roomList li { display: flex; align-items: center; gap: 8px; padding: 5px 10px; background: rgba(255,255,255,.05); border-radius: 3px; font-size: 15px; }
+#roomList li .ico { width: 18px; height: 18px; color: var(--muted); } #roomList li.me { background: rgba(61,139,255,.18); }
+#roomList li em { margin-left: auto; font-style: normal; font-size: 12px; color: var(--yellow); letter-spacing: 1px; }
+#roomList li small { color: var(--muted); font-size: 12px; }
+.roomBots { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.roomBots input { width: 18px; height: 18px; accent-color: var(--yellow); }
+#roomStart { justify-content: center; font-size: 24px; height: 54px; }
+.roomWait { margin: 0; text-align: center; color: var(--muted); font-size: 15px; }
+.skinPick { position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-75%); display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 26px; padding: 5px 8px; }
+.skinPick div { min-width: 120px; text-align: center; display: flex; flex-direction: column; } .skinPick small { font-size: 10px; letter-spacing: 1.5px; color: var(--muted); } .skinPick b { font-size: 17px; }
+.skinPick .xBtn { border-radius: 50%; }
+.resNote { margin: 4px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
+.resNote:empty { display: none; }
+
+@media (orientation: portrait) {
+  .roomPanel { top: auto; bottom: 74px; transform: none; width: calc(100% - 32px); max-height: 56vh; }
+  .modePanel { top: auto; bottom: 6vh; transform: none; }
+  .skinPick { transform: translateX(-50%); }
+}
 @media (orientation: portrait) {
   #compass { width: 50vw; top: calc(max(8px, env(safe-area-inset-top)) + 0px); left: 46%; }
   #hpBar { width: 34vw; }

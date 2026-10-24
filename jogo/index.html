@@ -104,6 +104,48 @@
   <div class="ver">v1.0</div>
 </div>
 
+<div id="modeScr" class="screen clear hidden">
+  <div class="logo small"><b>BATTLE</b><span>ISLAND</span></div>
+  <div class="modePanel">
+    <h2>COMO VOCÊ QUER JOGAR?</h2>
+    <button id="mdSolo" class="modeCard"><i data-icon="person"></i><div><b>SOLO</b><small>Você contra 24 bots</small></div></button>
+    <button id="mdCreate" class="modeCard hot"><i data-icon="users"></i><div><b>CRIAR SALA</b><small>Jogue com os amigos: mande o código</small></div></button>
+    <button id="mdJoin" class="modeCard"><i data-icon="enter"></i><div><b>ENTRAR NA SALA</b><small>Digite o código que o amigo mandou</small></div></button>
+    <button id="mdBack" class="mBtn ghost">VOLTAR</button>
+  </div>
+</div>
+
+<div id="joinScr" class="screen dim hidden">
+  <div class="panel small joinPanel">
+    <b>ENTRAR NA SALA</b>
+    <p>Peça o código de 5 letras para quem criou a sala.</p>
+    <input id="joinCode" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CÓDIGO" aria-label="Código da sala">
+    <button id="joinGo" class="mBtn primary">ENTRAR</button>
+    <p id="joinStatus" class="netStatus"></p>
+    <button id="joinBack" class="mBtn ghost">VOLTAR</button>
+  </div>
+</div>
+
+<div id="roomScr" class="screen clear hidden">
+  <div class="logo small"><b>BATTLE</b><span>ISLAND</span></div>
+  <div class="skinPick">
+    <button id="skinPrev" class="xBtn" data-icon="left" aria-label="Personagem anterior"></button>
+    <div><small>PERSONAGEM</small><b id="skinName">Cacheado</b></div>
+    <button id="skinNext" class="xBtn" data-icon="right" aria-label="Próximo personagem"></button>
+  </div>
+  <div class="roomPanel">
+    <div class="roomCode"><small>CÓDIGO DA SALA</small><b id="roomCode">-----</b>
+      <div class="roomShare"><button id="roomCopy" class="chip" data-icon="copy">COPIAR</button><button id="roomShareBtn" class="chip" data-icon="share">CONVIDAR</button></div>
+    </div>
+    <p id="roomStatus" class="netStatus"></p>
+    <ul id="roomList"></ul>
+    <label id="roomBotsRow" class="roomBots"><input type="checkbox" id="roomBots" checked><span>Completar com bots (25 na ilha)</span></label>
+    <button id="roomStart" class="mBtn primary">COMEÇAR</button>
+    <p id="roomWait" class="roomWait">Aguardando o anfitrião começar…</p>
+    <button id="roomLeave" class="mBtn ghost">SAIR DA SALA</button>
+  </div>
+</div>
+
 <div id="lobbyScr" class="screen clear hidden">
   <div class="logo small"><b>BATTLE</b><span>ISLAND</span></div>
   <div class="lobbyTop">Jogadores: <b id="lobbyPlayers">25/25</b></div>
@@ -165,6 +207,7 @@
   <div id="resultCard" class="resCard">
     <h1 id="resTitle">VITÓRIA</h1>
     <div id="resPlace">#1</div>
+    <p id="resNote" class="resNote"></p>
     <table><tr><td>ABATES</td><td id="resKills">0</td></tr><tr><td>DANO</td><td id="resDmg">0</td></tr><tr><td>TEMPO</td><td id="resTime">00:00</td></tr></table>
     <button id="rLobby" class="mBtn primary">VOLTAR AO LOBBY</button>
   </div>
@@ -189,6 +232,8 @@
 <script src="js/character.js"></script>
 <script src="js/effects.js"></script>
 <script src="js/game.js"></script>
+<script src="js/peerjs.min.js"></script>
+<script src="js/net.js"></script>
 <script src="js/ui.js"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function () {});

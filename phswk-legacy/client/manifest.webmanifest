@@ -1,0 +1,10 @@
+{
+  "name": "PHSWK Legacy",
+  "short_name": "PHSWK",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#120b06",
+  "theme_color": "#120b06",
+  "icons": [{ "src": "logo.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#120b06">
+  <title>PHSWK Legacy</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="logo.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Carregamento: PHSWK no topo -->
+  <section id="scr-loading" class="screen active">
+    <header class="brand"><img src="logo.svg" alt="PHSWK"><span>LEGACY</span></header>
+    <div class="loading-art" aria-hidden="true"></div>
+    <div class="loading-bottom">
+      <p id="loading-tip">Dica: no Contra Squad, ficar junto do time vence rodadas.</p>
+      <div class="bar"><div id="loading-fill"></div></div>
+      <p id="loading-text">Conectando ao servidor PHSWK…</p>
+    </div>
+  </section>
+
+  <!-- Login -->
+  <section id="scr-login" class="screen">
+    <header class="brand"><img src="logo.svg" alt="PHSWK"><span>LEGACY</span></header>
+    <form id="login-form" class="panel">
+      <label for="nick">Apelido</label>
+      <input id="nick" maxlength="16" minlength="3" required autocomplete="off" placeholder="Seu apelido">
+      <button type="submit" class="btn primary">Entrar como convidado</button>
+      <button type="button" class="btn" disabled title="Requer app próprio registrado no Google">Google (não disponível)</button>
+      <button type="button" class="btn" disabled title="Requer app próprio registrado no Facebook">Facebook (não disponível)</button>
+      <p class="hint">Projeto independente. Não é afiliado à Garena nem ao Free Fire.</p>
+      <p id="login-err" class="err" role="alert"></p>
+    </form>
+  </section>
+
+  <!-- Lobby -->
+  <section id="scr-lobby" class="screen">
+    <div class="topbar">
+      <div class="who"><b id="lb-nick"></b><small id="lb-rating"></small></div>
+      <img class="mini-logo" src="logo.svg" alt="PHSWK">
+      <div class="dia"><span class="gem" aria-hidden="true">◆</span><b id="lb-dia">0</b></div>
+    </div>
+    <div class="lobby-main">
+      <canvas id="lobby-char" width="260" height="320" aria-label="Personagem equipado"></canvas>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="character">Personagens</button>
+        <button class="tab" data-tab="weapon">Armas</button>
+        <button class="tab" data-tab="outfit">Roupas</button>
+        <button class="tab" data-tab="ranking">Ranking</button>
+      </nav>
+      <div id="tab-body" class="grid"></div>
+    </div>
+    <div class="playbar">
+      <div class="modes">
+        <button class="mode active" data-mode="cs">Contra Squad 4x4</button>
+        <button class="mode" data-mode="br">Battle Royale</button>
+      </div>
+      <button id="btn-play" class="btn play">JOGAR</button>
+    </div>
+    <div id="queue" class="overlay" hidden>
+      <div class="panel">
+        <h2>Procurando partida…</h2>
+        <p id="queue-info"></p>
+        <p class="hint">Se não houver jogadores suficientes, as vagas são completadas por BOTs do servidor.</p>
+        <button id="btn-cancel" class="btn">Cancelar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Partida -->
+  <section id="scr-game" class="screen">
+    <canvas id="game"></canvas>
+    <div class="hud">
+      <div id="hud-top"></div>
+      <div id="hud-feed"></div>
+      <div class="hp"><div id="hud-hp"></div></div>
+    </div>
+    <div id="stick-move" class="stick left"><div class="knob"></div></div>
+    <div id="stick-aim" class="stick right"><div class="knob"></div><span>MIRA/ATIRA</span></div>
+    <div id="match-loading" class="overlay">
+      <header class="brand"><img src="logo.svg" alt="PHSWK"><span>LEGACY</span></header>
+      <p id="ml-text">Carregando partida…</p>
+    </div>
+  </section>
+
+  <!-- Resultado -->
+  <section id="scr-result" class="screen">
+    <header class="brand small"><img src="logo.svg" alt="PHSWK"></header>
+    <div class="panel">
+      <h2 id="rs-title"></h2>
+      <p id="rs-sub"></p>
+      <table id="rs-table"></table>
+      <button id="btn-back" class="btn primary">Voltar ao lobby</button>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

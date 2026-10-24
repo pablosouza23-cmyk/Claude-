@@ -1,0 +1,16 @@
+{
+  "name": "phswk-legacy-server",
+  "version": "0.1.0",
+  "description": "Servidor independente do PHSWK Legacy (protocolo e conteúdo próprios)",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "src/server.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "ws": "8.18.0"
+  }
+}

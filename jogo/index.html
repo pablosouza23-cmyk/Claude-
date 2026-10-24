@@ -3,22 +3,43 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#1b6fd0">
+<meta name="theme-color" content="#0b1220">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Ilha Toon</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="description" content="Battle Island: battle royale 3D para celular. Salte do avião, pegue armas e seja o último de pé.">
+<title>Battle Island</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Oswald:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
 <canvas id="c"></canvas>
 
-<div id="hud" class="hidden">
-  <!-- topo: status do salto/partida e zona segura -->
-  <div id="topStatus"></div>
-  <div id="zoneBar"><span class="hg">⌛</span><span id="zoneText"></span></div>
-  <div id="announce"></div>
+<!-- ===================== HUD ===================== -->
+<div id="hud" class="hidden" data-mode="ground">
+  <div id="hudTL">
+    <div class="hpRow"><span data-icon="heart" class="hpIco"></span><div id="hpBar"><div id="hpFill" class="hp-g"></div><div id="healRing"></div></div><b id="hpNum">200</b></div>
+    <div class="armorRow"><span id="vestBadge" class="badge"></span><span id="helmBadge" class="badge"></span></div>
+    <div class="aliveRow"><span data-icon="person"></span><b id="aliveNum">25</b><span data-icon="skull" class="sk"></span><b id="killNum">0</b></div>
+  </div>
+  <div id="compass"><div id="compassStrip"></div><div class="compassMark"></div><div id="compassNum">0</div></div>
+  <div id="topStatus" class="hidden"></div>
+  <div id="notifs"></div>
   <div id="areaBanner"><small>ENTRANDO EM</small><b id="areaName"></b></div>
+  <div id="killBanner"><span data-icon="skull" class="kbIco"></span><div class="kbTxt"><b id="kbCount">1</b><span>ABATE</span></div><small id="kbName"></small></div>
+  <div id="hudTR">
+    <div id="mmWrap"><canvas id="minimap" width="160" height="160"></canvas><span class="mmN">N</span></div>
+    <div class="zoneInfo"><span data-icon="clock"></span><b id="zoneTime">00:00</b></div>
+    <div id="zoneText"></div>
+  </div>
+  <div id="hudSide">
+    <button id="btnPause" class="sideBtn" data-icon="gear" aria-label="Pausar"></button>
+    <button id="btnMap" class="sideBtn" data-icon="map" aria-label="Mapa"></button>
+  </div>
 
-  <!-- contagem no avião -->
   <div id="prep" class="hidden">
     <div class="prepBand">PREPARE-SE</div>
     <div class="prepSub">25 jogadores · armas, colete, capacete, kit e granada no chão</div>
@@ -27,116 +48,150 @@
   </div>
   <div id="bigText"></div>
   <div id="jumpHint">ESPAÇO para saltar</div>
-
-  <!-- painel do salto -->
   <div id="diveBox"><div id="diveStats"></div><div id="diveHint"></div></div>
   <div id="altBar"><div id="altMark"></div></div>
 
-  <!-- canto superior direito: direção, dica e slots de arma -->
-  <div id="topRight">
-    <div id="dirLbl">N</div>
-    <div id="pickHint"></div>
-    <div id="slots">
-      <div class="wslot" id="wslot0"></div>
-      <div class="wslot" id="wslot1"></div>
-      <div class="wslot" id="wslot2"></div>
-    </div>
-    <div id="invLine"></div>
-  </div>
-
-  <canvas id="minimap" width="120" height="120"></canvas>
-  <button id="btnPause" aria-label="Pausar">II</button>
-  <div id="fps" class="hidden"></div>
-
-  <div id="crosshair"><div class="ring"></div><div class="dot"></div></div>
-  <div id="scope"><div class="frame"></div><div class="cross"></div></div>
+  <div id="crosshair"><i class="t1"></i><i class="t2"></i><i class="t3"></i><i class="t4"></i><b></b></div>
+  <div id="reticle"></div>
+  <div id="scope"><div class="sRing"></div><div class="sCross"></div></div>
   <div id="hitmark"></div>
   <div id="hurtArrow"></div>
   <div id="handHint"></div>
   <div id="killfeed"></div>
-  <div id="toast"></div>
   <div id="dmgLayer"></div>
   <div id="vignette"></div>
+  <div id="lowHp"></div>
 
-  <div id="keysHint">Espaço pular · C agachar · E pegar · G gel · 5 kit · Q granada · 1/2 armas · 3 pistola · 4 soco · R recarregar · botão dir. mira · ` solta o mouse · Esc pausa</div>
-  <div id="hpWrap">
-    <span class="hpl">HP</span>
-    <div id="hpBar"><div id="hpFill" class="hp-g"></div><span id="hpText">200 / 200</span><div id="healBar"></div></div>
-    <div class="armorSlot" id="slotVest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3l2 2h6l2-2 4 3v14l-4 1-1-6-2 1h-4l-2-1-1 6-4-1V6z"/></svg><span id="vestLvl">COLETE</span></div>
-    <div class="armorSlot" id="slotHelm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15a8 8 0 0 1 16 0v2H4zM2 17h20v2H2z"/></svg><span id="helmLvl">CAPACETE</span></div>
+  <div id="weaponBar">
+    <button class="wb" id="wb0"></button>
+    <button class="wb" id="wb1"></button>
+    <button class="wb sec" id="wb2"></button>
+    <button class="wb it" id="wbNade" aria-label="Granada"></button>
+    <button class="wb it" id="wbKit" aria-label="Kit médico"></button>
+    <button class="wb it" id="wbGel" aria-label="Gel"></button>
+    <div id="reloadBar"></div>
   </div>
+  <button id="useBtn" class="hidden"></button>
+  <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha · R recarrega · E pegar · Q granada · G gel · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · Esc pausa</div>
+  <div id="fps" class="hidden"></div>
 </div>
 
-<div id="touch" class="hidden" data-mode="plane">
+<!-- ===================== CONTROLES DE TOQUE ===================== -->
+<div id="touch" class="hidden" data-mode="ground">
   <div id="joyBase"><div id="joyKnob"></div></div>
-  <!-- no chão -->
-  <button class="tbtn g" id="btnFireL" aria-label="Atirar">✹</button>
-  <button class="tbtn g" id="btnFire" aria-label="Atirar">✹</button>
-  <button class="tbtn g" id="btnAim" aria-label="Mirar">◎</button>
-  <button class="tbtn g" id="btnJump" aria-label="Pular">⤒</button>
-  <button class="tbtn g" id="btnCrouch" aria-label="Agachar">⤓</button>
-  <button class="tbtn g" id="btnReload" aria-label="Recarregar">⟳</button>
-  <button class="tbtn g" id="btnGel" aria-label="Gel">▰<small id="gelBadge">2</small><i>GEL</i></button>
-  <button class="tbtn g" id="btnNade" aria-label="Granada">●<small id="nadeBadge">0</small><i>GRANADA</i></button>
-  <button class="tbtn g" id="btnKit" aria-label="Kit médico">✚<small id="kitBadge">0</small><i>KIT</i></button>
-  <button class="tbtn g pill hidden" id="btnUse">PEGAR</button>
-  <!-- no avião / no ar -->
+  <button class="tbtn g" id="btnFire" data-icon="bullet" aria-label="Atirar"></button>
+  <button class="tbtn g" id="btnFireL" data-icon="bullet" aria-label="Atirar"></button>
+  <button class="tbtn g" id="btnAim" data-icon="aim" aria-label="Mira"></button>
+  <button class="tbtn g" id="btnJump" data-icon="jump" aria-label="Pular"></button>
+  <button class="tbtn g" id="btnCrouch" data-icon="crouch" aria-label="Agachar"></button>
+  <button class="tbtn g" id="btnReload" data-icon="reload" aria-label="Recarregar"></button>
+  <button class="tbtn g" id="btnInv" data-icon="bag" aria-label="Inventário rápido"></button>
   <button class="tbtn pill big p" id="btnSaltar">SALTAR</button>
-  <button class="tbtn pill big f" id="btnChute">PARAQUEDAS</button>
-  <button class="tbtn pill f" id="btnBoard">SOLTAR PRANCHA</button>
+  <button class="tbtn pill big f" id="btnChute" data-icon="chute">PARAQUEDAS</button>
+  <button class="tbtn pill f" id="btnBoard" data-icon="board">SOLTAR PRANCHA</button>
 </div>
 
-<div id="menu" class="screen">
-  <div class="menuCard">
-    <h1>ILHA <span>TOON</span></h1>
-    <p class="sub">Battle royale na ilha · 25 jogadores · salto de prancha</p>
-    <button id="playBtn" class="big">JOGAR</button>
-    <div class="opts">
-      <label>Nome <input id="nameInput" maxlength="14" autocomplete="off"></label>
-      <label>Qualidade
-        <select id="qualSel"><option value="baixa">Baixa (mais rápido)</option><option value="media">Média</option><option value="alta">Alta</option></select>
-      </label>
-      <label>Sensibilidade <input id="sensRange" type="range" min="0.4" max="2" step="0.1"></label>
-      <label class="chk"><input id="soundChk" type="checkbox"> Som</label>
-      <label class="chk"><input id="fpsChk" type="checkbox"> Mostrar FPS</label>
+<!-- ===================== TELAS ===================== -->
+<div id="menuScr" class="screen clear hidden">
+  <div class="logo"><b>BATTLE</b><span>ISLAND</span></div>
+  <div class="welcome"><span>BEM-VINDO!</span><b id="welcomeName">Jogador</b><i data-icon="user"></i></div>
+  <nav class="mainNav">
+    <button id="mPlay" class="mBtn primary" data-icon="play">JOGAR</button>
+    <button id="mInv" class="mBtn" data-icon="bag">INVENTÁRIO</button>
+    <button id="mSet" class="mBtn" data-icon="gear">CONFIGURAÇÕES</button>
+    <button id="mExit" class="mBtn" data-icon="exit">SAIR</button>
+  </nav>
+  <div class="ver">v1.0</div>
+</div>
+
+<div id="lobbyScr" class="screen clear hidden">
+  <div class="logo small"><b>BATTLE</b><span>ISLAND</span></div>
+  <div class="lobbyTop">Jogadores: <b id="lobbyPlayers">25/25</b></div>
+  <div class="lobbyPanel">
+    <div class="lpRow"><div><small>MAPA</small><b>ILHA</b></div><div><small>MODO</small><b>SOLO</b></div></div>
+    <div class="lpTime"><small>A PARTIDA COMEÇA EM</small><b id="lobbyTime">00:15</b></div>
+    <button id="lReady" class="mBtn primary">PRONTO</button>
+    <button id="lBack" class="mBtn ghost">VOLTAR</button>
+  </div>
+</div>
+
+<div id="invScr" class="screen dim hidden">
+  <div class="panel wide">
+    <div class="panelHead">
+      <div id="invTabs" class="tabs"><button data-tab="inv">INVENTÁRIO</button><button data-tab="arsenal">ARSENAL</button></div>
+      <button id="invClose" class="xBtn" data-icon="close" aria-label="Fechar"></button>
     </div>
-    <button id="helpBtn" class="small">Como jogar</button>
-    <div id="helpBox" class="hidden">
-      <p><b>Salto:</b> no avião, toque em SALTAR (Espaço). Na prancha, joystick para cima acelera, para baixo freia, para os lados vira. PARAQUEDAS (Espaço) abre; abaixo de 65 m ele abre sozinho.</p>
-      <p><b>No chão (celular):</b> lado esquerdo anda, lado direito gira a câmera. ✹ atira (arraste o botão para mirar junto), ◎ mira/luneta, ⤒ pula, ⤓ agacha, ⟳ recarrega, ▰ gel, ● granada (✹ lança), ✚ kit. Toque nos slots 1/2/3 no alto para trocar de arma; tocar no slot ativo guarda a arma (soco). PEGAR aparece perto de armas.</p>
-      <p><b>Computador:</b> WASD · mouse · clique atira · botão direito mira · Espaço · C · E pegar · G gel · 5 kit · Q granada · 1/2/3 armas · 4 soco · R · Esc.</p>
+    <div id="invBody"></div>
+  </div>
+</div>
+
+<div id="mapScr" class="screen dim hidden">
+  <div class="panel mapPanel">
+    <div class="panelHead"><b>MAPA</b><button id="mapClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <div class="mapWrap"><div class="mapBox"><canvas id="fullMap"></canvas></div>
+      <ul class="legend">
+        <li><i class="lg you"></i>Você</li><li><i class="lg foe"></i>Inimigo (tiros)</li><li><i class="lg zone"></i>Zona segura</li><li><i class="lg next"></i>Próxima zona</li>
+        <li><i class="lg drop"></i>Suprimento</li><li><i class="lg house"></i>Construções</li><li><i class="lg route"></i>Rota do avião</li>
+      </ul>
     </div>
   </div>
 </div>
 
-<div id="pauseScr" class="screen hidden">
-  <div class="menuCard">
-    <h2>PAUSADO</h2>
-    <button id="resumeBtn" class="big">CONTINUAR</button>
-    <button id="restartBtn" class="small">Reiniciar partida</button>
-    <button id="quitBtn" class="small">Sair para o menu</button>
+<div id="settingsScr" class="screen dim hidden">
+  <div class="panel setPanel">
+    <div class="panelHead"><b>CONFIGURAÇÕES</b><button id="setClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <div class="setWrap">
+      <div id="setTabs" class="vtabs">
+        <button data-tab="geral" data-icon="gear">GERAL</button>
+        <button data-tab="graficos" data-icon="map">GRÁFICOS</button>
+        <button data-tab="controles" data-icon="aim">CONTROLES</button>
+        <button data-tab="audio" data-icon="bullet">ÁUDIO</button>
+      </div>
+      <div id="setBody"></div>
+    </div>
   </div>
 </div>
 
-<div id="endScr" class="screen hidden">
-  <div class="menuCard">
-    <h1 id="endTitle"></h1>
-    <p id="endSub" class="sub"></p>
-    <div id="endStats"></div>
-    <button id="againBtn" class="big">JOGAR NOVAMENTE</button>
-    <button id="menuBtn" class="small">Menu</button>
+<div id="pauseScr" class="screen dim hidden">
+  <nav class="pauseNav">
+    <button id="pResume" class="mBtn primary" data-icon="play">CONTINUAR</button>
+    <button id="pSet" class="mBtn" data-icon="gear">CONFIGURAÇÕES</button>
+    <button id="pLobby" class="mBtn" data-icon="exit">SAIR PARA O LOBBY</button>
+    <button id="pExit" class="mBtn" data-icon="exit">SAIR DO JOGO</button>
+  </nav>
+</div>
+
+<div id="resultScr" class="screen dim hidden">
+  <div id="resultCard" class="resCard">
+    <h1 id="resTitle">VITÓRIA</h1>
+    <div id="resPlace">#1</div>
+    <table><tr><td>ABATES</td><td id="resKills">0</td></tr><tr><td>DANO</td><td id="resDmg">0</td></tr><tr><td>TEMPO</td><td id="resTime">00:00</td></tr></table>
+    <button id="rLobby" class="mBtn primary">VOLTAR AO LOBBY</button>
   </div>
 </div>
 
-<div id="loading" class="hidden"><div>Carregando a ilha…</div></div>
-<div id="rotateHint" class="hidden">Gire o celular para a horizontal para jogar melhor</div>
+<div id="exitScr" class="screen dim hidden">
+  <div class="panel small"><b>Até a próxima!</b><p>Feche esta aba ou o app para sair.</p><button id="exitBack" class="mBtn">VOLTAR AO MENU</button></div>
+</div>
+
+<div id="loadScr">
+  <div class="logo"><b>BATTLE</b><span>ISLAND</span></div>
+  <div class="loadBox"><div class="loadTrack"><div id="loadBar"></div></div><div id="loadStep">Carregando…</div><div id="loadTip"></div></div>
+</div>
+<div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
 <div id="errorBox" class="hidden"></div>
 
 <script src="js/three.min.js"></script>
 <script src="js/util.js"></script>
+<script src="js/textures.js"></script>
 <script src="js/world.js"></script>
+<script src="js/weapons.js"></script>
 <script src="js/character.js"></script>
 <script src="js/effects.js"></script>
 <script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function () {});
+</script>
 </body>
 </html>

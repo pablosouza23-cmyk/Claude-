@@ -1,23 +1,46 @@
 'use strict';
-// Mundo: ilha com grama, trilhas de areia, árvores toon, ruínas, vila, mar e céu com nuvens.
+// Mundo: ilha com vilas, porto, fazenda, farol, ruínas, lagoa, floresta, mar animado e céu.
 const W = {
-  MAP_R: 150,       // raio jogável da ilha
+  LAND_R: 172,      // onde começa a praia
+  PLAY_R: 196,      // limite para andar (água rasa)
   SEA_Y: -0.6,
-  statics: [],      // colisores estáticos
+  statics: [],
   grid: new Map(),
   CELL: 8,
-  areas: [],
   time: 0,
+  houses: [],
+  lootSpots: [],
+  _stamp: 0,
 };
 
-// ---------- relevo ----------
+// ---------- áreas e estradas ----------
+W.areaDefs = [
+  { name: 'VILA CENTRAL', x: 0, z: 0, r: 30, flat: true },
+  { name: 'BAIRRO TROPICAL', x: -45, z: -110, r: 36, flat: true },
+  { name: 'RUÍNAS', x: 95, z: -60, r: 30, flat: true },
+  { name: 'FAZENDA', x: 75, z: 95, r: 34, flat: true },
+  { name: 'PORTO', x: -135, z: 45, r: 30, flat: true },
+  { name: 'VILA PESQUEIRA', x: 146, z: 2, r: 24, flat: true },
+  { name: 'FAROL', x: 22, z: -158, r: 16, flat: true, lift: 6 },
+  { name: 'FLORESTA', x: -95, z: -30, r: 40 },
+  { name: 'LAGOA', x: -30, z: 75, r: 20 },
+  { name: 'CAMPO', x: -85, z: 122, r: 30 },
+];
+W.A = {};
+for (const a of W.areaDefs) W.A[a.name] = a;
+
 W.paths = [
-  [[-140, 10], [-95, 18], [-60, 8], [-30, 22], [0, 12], [30, -8], [55, -40], [70, -58]],
-  [[0, 12], [-12, -30], [-25, -70], [-30, -95]],
-  [[70, -58], [100, -40], [128, -20]],
-  [[-30, 22], [-38, 60], [-20, 100], [10, 128]],
-  [[30, -8], [70, 20], [95, 60]],
-  [[-30, -95], [20, -110], [70, -58]],
+  [[0, 0], [-15, -45], [-45, -110]],
+  [[0, 0], [45, -25], [95, -60]],
+  [[0, 0], [35, 50], [75, 95]],
+  [[0, 0], [-60, 15], [-135, 45]],
+  [[0, 0], [-12, 45], [-30, 75], [-60, 100], [-85, 122]],
+  [[95, -60], [125, -30], [146, 2]],
+  [[95, -60], [60, -120], [22, -158]],
+  [[-45, -110], [-10, -140], [22, -158]],
+  [[75, 95], [120, 55], [146, 2]],
+  [[-135, 45], [-115, 95], [-85, 122]],
+  [[-135, 45], [-120, -20], [-95, -30], [-45, -110]],
 ];
 W.segs = [];
 for (const p of W.paths) for (let i = 0; i < p.length - 1; i++) W.segs.push([p[i][0], p[i][1], p[i + 1][0], p[i + 1][1]]);
@@ -26,6 +49,8 @@ W.pathDist = function (x, z) {
   let best = 1e9;
   for (const s of W.segs) {
     const dx = s[2] - s[0], dz = s[3] - s[1];
+    // descarte rápido pela caixa do segmento
+    if (x < Math.min(s[0], s[2]) - 8 || x > Math.max(s[0], s[2]) + 8 || z < Math.min(s[1], s[3]) - 8 || z > Math.max(s[1], s[3]) + 8) continue;
     let t = ((x - s[0]) * dx + (z - s[1]) * dz) / (dx * dx + dz * dz);
     t = t < 0 ? 0 : t > 1 ? 1 : t;
     const ex = s[0] + dx * t - x, ez = s[1] + dz * t - z;
@@ -35,55 +60,83 @@ W.pathDist = function (x, z) {
   return Math.sqrt(best);
 };
 
-W.areaDefs = [
-  { name: 'RUÍNAS', x: 70, z: -58, r: 30, flat: true },
-  { name: 'BAIRRO TROPICAL', x: -30, z: -98, r: 34, flat: true },
-  { name: 'FLORESTA', x: -55, z: 45, r: 42 },
-  { name: 'CAMPO ABERTO', x: 40, z: 40, r: 38 },
-];
-
+// ---------- relevo ----------
 W.baseH = function (x, z) {
-  return 1.4 + (U.fbm(x * 0.010 + 3.1, z * 0.010 - 7.3) - 0.5) * 6 + (U.noise(x * 0.05, z * 0.05) - 0.5) * 0.6;
+  let h = 1.6 + (U.fbm(x * 0.008 + 3.1, z * 0.008 - 7.3) - 0.5) * 8 + (U.noise(x * 0.05, z * 0.05) - 0.5) * 0.6;
+  // colinas no campo e perto do farol
+  const c = W.A.CAMPO;
+  h += U.smooth(55, 0, Math.hypot(x - c.x, z - c.z)) * (U.fbm(x * 0.03, z * 0.03) * 7);
+  return h;
 };
-for (const a of W.areaDefs) a.h = W.baseH(a.x, a.z);
+for (const a of W.areaDefs) a.h = W.baseH(a.x, a.z) + (a.lift || 0);
+W.A.LAGOA.h = -2.2;
 
 W.height = function (x, z) {
   let h = W.baseH(x, z);
   for (const a of W.areaDefs) {
     if (!a.flat) continue;
     const d = Math.hypot(x - a.x, z - a.z);
-    if (d < a.r + 12) h = U.lerp(h, a.h, U.smooth(a.r + 12, a.r - 4, d));
+    if (d < a.r + 14) h = U.lerp(h, a.h, U.smooth(a.r + 14, a.r - 4, d));
   }
+  // lagoa
+  const l = W.A.LAGOA, dl = Math.hypot(x - l.x, z - l.z);
+  if (dl < l.r + 10) h = U.lerp(h, -2.2, U.smooth(l.r + 10, l.r - 6, dl + (U.noise(x * 0.15, z * 0.15) - 0.5) * 5));
   const pd = W.pathDist(x, z);
   if (pd < 6) h -= (1 - pd / 6) * 0.12;
-  const r = Math.hypot(x, z);
-  if (r > 132) h = U.lerp(h, -2.6, U.smooth(132, 168, r));
+  const r = Math.hypot(x, z) + (U.noise(x * 0.02 + 9, z * 0.02) - 0.5) * 14;
+  if (r > W.LAND_R - 6) h = U.lerp(h, -3, U.smooth(W.LAND_R - 6, W.LAND_R + 26, r));
   return h;
 };
 
 // quanto de areia existe num ponto (0 = grama, 1 = areia)
 W.sand = function (x, z) {
   const pd = W.pathDist(x, z) + (U.noise(x * 0.3, z * 0.3) - 0.5) * 1.6;
-  let s = U.smooth(3.4, 2.4, pd);
+  let s = U.smooth(3.6, 2.6, pd);
   const patch = U.fbm(x * 0.035 + 11, z * 0.035 - 4);
-  s = Math.max(s, U.smooth(0.66, 0.72, patch));
-  const r = Math.hypot(x, z);
-  s = Math.max(s, U.smooth(126, 134, r + (U.noise(x * 0.1, z * 0.1) - 0.5) * 4));
-  const ru = W.areaDefs[0];
-  const dr = Math.hypot(x - ru.x, z - ru.z);
-  if (dr < 34) s = Math.max(s, U.smooth(0.55, 0.62, U.noise(x * 0.12 + 5, z * 0.12)) * U.smooth(34, 20, dr));
+  s = Math.max(s, U.smooth(0.68, 0.74, patch));
+  const r = Math.hypot(x, z) + (U.noise(x * 0.02 + 9, z * 0.02) - 0.5) * 14;
+  s = Math.max(s, U.smooth(W.LAND_R - 12, W.LAND_R - 4, r + (U.noise(x * 0.1, z * 0.1) - 0.5) * 4));
+  for (const k of ['RUÍNAS', 'PORTO', 'VILA PESQUEIRA']) {
+    const a = W.A[k], d = Math.hypot(x - a.x, z - a.z);
+    if (d < a.r) s = Math.max(s, (k === 'RUÍNAS' ? U.smooth(0.55, 0.62, U.noise(x * 0.12 + 5, z * 0.12)) : 0.85) * U.smooth(a.r, a.r - 10, d));
+  }
+  const l = W.A.LAGOA;
+  s = Math.max(s, U.smooth(l.r + 4, l.r - 2, Math.hypot(x - l.x, z - l.z)) * 0.8);
   return s;
+};
+
+// cor do chão num ponto (usada pelo terreno e pela grama)
+const _gc = { g1: new THREE.Color(0x56ab35), g2: new THREE.Color(0x8ccd48), g3: new THREE.Color(0x3d962c), s1: new THREE.Color(0xeccf92), s2: new THREE.Color(0xd8b674),
+  wet: new THREE.Color(0xc4a670), rock: new THREE.Color(0x8f9184), field: new THREE.Color(0x9bbf3c), dirt: new THREE.Color(0xa87a4c), c: new THREE.Color(), cs: new THREE.Color() };
+W.groundColor = function (x, z, y, out) {
+  const v = U.fbm(x * 0.05, z * 0.05);
+  const c = out || _gc.c;
+  c.copy(_gc.g1).lerp(_gc.g2, U.smooth(0.45, 0.78, v)).lerp(_gc.g3, U.smooth(0.42, 0.18, v) * 0.75);
+  // plantação em faixas na fazenda
+  const f = W.A.FAZENDA, df = Math.hypot(x - f.x - 10, z - f.z - 8);
+  if (df < 22) {
+    const stripe = Math.sin((x - f.x) * 0.9) > 0.2;
+    c.lerp(stripe ? _gc.field : _gc.dirt, U.smooth(22, 16, df) * 0.85);
+  }
+  // encostas íngremes viram pedra
+  const sl = Math.abs(W.baseH(x + 1, z) - W.baseH(x - 1, z)) + Math.abs(W.baseH(x, z + 1) - W.baseH(x, z - 1));
+  c.lerp(_gc.rock, U.smooth(1.4, 2.4, sl) * 0.8);
+  _gc.cs.copy(_gc.s1).lerp(_gc.s2, U.noise(x * 0.2, z * 0.2) * 0.6);
+  if (y < W.SEA_Y + 0.5) _gc.cs.copy(_gc.wet);
+  c.lerp(_gc.cs, W.sand(x, z));
+  return c;
 };
 
 // ---------- colisores ----------
 W.addCollider = function (c) {
   c.br = c.type === 'c' ? c.r : Math.hypot(c.hx, c.hz);
   if (c.type === 'b') { c.cs = Math.cos(c.rot || 0); c.sn = Math.sin(c.rot || 0); }
+  c._s = 0;
   W.statics.push(c);
   const C = W.CELL;
   for (let ix = Math.floor((c.x - c.br) / C); ix <= Math.floor((c.x + c.br) / C); ix++)
     for (let iz = Math.floor((c.z - c.br) / C); iz <= Math.floor((c.z + c.br) / C); iz++) {
-      const k = ix + ',' + iz;
+      const k = ix * 4096 + iz;
       let arr = W.grid.get(k);
       if (!arr) { arr = []; W.grid.set(k, arr); }
       arr.push(c);
@@ -100,14 +153,14 @@ W.removeCollider = function (c) {
 W.nearby = function (x, z, out) {
   out.length = 0;
   const C = W.CELL, ix = Math.floor(x / C), iz = Math.floor(z / C);
+  const st = ++W._stamp;
   for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
-    const arr = W.grid.get((ix + a) + ',' + (iz + b));
-    if (arr) for (const c of arr) if (out.indexOf(c) < 0) out.push(c);
+    const arr = W.grid.get((ix + a) * 4096 + (iz + b));
+    if (arr) for (const c of arr) if (c._s !== st) { c._s = st; out.push(c); }
   }
   return out;
 };
 
-// paredes de gelo são registradas aqui pelo jogo
 W.dynamic = [];
 
 const _near = [];
@@ -130,7 +183,7 @@ W.collide = function (p, rad, feetY, height) {
       const dx = p.x - c.x, dz = p.z - c.z;
       const lx = dx * c.cs - dz * c.sn, lz = dx * c.sn + dz * c.cs;
       const qx = U.clamp(lx, -c.hx, c.hx), qz = U.clamp(lz, -c.hz, c.hz);
-      let ex = lx - qx, ez = lz - qz;
+      const ex = lx - qx, ez = lz - qz;
       const d2 = ex * ex + ez * ez;
       if (d2 < rad * rad) {
         let px, pz;
@@ -141,7 +194,6 @@ W.collide = function (p, rad, feetY, height) {
           const ox = c.hx - Math.abs(lx), oz = c.hz - Math.abs(lz);
           if (ox < oz) { px = (ox + rad) * Math.sign(lx || 1); pz = 0; } else { px = 0; pz = (oz + rad) * Math.sign(lz || 1); }
         }
-        // volta para o mundo
         p.x += px * c.cs + pz * c.sn;
         p.z += -px * c.sn + pz * c.cs;
         hit = true;
@@ -185,54 +237,59 @@ W.rayCollider = function (o, d, c, maxT) {
   const lox = dx * c.cs - dz * c.sn, loz = dx * c.sn + dz * c.cs, loy = o.y;
   const ldx = d.x * c.cs - d.z * c.sn, ldz = d.x * c.sn + d.z * c.cs, ldy = d.y;
   let tmin = 0, tmax = maxT;
-  const slab = (ro, rd, lo, hi) => {
-    if (Math.abs(rd) < 1e-9) return ro >= lo && ro <= hi;
-    let t1 = (lo - ro) / rd, t2 = (hi - ro) / rd;
-    if (t1 > t2) { const t = t1; t1 = t2; t2 = t; }
-    if (t1 > tmin) tmin = t1;
-    if (t2 < tmax) tmax = t2;
-    return tmin <= tmax;
-  };
-  if (!slab(lox, ldx, -c.hx, c.hx)) return -1;
-  if (!slab(loz, ldz, -c.hz, c.hz)) return -1;
-  if (!slab(loy, ldy, c.y0, c.y1)) return -1;
+  // eixo x
+  if (Math.abs(ldx) < 1e-9) { if (lox < -c.hx || lox > c.hx) return -1; }
+  else { let t1 = (-c.hx - lox) / ldx, t2 = (c.hx - lox) / ldx; if (t1 > t2) { const t = t1; t1 = t2; t2 = t; } if (t1 > tmin) tmin = t1; if (t2 < tmax) tmax = t2; if (tmin > tmax) return -1; }
+  if (Math.abs(ldz) < 1e-9) { if (loz < -c.hz || loz > c.hz) return -1; }
+  else { let t1 = (-c.hz - loz) / ldz, t2 = (c.hz - loz) / ldz; if (t1 > t2) { const t = t1; t1 = t2; t2 = t; } if (t1 > tmin) tmin = t1; if (t2 < tmax) tmax = t2; if (tmin > tmax) return -1; }
+  if (Math.abs(ldy) < 1e-9) { if (loy < c.y0 || loy > c.y1) return -1; }
+  else { let t1 = (c.y0 - loy) / ldy, t2 = (c.y1 - loy) / ldy; if (t1 > t2) { const t = t1; t1 = t2; t2 = t; } if (t1 > tmin) tmin = t1; if (t2 < tmax) tmax = t2; if (tmin > tmax) return -1; }
   return tmin;
 };
 
 W.rayTerrain = function (o, d, maxT) {
   let prevT = 0;
   const step = 1.0;
-  for (let t = step; t <= maxT; t += step) {
-    const x = o.x + d.x * t, y = o.y + d.y * t, z = o.z + d.z * t;
+  for (let t = step; t <= maxT + step; t += step) {
+    const tt = Math.min(t, maxT);
+    const x = o.x + d.x * tt, y = o.y + d.y * tt, z = o.z + d.z * tt;
     if (y < W.height(x, z)) {
-      let lo = prevT, hi = t;
+      let lo = prevT, hi = tt;
       for (let i = 0; i < 6; i++) {
         const m = (lo + hi) / 2;
         if (o.y + d.y * m < W.height(o.x + d.x * m, o.z + d.z * m)) hi = m; else lo = m;
       }
       return hi;
     }
-    prevT = t;
+    prevT = tt;
+    if (tt >= maxT) break;
   }
   return -1;
 };
 
+// Percorre as células da grade ao longo do raio (rápido mesmo com milhares de colisores)
 // Retorna {t, kind:'static'|'wall'|'terrain', col}
 W.raycast = function (o, d, maxT, skipTerrain) {
   let best = maxT, hit = null;
-  const hd = Math.sqrt(d.x * d.x + d.z * d.z);
-  const ux = hd > 1e-6 ? d.x / hd : 0, uz = hd > 1e-6 ? d.z / hd : 0;
-  for (const c of W.statics) {
-    // descarte rápido pela distância horizontal do centro ao raio
-    const cx = c.x - o.x, cz = c.z - o.z;
-    if (hd > 1e-6) {
-      const proj = cx * ux + cz * uz;
-      if (proj < -c.br - 0.5 || proj > best * hd + c.br + 0.5) continue;
-      const px = cx - ux * proj, pz = cz - uz * proj;
-      if (px * px + pz * pz > (c.br + 0.5) * (c.br + 0.5)) continue;
-    } else if (cx * cx + cz * cz > (c.br + 0.5) * (c.br + 0.5)) continue;
-    const t = W.rayCollider(o, d, c, best);
-    if (t >= 0 && t < best) { best = t; hit = { t: t, kind: 'static', col: c }; }
+  const C = W.CELL, st = ++W._stamp;
+  let ix = Math.floor(o.x / C), iz = Math.floor(o.z / C);
+  const sx = d.x > 0 ? 1 : -1, sz = d.z > 0 ? 1 : -1;
+  const ax = Math.abs(d.x) > 1e-9, az = Math.abs(d.z) > 1e-9;
+  let tMaxX = ax ? ((ix + (sx > 0 ? 1 : 0)) * C - o.x) / d.x : Infinity;
+  let tMaxZ = az ? ((iz + (sz > 0 ? 1 : 0)) * C - o.z) / d.z : Infinity;
+  const tdx = ax ? C / Math.abs(d.x) : Infinity, tdz = az ? C / Math.abs(d.z) : Infinity;
+  let tCur = 0;
+  for (let guard = 0; guard < 400; guard++) {
+    const arr = W.grid.get(ix * 4096 + iz);
+    if (arr) for (const c of arr) {
+      if (c._s === st) continue;
+      c._s = st;
+      const t = W.rayCollider(o, d, c, best);
+      if (t >= 0 && t < best) { best = t; hit = { t: t, kind: 'static', col: c }; }
+    }
+    if (tCur > best) break;
+    if (tMaxX < tMaxZ) { ix += sx; tCur = tMaxX; tMaxX += tdx; } else { iz += sz; tCur = tMaxZ; tMaxZ += tdz; }
+    if (tCur === Infinity || tCur > best) break;
   }
   for (const c of W.dynamic) {
     if (c.dead) continue;
@@ -246,169 +303,31 @@ W.raycast = function (o, d, maxT, skipTerrain) {
   return hit;
 };
 
+// normal da superfície atingida (para faíscas e marcas de tiro)
+W.hitNormal = function (hit, p, out) {
+  out = out || new THREE.Vector3();
+  if (!hit || hit.kind === 'terrain') {
+    const e = 0.5;
+    return out.set(W.height(p.x - e, p.z) - W.height(p.x + e, p.z), 2 * e, W.height(p.x, p.z - e) - W.height(p.x, p.z + e)).normalize();
+  }
+  const c = hit.col;
+  if (c.type === 'c') {
+    if (Math.abs(p.y - c.y1) < 0.05) return out.set(0, 1, 0);
+    return out.set(p.x - c.x, 0, p.z - c.z).normalize();
+  }
+  if (Math.abs(p.y - c.y1) < 0.03) return out.set(0, 1, 0);
+  if (Math.abs(p.y - c.y0) < 0.03) return out.set(0, -1, 0);
+  const dx = p.x - c.x, dz = p.z - c.z;
+  const lx = dx * c.cs - dz * c.sn, lz = dx * c.sn + dz * c.cs;
+  let nx = 0, nz = 0;
+  if (Math.abs(lx) / c.hx > Math.abs(lz) / c.hz) nx = Math.sign(lx); else nz = Math.sign(lz);
+  return out.set(nx * c.cs + nz * c.sn, 0, -nx * c.sn + nz * c.cs);
+};
+
 W.areaAt = function (x, z) {
-  const r = Math.hypot(x, z);
-  if (r > 128) return 'PRAIA';
   for (const a of W.areaDefs) if (Math.hypot(x - a.x, z - a.z) < a.r) return a.name;
+  if (Math.hypot(x, z) > W.LAND_R - 8) return 'PRAIA';
   return null;
-};
-
-// ---------- construção da cena ----------
-W.build = function (scene, quality) {
-  W.scene = scene;
-  W.quality = quality;
-  const rnd = U.rng(1234);
-
-  // céu em degradê
-  const skyMat = new THREE.ShaderMaterial({
-    side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { top: { value: new THREE.Color(0x2c78d8) }, mid: { value: new THREE.Color(0x77b9f0) }, hor: { value: new THREE.Color(0xd6eeff) } },
-    vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-    fragmentShader: 'uniform vec3 top; uniform vec3 mid; uniform vec3 hor; varying vec3 vP; void main(){ float h = normalize(vP).y; vec3 c = mix(hor, mid, smoothstep(0.0, 0.18, h)); c = mix(c, top, smoothstep(0.18, 0.75, h)); gl_FragColor = vec4(c,1.0); }',
-  });
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 16), skyMat);
-  sky.renderOrder = -10;
-  scene.add(sky);
-  W.sky = sky;
-
-  W.buildClouds(scene, rnd);
-
-  // mar
-  const sea = new THREE.Mesh(new THREE.PlaneGeometry(2600, 2600, 1, 1), U.toon({ color: 0x35a6e0 }));
-  sea.rotation.x = -Math.PI / 2;
-  sea.position.y = W.SEA_Y;
-  scene.add(sea);
-  const shallow = new THREE.Mesh(new THREE.RingGeometry(140, 185, 96, 1), new THREE.MeshBasicMaterial({ color: 0x6fd3e8, transparent: true, opacity: 0.55, depthWrite: false }));
-  shallow.rotation.x = -Math.PI / 2;
-  shallow.position.y = W.SEA_Y + 0.02;
-  scene.add(shallow);
-
-  W.buildTerrain(scene);
-  W.occupied = [];
-  W.buildVillage(scene);
-  W.buildTrees(scene, rnd);
-  W.buildRuins(scene);
-  W.buildCrates(scene, rnd);
-  W.buildGrass(scene, quality);
-};
-
-W.buildClouds = function (scene, rnd) {
-  const parts = [];
-  for (let i = 0; i < 28; i++) {
-    const a = rnd() * Math.PI * 2, r = 380 + rnd() * 300;
-    const cx = Math.cos(a) * r, cz = Math.sin(a) * r, cy = 70 + rnd() * 120;
-    const n = 4 + Math.floor(rnd() * 5), w = 18 + rnd() * 26;
-    for (let j = 0; j < n; j++) {
-      const s = w * (0.35 + rnd() * 0.4);
-      const ox = (j / (n - 1) - 0.5) * w * 2.2, oy = rnd() * s * 0.4;
-      const p = U.part(U.blob(1, 2), 0xffffff, U.mat4(cx + ox * Math.cos(a + 1.57), cy + oy, cz + ox * Math.sin(a + 1.57), 0, 0, 0, s, s * 0.62, s));
-      // base levemente rosada, como as nuvens do vídeo
-      const pos = p.g.attributes.position, col = p.g.attributes.color;
-      for (let k = 0; k < pos.count; k++) {
-        const t = U.clamp((pos.getY(k) - cy) / (s * 0.5), 0, 1);
-        col.setXYZ(k, U.lerp(0.98, 1, t), U.lerp(0.86, 1, t), U.lerp(0.92, 1, t));
-      }
-      parts.push(p.g);
-    }
-  }
-  const m = new THREE.Mesh(U.merge(parts), U.toon({ vertexColors: true, emissive: 0x9aa6c0, fog: false }));
-  scene.add(m);
-  W.clouds = m;
-};
-
-W.buildTerrain = function (scene) {
-  const SIZE = 440, SEG = 176;
-  const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
-  geo.rotateX(-Math.PI / 2);
-  const pos = geo.attributes.position, n = pos.count;
-  const cols = new Float32Array(n * 3);
-  const g1 = new THREE.Color(0x58ad36), g2 = new THREE.Color(0x86ca45), g3 = new THREE.Color(0x3f9a2e);
-  const s1 = new THREE.Color(0xe8cd92), s2 = new THREE.Color(0xd7b676), wet = new THREE.Color(0xc9ad74);
-  const c = new THREE.Color(), cs = new THREE.Color();
-  for (let i = 0; i < n; i++) {
-    const x = pos.getX(i), z = pos.getZ(i);
-    const y = W.height(x, z);
-    pos.setY(i, y);
-    const v = U.fbm(x * 0.06, z * 0.06);
-    c.copy(g1).lerp(g2, U.smooth(0.45, 0.75, v)).lerp(g3, U.smooth(0.45, 0.2, v) * 0.7);
-    cs.copy(s1).lerp(s2, U.noise(x * 0.2, z * 0.2) * 0.6);
-    if (y < W.SEA_Y + 0.5) cs.copy(wet);
-    c.lerp(cs, W.sand(x, z));
-    cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
-  }
-  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-  geo.computeVertexNormals();
-  const m = new THREE.Mesh(geo, U.toon({ vertexColors: true }));
-  m.receiveShadow = true;
-  scene.add(m);
-  W.terrain = m;
-};
-
-// --- geometrias da vegetação ---
-W.treeGeo = function (seed) {
-  const r = U.rng(seed), parts = [];
-  const trunkCol = 0xc46f34, trunkDark = 0x8d4a23;
-  const lean = (r() - 0.5) * 0.25;
-  parts.push(U.part(new THREE.CylinderGeometry(0.2, 0.34, 3.2, 7), trunkCol, U.mat4(0, 1.6, 0, 0, 0, lean)));
-  for (let i = 0; i < 3; i++) {
-    const a = i * 2.1 + r();
-    const L = 1.4 + r() * 0.6;
-    parts.push(U.part(new THREE.CylinderGeometry(0.07, 0.14, L, 5), i ? trunkCol : trunkDark,
-      U.mat4(Math.cos(a) * 0.45, 2.9 + i * 0.2, Math.sin(a) * 0.45, Math.sin(a) * 0.75, 0, -Math.cos(a) * 0.75)));
-  }
-  const greens = [0x5fb83a, 0x7fd148, 0x6ac53f, 0x94de55];
-  const nb = 6 + Math.floor(r() * 3);
-  for (let i = 0; i < nb; i++) {
-    const a = (i / nb) * Math.PI * 2 + r() * 0.6, d = i === 0 ? 0 : 1.1 + r() * 0.9;
-    const s = 1.2 + r() * 0.7;
-    parts.push(U.part(U.blob(1, 1), greens[i % greens.length],
-      U.mat4(Math.cos(a) * d, 3.9 + r() * 0.9 + (i === 0 ? 0.6 : 0), Math.sin(a) * d, 0, r() * 3, 0, s * 1.25, s * 0.68, s * 1.25), 'radial'));
-  }
-  return U.build(parts);
-};
-
-W.palmGeo = function (seed) {
-  const r = U.rng(seed), parts = [];
-  const bend = 0.6 + r() * 0.8;
-  let x = 0, y = 0;
-  const segs = 6;
-  for (let i = 0; i < segs; i++) {
-    const t = i / segs, h = 1.05;
-    const ang = bend * t * 0.35;
-    parts.push(U.part(new THREE.CylinderGeometry(0.15, 0.19, h, 6), i % 2 ? 0xb98a52 : 0xa8784a, U.mat4(x, y + h / 2, 0, 0, 0, -ang)));
-    x += Math.sin(ang) * h; y += Math.cos(ang) * h;
-  }
-  for (let i = 0; i < 8; i++) {
-    const a = i / 8 * Math.PI * 2 + r() * 0.3;
-    const m = new THREE.Matrix4().makeTranslation(x, y, 0)
-      .multiply(new THREE.Matrix4().makeRotationY(a))
-      .multiply(new THREE.Matrix4().makeRotationZ(-0.55 - r() * 0.3))
-      .multiply(new THREE.Matrix4().makeTranslation(1.3, 0, 0))
-      .multiply(new THREE.Matrix4().makeScale(2.6, 0.12, 0.6));
-    parts.push(U.part(new THREE.BoxGeometry(1, 1, 1), i % 2 ? 0x4aa93a : 0x63c046, m, 'radial'));
-  }
-  parts.push(U.part(U.blob(0.35, 1), 0x6b4a2a, U.mat4(x, y - 0.1, 0), 'radial'));
-  return U.build(parts);
-};
-
-W.bushGeo = function () {
-  const parts = [];
-  parts.push(U.part(U.blob(1, 1), 0x4ea233, U.mat4(0, 0.5, 0, 0, 0, 0, 1.0, 0.75, 1.0), 'radial'));
-  parts.push(U.part(U.blob(1, 1), 0x63b93c, U.mat4(0.7, 0.4, 0.2, 0, 0, 0, 0.7, 0.55, 0.7), 'radial'));
-  parts.push(U.part(U.blob(1, 1), 0x5aae37, U.mat4(-0.6, 0.35, -0.3, 0, 0, 0, 0.65, 0.5, 0.65), 'radial'));
-  return U.build(parts);
-};
-
-W.instanced = function (scene, pair, mats, thick, shadow) {
-  const mat = U.toon({ vertexColors: true });
-  const main = new THREE.InstancedMesh(pair.g, mat, mats.length);
-  const ol = new THREE.InstancedMesh(pair.o, U.outlineMat(thick), mats.length);
-  for (let i = 0; i < mats.length; i++) { main.setMatrixAt(i, mats[i]); ol.setMatrixAt(i, mats[i]); }
-  main.castShadow = !!shadow;
-  main.receiveShadow = false;
-  main.computeBoundingSphere(); ol.computeBoundingSphere();
-  scene.add(main); scene.add(ol);
-  return main;
 };
 
 W.isFree = function (x, z, rad, list) {
@@ -416,153 +335,373 @@ W.isFree = function (x, z, rad, list) {
   return true;
 };
 
-W.buildTrees = function (scene, rnd) {
-  const keepOut = [W.areaDefs[0], W.areaDefs[1]];
-  const variants = [W.treeGeo(11), W.treeGeo(29), W.treeGeo(57)];
-  const vm = [[], [], []];
-  let placed = 0, tries = 0;
-  while (placed < 175 && tries < 9000) {
-    tries++;
-    const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 124;
-    const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    const f = W.areaDefs[2];
-    const inForest = Math.hypot(x - f.x, z - f.z) < f.r;
-    if (!inForest && rnd() > 0.32) continue;
-    if (W.sand(x, z) > 0.2 || W.pathDist(x, z) < 5) continue;
-    let bad = false;
-    for (const k of keepOut) if (Math.hypot(x - k.x, z - k.z) < k.r + 4) bad = true;
-    if (bad || !W.isFree(x, z, 4.5, W.occupied)) continue;
-    const s = 0.85 + rnd() * 0.5;
+// ---------- construção da cena ----------
+// construção em etapas (a tela de carregamento mostra o progresso)
+W.buildSteps = function (scene, quality) {
+  W.scene = scene;
+  W.quality = quality;
+  const rnd = U.rng(1234);
+  const P = [];
+  return [
+    ['Céu e nuvens', () => { W.buildSky(scene); W.buildClouds(scene, rnd); }],
+    ['Terreno', () => W.buildTerrain(scene)],
+    ['Mar', () => W.buildSea(scene)],
+    ['Vilas', () => { W.occupied = []; W.buildVillages(P); W.buildCentral(P); W.buildFishing(P); }],
+    ['Porto e fazenda', () => { W.buildPort(P, rnd); W.buildFarm(P); W.buildLighthouse(P); W.buildRuins(P); }],
+    ['Pedras e caixas', () => { W.buildRocks(P, rnd); W.buildCrates(P, rnd); W.solidMesh(scene, P, 0.04); }],
+    ['Árvores', () => W.buildTrees(scene, rnd)],
+    ['Grama', () => W.buildGrass(scene, quality)],
+  ];
+};
+W.build = function (scene, quality) { for (const s of W.buildSteps(scene, quality)) s[1](); };
+
+W.buildSky = function (scene) {
+  const skyMat = new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { top: { value: new THREE.Color(0x2a74d6) }, mid: { value: new THREE.Color(0x6fb6f2) }, hor: { value: new THREE.Color(0xd8f0ff) }, sun: { value: new THREE.Vector3(-0.55, 0.62, 0.42).normalize() } },
+    vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: [
+      'uniform vec3 top; uniform vec3 mid; uniform vec3 hor; uniform vec3 sun; varying vec3 vP;',
+      'void main(){ vec3 n = normalize(vP); float h = n.y;',
+      ' vec3 c = mix(hor, mid, smoothstep(0.0, 0.2, h)); c = mix(c, top, smoothstep(0.2, 0.8, h));',
+      ' float s = max(dot(n, sun), 0.0);',
+      ' c += vec3(1.0, 0.95, 0.8) * (smoothstep(0.9975, 0.999, s) * 0.9 + pow(s, 24.0) * 0.25);',
+      ' gl_FragColor = vec4(c, 1.0); }'].join('\n'),
+  });
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(1100, 32, 16), skyMat);
+  sky.renderOrder = -10;
+  scene.add(sky);
+  W.sky = sky;
+};
+
+// nuvens fofas: um anel no horizonte e uma camada sobre a ilha na altura do salto
+W.buildClouds = function (scene, rnd) {
+  const parts = [];
+  const cloud = (cx, cy, cz, w, a) => {
+    const n = 5 + Math.floor(rnd() * 5);
+    for (let j = 0; j < n; j++) {
+      const s = w * (0.32 + rnd() * 0.38);
+      const ox = (j / (n - 1) - 0.5) * w * 2.2, oy = rnd() * s * 0.45, oz = (rnd() - 0.5) * w * 0.6;
+      const p = U.part(U.blob(1, 1), 0xffffff, U.mat4(cx + ox * Math.cos(a) - oz * Math.sin(a), cy + oy, cz + ox * Math.sin(a) + oz * Math.cos(a), 0, 0, 0, s, s * 0.6, s));
+      const pos = p.g.attributes.position, col = p.g.attributes.color;
+      for (let k = 0; k < pos.count; k++) {
+        const t = U.clamp((pos.getY(k) - cy) / (s * 0.55), 0, 1);
+        col.setXYZ(k, U.lerp(0.96, 1, t), U.lerp(0.84, 1, t), U.lerp(0.9, 1, t));
+      }
+      parts.push(p.g);
+    }
+  };
+  for (let i = 0; i < 30; i++) {
+    const a = rnd() * Math.PI * 2, r = 480 + rnd() * 360;
+    cloud(Math.cos(a) * r, 80 + rnd() * 140, Math.sin(a) * r, 22 + rnd() * 30, a + 1.57);
+  }
+  for (let i = 0; i < 16; i++) {
+    const a = rnd() * Math.PI * 2, r = 40 + rnd() * 260;
+    cloud(Math.cos(a) * r, 150 + rnd() * 50, Math.sin(a) * r, 12 + rnd() * 16, rnd() * 6);
+  }
+  const m = new THREE.Mesh(U.merge(parts), U.toon({ vertexColors: true, emissive: 0xa0abc6, fog: false }));
+  scene.add(m);
+  W.clouds = m;
+};
+
+W.buildTerrain = function (scene) {
+  const SIZE = 560, SEG = 200;
+  const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position, n = pos.count;
+  const cols = new Float32Array(n * 3), uv = geo.attributes.uv;
+  const c = new THREE.Color();
+  W.tg = { S: SIZE, N: SEG, h: new Float32Array(n), sand: new Float32Array(n), col: cols };
+  for (let i = 0; i < n; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
     const y = W.height(x, z);
-    const v = placed % 3;
-    vm[v].push(U.mat4(x, y - 0.1, z, 0, rnd() * Math.PI * 2, 0, s, s, s));
-    W.occupied.push([x, z, 3]);
-    W.addCollider({ type: 'c', x: x, z: z, r: 0.38 * s, y0: y - 1, y1: y + 3.4 * s });
-    // copa bloqueia tiros acima do tronco
+    pos.setY(i, y);
+    W.groundColor(x, z, y, c);
+    cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
+    W.tg.h[i] = y; W.tg.sand[i] = W.sand(x, z);
+    uv.setXY(i, x * TX.SCALE.ground, z * TX.SCALE.ground);
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, TX.mat('ground'));
+  m.receiveShadow = true;
+  scene.add(m);
+  W.terrain = m;
+};
+
+// leitura bilinear da grade do terreno (barato; usado pela grama)
+W.grid2 = function (arr, x, z, stride, off) {
+  const T = W.tg, fx = U.clamp((x + T.S / 2) / T.S * T.N, 0, T.N - 0.001), fz = U.clamp((z + T.S / 2) / T.S * T.N, 0, T.N - 0.001);
+  const ix = Math.floor(fx), iz = Math.floor(fz), tx = fx - ix, tz = fz - iz, R = T.N + 1;
+  stride = stride || 1; off = off || 0;
+  const a = arr[(iz * R + ix) * stride + off], b = arr[(iz * R + ix + 1) * stride + off];
+  const c = arr[((iz + 1) * R + ix) * stride + off], d = arr[((iz + 1) * R + ix + 1) * stride + off];
+  return (a + (b - a) * tx) + ((c + (d - c) * tx) - (a + (b - a) * tx)) * tz;
+};
+
+// mar em desenho: raso turquesa perto da areia, espuma batendo na praia e brilho das ondas
+W.buildSea = function (scene) {
+  const N = 192, EXT = 760, data = new Uint8Array(N * N * 4);
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const x = (i / (N - 1) - 0.5) * EXT, z = (j / (N - 1) - 0.5) * EXT;
+    const depth = U.clamp((W.SEA_Y - W.height(x, z)) / 3.2, 0, 1);
+    const k = (j * N + i) * 4;
+    data[k] = Math.round(depth * 255); data[k + 1] = data[k + 2] = 0; data[k + 3] = 255;
+  }
+  const dt = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
+  dt.magFilter = THREE.LinearFilter; dt.minFilter = THREE.LinearFilter; dt.needsUpdate = true;
+  const mat = new THREE.ShaderMaterial({
+    fog: true,
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
+      uTime: { value: 0 }, uDepth: { value: null }, uExt: { value: EXT },
+      uDeep: { value: new THREE.Color(0x1f8fd6) }, uShallow: { value: new THREE.Color(0x5fe0e0) }, uFar: { value: new THREE.Color(0x2a7fd0) },
+    }]),
+    vertexShader: [
+      '#include <fog_pars_vertex>',
+      'varying vec3 vW;',
+      'void main(){ vec4 wp = modelMatrix * vec4(position, 1.0); vW = wp.xyz; vec4 mvPosition = viewMatrix * wp; gl_Position = projectionMatrix * mvPosition;',
+      '#include <fog_vertex>',
+      '}'].join('\n'),
+    fragmentShader: [
+      '#include <fog_pars_fragment>',
+      'uniform float uTime; uniform sampler2D uDepth; uniform float uExt; uniform vec3 uDeep; uniform vec3 uShallow; uniform vec3 uFar; varying vec3 vW;',
+      'void main(){',
+      ' vec2 uv = vW.xz / uExt + 0.5;',
+      ' float inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);',
+      ' float d = mix(1.0, texture2D(uDepth, uv).r, inside);',
+      ' vec3 c = mix(uShallow, uDeep, smoothstep(0.0, 0.85, d));',
+      ' c = mix(c, uFar, smoothstep(300.0, 600.0, length(vW.xz)));',
+      ' float w = sin(vW.x * 0.12 + uTime * 0.9) * sin(vW.z * 0.1 - uTime * 0.7) + sin((vW.x + vW.z) * 0.21 + uTime * 1.4) * 0.5;',
+      ' c += vec3(0.08, 0.1, 0.1) * smoothstep(0.85, 1.3, w);',
+      ' float foamLine = smoothstep(0.12, 0.0, d);',
+      ' float bands = smoothstep(0.6, 1.0, sin(d * 38.0 - uTime * 2.2)) * smoothstep(0.32, 0.05, d);',
+      ' c = mix(c, vec3(0.97, 1.0, 1.0), clamp(foamLine * 0.9 + bands * 0.65, 0.0, 1.0));',
+      ' gl_FragColor = vec4(c, 1.0);',
+      '#include <fog_fragment>',
+      '}'].join('\n'),
+  });
+  mat.uniforms.uDepth.value = dt;
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000, 1, 1), mat);
+  sea.rotation.x = -Math.PI / 2;
+  sea.position.y = W.SEA_Y;
+  scene.add(sea);
+  W.seaMat = mat;
+};
+
+// --- vegetação ---
+W.treeGeo = function (seed) {
+  const r = U.rng(seed), parts = [];
+  const trunkCol = 0xc46f34, trunkDark = 0x8d4a23;
+  const lean = (r() - 0.5) * 0.25;
+  parts.push(U.part(new THREE.CylinderGeometry(0.2, 0.36, 3.2, 8), trunkCol, U.mat4(0, 1.6, 0, 0, 0, lean), null, 'bark'));
+  for (let i = 0; i < 3; i++) {
+    const a = i * 2.1 + r();
+    const L = 1.4 + r() * 0.6;
+    parts.push(U.part(new THREE.CylinderGeometry(0.07, 0.14, L, 6), i ? trunkCol : trunkDark,
+      U.mat4(Math.cos(a) * 0.45, 2.9 + i * 0.2, Math.sin(a) * 0.45, Math.sin(a) * 0.75, 0, -Math.cos(a) * 0.75), null, 'bark'));
+  }
+  const greens = [0x5fb83a, 0x7fd148, 0x6ac53f, 0x94de55, 0x52a834];
+  const nb = 7 + Math.floor(r() * 3);
+  for (let i = 0; i < nb; i++) {
+    const a = (i / nb) * Math.PI * 2 + r() * 0.6, d = i === 0 ? 0 : 1.1 + r() * 0.9;
+    const s = 1.15 + r() * 0.7;
+    parts.push(U.part(U.blob(1, 1), greens[i % greens.length],
+      U.mat4(Math.cos(a) * d, 3.9 + r() * 0.9 + (i === 0 ? 0.6 : 0), Math.sin(a) * d, 0, r() * 3, 0, s * 1.25, s * 0.68, s * 1.25), 'radial', 'leaf'));
+  }
+  return U.buildBy(parts);
+};
+
+W.pineGeo = function (seed) {
+  const r = U.rng(seed), parts = [];
+  parts.push(U.part(new THREE.CylinderGeometry(0.14, 0.26, 2.2, 7), 0x8d5a33, U.mat4(0, 1.1, 0), null, 'bark'));
+  for (let i = 0; i < 4; i++) {
+    const s = 2.3 - i * 0.45;
+    parts.push(U.part(new THREE.ConeGeometry(s, 1.9, 9), i % 2 ? 0x3f8f3a : 0x4fa043, U.mat4(0, 2.2 + i * 1.05, 0, 0, r() * 3, 0), 'radial', 'leaf'));
+  }
+  return U.buildBy(parts);
+};
+
+W.palmGeo = function (seed) {
+  const r = U.rng(seed), parts = [];
+  const bend = 0.6 + r() * 0.8;
+  let x = 0, y = 0;
+  for (let i = 0; i < 6; i++) {
+    const t = i / 6, h = 1.05, ang = bend * t * 0.35;
+    parts.push(U.part(new THREE.CylinderGeometry(0.15, 0.19, h, 7), i % 2 ? 0xb98a52 : 0xa8784a, U.mat4(x, y + h / 2, 0, 0, 0, -ang), null, 'bark'));
+    x += Math.sin(ang) * h; y += Math.cos(ang) * h;
+  }
+  for (let i = 0; i < 9; i++) {
+    const a = i / 9 * Math.PI * 2 + r() * 0.3;
+    const m = new THREE.Matrix4().makeTranslation(x, y, 0)
+      .multiply(new THREE.Matrix4().makeRotationY(a))
+      .multiply(new THREE.Matrix4().makeRotationZ(-0.5 - r() * 0.35))
+      .multiply(new THREE.Matrix4().makeTranslation(1.3, 0, 0))
+      .multiply(new THREE.Matrix4().makeScale(2.7, 0.1, 0.7));
+    parts.push(U.part(new THREE.BoxGeometry(1, 1, 1), i % 2 ? 0x4aa93a : 0x63c046, m, 'radial', 'leaf'));
+  }
+  parts.push(U.part(U.blob(0.36, 1), 0x6b4a2a, U.mat4(x, y - 0.1, 0), 'radial', 'bark'));
+  return U.buildBy(parts);
+};
+
+W.bushGeo = function () {
+  const parts = [];
+  parts.push(U.part(U.blob(1, 1), 0x4ea233, U.mat4(0, 0.5, 0, 0, 0, 0, 1.0, 0.75, 1.0), 'radial', 'leaf'));
+  parts.push(U.part(U.blob(1, 1), 0x63b93c, U.mat4(0.7, 0.4, 0.2, 0, 0, 0, 0.7, 0.55, 0.7), 'radial', 'leaf'));
+  parts.push(U.part(U.blob(1, 1), 0x5aae37, U.mat4(-0.6, 0.35, -0.3, 0, 0, 0, 0.65, 0.5, 0.65), 'radial', 'leaf'));
+  return U.buildBy(parts);
+};
+
+W.instanced = function (scene, pack, mats, thick, shadow) {
+  if (!mats.length) return;
+  for (const k in pack.mats) {
+    const main = new THREE.InstancedMesh(pack.mats[k], TX.mat(k), mats.length);
+    for (let i = 0; i < mats.length; i++) main.setMatrixAt(i, mats[i]);
+    main.castShadow = !!shadow;
+    main.computeBoundingSphere();
+    scene.add(main);
+  }
+  // contorno só nas instâncias mais próximas do jogador (atualizado em W.update)
+  const maxOl = Math.min(mats.length, 45);
+  const ol = new THREE.InstancedMesh(pack.o, U.outlineMat(thick), maxOl);
+  ol.frustumCulled = false;
+  const pos = mats.map(m => [m.elements[12], m.elements[14]]);
+  W.olSets.push({ mesh: ol, mats: mats, pos: pos, max: maxOl });
+  scene.add(ol);
+};
+W.olSets = [];
+W.updateOutlines = function (px, pz) {
+  for (const s of W.olSets) {
+    const idx = s.pos.map((p, i) => [(p[0] - px) * (p[0] - px) + (p[1] - pz) * (p[1] - pz), i]);
+    idx.sort((a, b) => a[0] - b[0]);
+    let n = 0;
+    for (let k = 0; k < s.max; k++) {
+      if (idx[k][0] > 95 * 95) break;
+      s.mesh.setMatrixAt(n++, s.mats[idx[k][1]]);
+    }
+    s.mesh.count = n;
+    s.mesh.instanceMatrix.needsUpdate = true;
+  }
+};
+
+W.keepOutAreas = function (x, z, extra) {
+  for (const a of W.areaDefs) {
+    if (!a.flat) continue;
+    if (Math.hypot(x - a.x, z - a.z) < a.r + (extra || 0)) return true;
+  }
+  return false;
+};
+
+W.buildTrees = function (scene, rnd) {
+  const variants = [W.treeGeo(11), W.treeGeo(29), W.treeGeo(57)], vm = [[], [], []];
+  const pines = W.pineGeo(5), pm0 = [];
+  const F = W.A.FLORESTA, Lg = W.A.LAGOA, Cp = W.A.CAMPO;
+  let placed = 0, tries = 0;
+  while (placed < 240 && tries < 16000) {
+    tries++;
+    const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * (W.LAND_R - 10);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const inForest = Math.hypot(x - F.x, z - F.z) < F.r + 8;
+    const nearLake = Math.abs(Math.hypot(x - Lg.x, z - Lg.z) - Lg.r - 6) < 7;
+    if (!inForest && !nearLake && rnd() > 0.28) continue;
+    if (W.sand(x, z) > 0.2 || W.pathDist(x, z) < 5 || W.height(x, z) < 0.2) continue;
+    if (W.keepOutAreas(x, z, 5) || !W.isFree(x, z, inForest ? 3.6 : 4.5, W.occupied)) continue;
+    const s = 0.85 + rnd() * 0.55, y = W.height(x, z);
+    const pine = inForest ? rnd() < 0.4 : Math.hypot(x - Cp.x, z - Cp.z) < Cp.r + 20 && rnd() < 0.6;
+    (pine ? pm0 : vm[placed % 3]).push(U.mat4(x, y - 0.1, z, 0, rnd() * Math.PI * 2, 0, s, s, s));
+    W.occupied.push([x, z, 2.6]);
+    W.addCollider({ type: 'c', x: x, z: z, r: (pine ? 0.3 : 0.38) * s, y0: y - 1, y1: y + 3.4 * s });
     placed++;
   }
   variants.forEach((g, i) => W.instanced(scene, g, vm[i], 0.05, true));
+  W.instanced(scene, pines, pm0, 0.05, true);
 
-  // coqueiros na orla
-  const palms = [W.palmGeo(3), W.palmGeo(8)];
-  const pm = [[], []];
-  for (let i = 0; i < 60; i++) {
-    const a = rnd() * Math.PI * 2, r = 127 + rnd() * 14;
-    const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (!W.isFree(x, z, 3, W.occupied)) continue;
-    const y = W.height(x, z), s = 0.9 + rnd() * 0.45;
+  // coqueiros na orla e nas vilas litorâneas
+  const palms = [W.palmGeo(3), W.palmGeo(8)], pm = [[], []];
+  const addPalm = (x, z, i, s) => {
+    const y = W.height(x, z);
+    if (y < W.SEA_Y + 0.3) return;
     pm[i % 2].push(U.mat4(x, y - 0.1, z, 0, rnd() * Math.PI * 2, 0, s, s, s));
     W.occupied.push([x, z, 2]);
     W.addCollider({ type: 'c', x: x, z: z, r: 0.22 * s, y0: y - 1, y1: y + 5 * s });
+  };
+  for (let i = 0; i < 130; i++) {
+    const a = rnd() * Math.PI * 2, r = W.LAND_R - 16 + rnd() * 18;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (!W.isFree(x, z, 3, W.occupied) || W.keepOutAreas(x, z, 0)) continue;
+    addPalm(x, z, i, 0.9 + rnd() * 0.45);
+  }
+  for (const k of ['BAIRRO TROPICAL', 'VILA PESQUEIRA', 'VILA CENTRAL']) {
+    const v = W.A[k];
+    for (let i = 0; i < 26; i++) {
+      const a = rnd() * Math.PI * 2, r = 5 + rnd() * (v.r - 2);
+      const x = v.x + Math.cos(a) * r, z = v.z + Math.sin(a) * r;
+      if (!W.isFree(x, z, 1.6, W.occupied) || W.pathDist(x, z) < 3) continue;
+      addPalm(x, z, i, 0.75 + rnd() * 0.3);
+    }
   }
   palms.forEach((g, i) => W.instanced(scene, g, pm[i], 0.04, true));
 
-  // arbustos
   const bm = [];
-  for (let i = 0; i < 170; i++) {
-    const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 126;
+  for (let i = 0; i < 200; i++) {
+    const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * (W.LAND_R - 8);
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (W.sand(x, z) > 0.3 || !W.isFree(x, z, 1.5, W.occupied)) continue;
+    if (W.sand(x, z) > 0.3 || !W.isFree(x, z, 1.5, W.occupied) || W.height(x, z) < 0) continue;
     const s = 0.6 + rnd() * 0.7;
     bm.push(U.mat4(x, W.height(x, z) - 0.15, z, 0, rnd() * 6, 0, s, s, s));
     W.occupied.push([x, z, 1]);
   }
   W.instanced(scene, W.bushGeo(), bm, 0.04, true);
-  // coqueiros entre as casas do Bairro Tropical
-  const v = W.areaDefs[1], vp = [[], []];
-  for (let i = 0; i < 26; i++) {
-    const a = rnd() * Math.PI * 2, r = 6 + rnd() * 30;
-    const x = v.x + Math.cos(a) * r, z = v.z + Math.sin(a) * r;
-    if (!W.isFree(x, z, 1.5, W.occupied)) continue;
-    const s = 0.75 + rnd() * 0.3, y = W.height(x, z);
-    vp[i % 2].push(U.mat4(x, y - 0.1, z, 0, rnd() * 6, 0, s, s, s));
-    W.occupied.push([x, z, 2]);
-    W.addCollider({ type: 'c', x: x, z: z, r: 0.2 * s, y0: y - 1, y1: y + 5 * s });
-  }
-  palms.forEach((g, i) => W.instanced(scene, g, vp[i], 0.04, true));
 };
 
+// junta todas as construções em uma malha por textura + uma casca de contorno
 W.solidMesh = function (scene, parts, thick) {
-  const pair = U.build(parts);
-  const m = new THREE.Mesh(pair.g, U.toon({ vertexColors: true }));
-  m.castShadow = true; m.receiveShadow = true;
-  scene.add(m);
-  scene.add(new THREE.Mesh(pair.o, U.outlineMat(thick)));
-  return m;
+  const pack = U.buildBy(parts);
+  for (const k in pack.mats) {
+    const m = new THREE.Mesh(pack.mats[k], TX.mat(k));
+    m.castShadow = true; m.receiveShadow = true;
+    scene.add(m);
+  }
+  scene.add(new THREE.Mesh(pack.o, U.outlineMat(thick)));
 };
 
 // bloco com colisor; walkable permite subir em cima
-W.box = function (parts, x, z, w, h, d, rot, color, y0, opts) {
-  const y = (y0 === undefined ? W.height(x, z) - 0.3 : y0);
-  parts.push(U.part(new THREE.BoxGeometry(w, h, d), color, U.mat4(x, y + h / 2, z, 0, rot, 0), 'radial'));
+W.box = function (parts, x, z, w, h, d, rot, color, y0, opts, mat) {
+  const y = (y0 === undefined || y0 === null ? W.height(x, z) - 0.3 : y0);
+  parts.push(U.part(new THREE.BoxGeometry(w, h, d), color, U.mat4(x, y + h / 2, z, 0, rot, 0), 'radial', mat || 'plain'));
+  if (opts === false) return null;
   return W.addCollider(Object.assign({ type: 'b', x: x, z: z, hx: w / 2, hz: d / 2, rot: rot, y0: y, y1: y + h, walkable: true }, opts || {}));
 };
 
-W.buildRuins = function (scene) {
-  const a = W.areaDefs[0], parts = [];
-  const stone = [0xe6d7b4, 0xd9c9a3, 0xeee2c6];
-  const base = a.h - 0.3;
-  const R = (i) => stone[i % 3];
-  // pátio quebrado: muros baixos com falhas
-  const wall = (x0, z0, x1, z1, gaps, hBase) => {
-    const len = Math.hypot(x1 - x0, z1 - z0), rot = -Math.atan2(z1 - z0, x1 - x0);
-    const n = Math.round(len / 2.6);
-    for (let i = 0; i < n; i++) {
-      if (gaps.indexOf(i) >= 0) continue;
-      const t = (i + 0.5) / n;
-      const h = hBase * (0.55 + U.hash2(x0 + i, z0) * 0.6);
-      W.box(parts, U.lerp(x0, x1, t) + a.x, U.lerp(z0, z1, t) + a.z, len / n - 0.15, h, 1.0, rot, R(i), base);
-    }
-  };
-  wall(-16, -16, 16, -16, [2, 3, 8], 1.8);
-  wall(16, -16, 16, 16, [5, 6], 1.6);
-  wall(16, 16, -16, 16, [1, 7, 8], 1.8);
-  wall(-16, 16, -16, -16, [3, 4, 5], 1.4);
-  // blocos soltos e plataformas no centro
-  const blocks = [[-6, -4, 3, 0.9, 3, 0.2], [5, 6, 4, 1.1, 2.4, -0.4], [7, -7, 2.2, 0.8, 2.2, 0.7], [-8, 8, 3.5, 0.7, 2, 0.1],
-    [0, 0, 5, 0.6, 5, 0], [0, 0, 3, 1.2, 3, 0.785], [-25, 4, 3, 1, 2, 0.3], [24, -6, 2.5, 0.9, 3, -0.2], [3, -25, 3, 1.2, 2, 0.5], [-4, 26, 4, 0.8, 2.5, 0.2]];
-  blocks.forEach((b, i) => W.box(parts, a.x + b[0], a.z + b[1], b[2], b[3], b[4], b[5], R(i), base));
-  // pilares claros
-  const pill = [[-12, -12], [12, -12], [12, 12], [-12, 12], [-20, -22], [22, 20]];
-  pill.forEach((p, i) => {
-    const h = i < 4 ? 4.2 : 2.6;
-    const x = a.x + p[0], z = a.z + p[1];
-    parts.push(U.part(new THREE.CylinderGeometry(0.55, 0.62, h, 10), 0xf4efe2, U.mat4(x, base + h / 2, z)));
-    parts.push(U.part(new THREE.BoxGeometry(1.5, 0.35, 1.5), 0xe2d6bb, U.mat4(x, base + h + 0.17, z), 'radial'));
-    W.addCollider({ type: 'c', x: x, z: z, r: 0.62, y0: base, y1: base + h + 0.4 });
-  });
-  W.solidMesh(scene, parts, 0.05);
+// ---------- construções ----------
+// casa genérica com interior: paredes com porta e janelas, piso, forro, telhado e móveis
+W.HOUSE_STYLES = {
+  tropical: { wall: 0xf7f5ef, band: 0xe2763a, frame: 0x2f6fd6, roof: 0xd84f2a, wallMat: 'plaster' },
+  colorida: { wall: null, band: 0xffffff, frame: 0xffffff, roof: null, wallMat: 'plaster' },
+  pescador: { wall: null, band: 0x6b4a2a, frame: 0xf2efe6, roof: 0x7d8a8f, wallMat: 'wood', roofMat: 'metal' },
 };
+const PASTEL = [0xf6d36b, 0xf2a7b8, 0x9fd3f0, 0xa9e3b8, 0xf5b77a, 0xd6c2f2];
+const ROOFS = [0xd84f2a, 0xc0392b, 0x2f7d8f, 0x8b5a2b, 0xd86f2a];
+const BOATWOOD = [0x4f86c6, 0x3fa36b, 0xd95f4a, 0xe3b43c];
 
-// Bairro Tropical: casas brancas com telhado de cerâmica, janelas azuis com venezianas e interior visitável
-W.houses = [];
-W.lootSpots = [];
-W.buildVillage = function (scene) {
-  const a = W.areaDefs[1], parts = [];
-  const base = a.h - 0.05;
-  const spots = [[-17, -15, 0], [-2, -16, 0.04], [13, -14, -0.04], [-18, 1, Math.PI], [-3, 0, Math.PI], [12, 2, Math.PI + 0.05],
-    [-16, 16, 0], [-1, 17, 0.03], [14, 17, -0.03], [27, -3, Math.PI / 2], [-29, 3, -Math.PI / 2]];
-  spots.forEach((p, i) => W.house(parts, a.x + p[0], a.z + p[1], p[2], base, i));
-  W.solidMesh(scene, parts, 0.035);
-};
-
-W.house = function (parts, x, z, rot, base, idx) {
-  const HW = 3.4, HD = 2.8, H = 2.9, T = 0.22;
+W.house = function (parts, x, z, rot, base, idx, styleName, size) {
+  const st = W.HOUSE_STYLES[styleName || 'tropical'];
+  const HW = size ? size[0] : 3.4, HD = size ? size[1] : 2.8, H = 2.9, T = 0.22;
   const c = Math.cos(rot), s = Math.sin(rot);
   const wx = (lx, lz) => x + lx * c + lz * s, wz = (lx, lz) => z - lx * s + lz * c;
-  const WALL = 0xf7f5ef, BAND = 0xe2763a, BLUE = 0x2f6fd6, WOOD = 0x9a6233;
-  const box = (lx, ly, lz, w, h, d, col, collide, walk) => {
-    parts.push(U.part(new THREE.BoxGeometry(w, h, d), col, U.mat4(wx(lx, lz), base + ly + h / 2, wz(lx, lz), 0, rot, 0), 'radial'));
+  const WALL = st.wall !== null ? st.wall : (styleName === 'pescador' ? BOATWOOD[idx % 4] : PASTEL[idx % PASTEL.length]);
+  const ROOF = st.roof !== null ? st.roof : ROOFS[idx % ROOFS.length];
+  const BAND = st.band, FRAME = st.frame, WOOD = 0x9a6233;
+  const box = (lx, ly, lz, w, h, d, col, collide, walk, mat) => {
+    parts.push(U.part(new THREE.BoxGeometry(w, h, d), col, U.mat4(wx(lx, lz), base + ly + h / 2, wz(lx, lz), 0, rot, 0), 'radial', mat || 'plain'));
     if (collide) W.addCollider({ type: 'b', x: wx(lx, lz), z: wz(lx, lz), hx: w / 2, hz: d / 2, rot: rot, y0: base + ly, y1: base + ly + h, walkable: !!walk });
   };
-  // parede com aberturas [centro, largura, y0, y1]; along = 'x' (frente/fundos) ou 'z' (laterais)
   const wallRun = (along, fixed, half, ops, out) => {
     let cur = -half;
     const seg = (a, b, y0, y1, band) => {
       const len = b - a, mid = (a + b) / 2;
       if (len <= 0.01 || y1 - y0 <= 0.01) return;
-      if (along === 'x') box(mid, y0, fixed, len, y1 - y0, T, WALL, true);
-      else box(fixed, y0, mid, T, y1 - y0, len, WALL, true);
+      if (along === 'x') box(mid, y0, fixed, len, y1 - y0, T, WALL, true, false, st.wallMat);
+      else box(fixed, y0, mid, T, y1 - y0, len, WALL, true, false, st.wallMat);
       if (band) {
         if (along === 'x') box(mid, 0, fixed, len, 0.32, T + 0.05, BAND, false);
         else box(fixed, 0, mid, T + 0.05, 0.32, len, BAND, false);
@@ -574,114 +713,348 @@ W.house = function (parts, x, z, rot, base, idx) {
       seg(cur, a, 0, H, true);
       if (o[2] > 0) seg(a, b, 0, o[2], true);
       seg(a, b, o[3], H, false);
-      // moldura azul e venezianas abertas (janelas) ou batente de madeira (porta)
-      const isDoor = o[2] <= 0, fc = isDoor ? WOOD : BLUE, w = o[1], hh = o[3] - o[2];
-      const fr = (p, q, y, fw, fh) => (along === 'x' ? box(p, y, fixed, fw, fh, T + 0.08, fc, false) : box(fixed, y, p, T + 0.08, fh, fw, fc, false));
-      fr(a - 0.04, 0, o[2], 0.08, hh); fr(b + 0.04, 0, o[2], 0.08, hh);
-      fr(o[0], 0, o[3], w + 0.16, 0.08);
+      const isDoor = o[2] <= 0, fc = isDoor ? WOOD : FRAME, w = o[1], hh = o[3] - o[2];
+      const fr = (p, y, fw, fh) => (along === 'x' ? box(p, y, fixed, fw, fh, T + 0.08, fc, false, false, isDoor ? 'wood' : 'plain') : box(fixed, y, p, T + 0.08, fh, fw, fc, false, false, isDoor ? 'wood' : 'plain'));
+      fr(a - 0.04, o[2], 0.08, hh); fr(b + 0.04, o[2], 0.08, hh);
+      fr(o[0], o[3], w + 0.16, 0.08);
       if (!isDoor) {
-        fr(o[0], 0, o[2] - 0.08, w + 0.16, 0.08);
+        fr(o[0], o[2] - 0.08, w + 0.16, 0.08);
         for (const sd of [-1, 1]) {
           const p = o[0] + sd * (w / 2 + w / 4 + 0.1);
-          if (along === 'x') box(p, o[2] - 0.05, fixed + out * (T / 2 + 0.05), w / 2, hh + 0.1, 0.05, BLUE, false);
-          else box(fixed + out * (T / 2 + 0.05), o[2] - 0.05, p, 0.05, hh + 0.1, w / 2, BLUE, false);
+          if (along === 'x') box(p, o[2] - 0.05, fixed + out * (T / 2 + 0.05), w / 2, hh + 0.1, 0.05, FRAME === 0xffffff ? 0x3c7fc4 : FRAME, false, false, 'wood');
+          else box(fixed + out * (T / 2 + 0.05), o[2] - 0.05, p, 0.05, hh + 0.1, w / 2, FRAME === 0xffffff ? 0x3c7fc4 : FRAME, false, false, 'wood');
         }
+        // floreira
+        if (along === 'x') box(o[0], o[2] - 0.32, fixed + out * (T / 2 + 0.16), w * 0.9, 0.22, 0.24, 0x8a5a33, false, false, 'wood');
+      } else {
+        // porta aberta encostada na parede, por dentro
+        if (along === 'x') box(a + 0.08, 0, fixed - out * (T / 2 + 0.5), 0.06, o[3] - 0.05, 0.9, 0x7b4a28, false, false, 'wood');
       }
       cur = b;
     }
     seg(cur, half, 0, H, true);
   };
-  wallRun('x', HD, HW + T / 2, [[-1.0, 1.3, 0, 2.2], [1.6, 1.1, 1.0, 2.0]], 1);
-  wallRun('x', -HD, HW + T / 2, [[0.8 * (idx % 2 ? 1 : -1), 1.1, 1.0, 2.0]], -1);
+  const dx = -HW * 0.3;
+  wallRun('x', HD, HW + T / 2, [[dx, 1.3, 0, 2.2], [HW * 0.47, 1.1, 1.0, 2.0]], 1);
+  wallRun('x', -HD, HW + T / 2, [[HW * 0.24 * (idx % 2 ? 1 : -1), 1.1, 1.0, 2.0]], -1);
   wallRun('z', HW, HD - T / 2, [[0.3, 1.1, 1.0, 2.0]], 1);
   wallRun('z', -HW, HD - T / 2, [[-0.3, 1.1, 1.0, 2.0]], -1);
-  // piso, forro, telhado de quatro águas e chaminé
-  box(0, -0.4, 0, HW * 2, 0.5, HD * 2, 0xd4823a, true, true);
-  box(0, H, 0, HW * 2 + T, 0.1, HD * 2 + T, 0xffffff, false);
+  box(0, -0.4, 0, HW * 2, 0.5, HD * 2, 0xc8803e, true, true, 'wood');
+  box(0, H, 0, HW * 2 + T, 0.1, HD * 2 + T, 0xfbfbf6, false, false, 'plaster');
+  // forro e telhado bloqueiam câmera e tiros (antes a câmera atravessava o forro)
+  W.addCollider({ type: 'b', x: x, z: z, hx: HW + 0.5, hz: HD + 0.5, rot: rot, y0: base + H, y1: base + H + 1.2, walkable: false, ceiling: true });
+  // degrau na porta
+  box(dx, -0.35, HD + 0.45, 1.6, 0.38, 0.7, 0xd9d2c4, true, true, 'stone');
   const roof = new THREE.ConeGeometry(1, 1, 4, 1).rotateY(Math.PI / 4);
-  parts.push(U.part(roof, 0xd84f2a, new THREE.Matrix4().compose(new THREE.Vector3(x, base + H + 0.1 + 0.8, z),
-    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, 0)), new THREE.Vector3((HW * 2 + 1) / Math.SQRT2, 1.6, (HD * 2 + 1) / Math.SQRT2)), 'radial'));
-  box(HW * 0.45, H + 0.5, -HD * 0.3, 0.45, 1.0, 0.45, 0xf2efe6, false);
+  parts.push(U.part(roof, ROOF, new THREE.Matrix4().compose(new THREE.Vector3(x, base + H + 0.1 + 0.85, z),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, 0)), new THREE.Vector3((HW * 2 + 1.1) / Math.SQRT2, 1.7, (HD * 2 + 1.1) / Math.SQRT2)), 'radial', st.roofMat || 'roof'));
+  box(HW * 0.45, H + 0.5, -HD * 0.3, 0.45, 1.1, 0.45, 0xeeeae0, false, false, 'stone');
   // móveis
-  box(-HW + 0.7, 0.1, -HD + 1.15, 1.0, 0.35, 1.9, WOOD, true, true);
-  box(-HW + 0.7, 0.45, -HD + 1.35, 0.95, 0.1, 1.4, 0x2f63c8, false);
-  box(-HW + 0.7, 0.45, -HD + 0.45, 0.75, 0.12, 0.35, 0xffffff, false);
-  box(HW - 1.1, 0.1, 0.3, 0.18, 0.66, 0.18, WOOD, true);
-  box(HW - 1.1, 0.76, 0.3, 1.1, 0.08, 0.75, 0xb57a42, false);
-  box(0.6, 0.1, -HD + 0.38, 1.3, 1.5, 0.4, 0x7a4a26, true);
-  box(0.4, 0.1, 0.6, 1.6, 0.02, 1.1, 0x3f9f6a, false);
-  // lixeira verde do lado de fora
-  box(HW + 0.75, 0, HD + 0.5, 0.55, 0.85, 0.55, 0x2e9a4a, true);
-  W.lootSpots.push([wx(0.2, 0.8), wz(0.2, 0.8)], [wx(-1.8, 1.6), wz(-1.8, 1.6)]);
-  W.occupied.push([x, z, 6.5]);
-  W.houses.push({ x: x, z: z, c: c, s: s, hw: HW + 0.35, hd: HD + 0.35 });
+  box(-HW + 0.7, 0.1, -HD + 1.15, 1.0, 0.35, 1.9, 0x9a6233, true, true, 'wood');
+  box(-HW + 0.7, 0.45, -HD + 1.35, 0.95, 0.12, 1.4, [0x2f63c8, 0xd9534f, 0x3fa36b][idx % 3], false, false, 'fabric');
+  box(-HW + 0.7, 0.45, -HD + 0.45, 0.75, 0.14, 0.35, 0xffffff, false, false, 'fabric');
+  box(HW - 1.1, 0.1, 0.3, 0.18, 0.66, 0.18, 0x9a6233, true, false, 'wood');
+  box(HW - 1.1, 0.76, 0.3, 1.1, 0.08, 0.75, 0xb57a42, false, false, 'wood');
+  box(HW - 1.6, 0.1, 0.3, 0.42, 0.45, 0.42, 0x8a5a33, false, false, 'wood');
+  box(0.6, 0.1, -HD + 0.38, 1.3, 1.6, 0.4, 0x7a4a26, true, false, 'wood');
+  box(0.4, 0.1, 0.6, 1.8, 0.02, 1.2, [0x3f9f6a, 0xc0504d, 0x4f81bd][idx % 3], false, false, 'fabric');
+  box(HW + 0.75, 0, HD + 0.5, 0.55, 0.85, 0.55, 0x2e9a4a, true, false, 'plain');
+  W.lootSpots.push([wx(0.2, 0.8), wz(0.2, 0.8)], [wx(-HW + 1.6, 1.2), wz(-HW + 1.6, 1.2)]);
+  W.occupied.push([x, z, Math.max(HW, HD) + 3.5]);
+  W.houses.push({ x: x, z: z, c: c, s: s, hw: HW + 0.35, hd: HD + 0.35, h: base + H });
 };
 
 W.inHouse = function (x, z) {
   for (const h of W.houses) {
     const dx = x - h.x, dz = z - h.z;
-    if (dx * dx + dz * dz > 30) continue;
+    if (dx * dx + dz * dz > (h.hw + h.hd) * (h.hw + h.hd)) continue;
     const lx = dx * h.c - dz * h.s, lz = dx * h.s + dz * h.c;
-    if (Math.abs(lx) < h.hw && Math.abs(lz) < h.hd) return true;
+    if (Math.abs(lx) < h.hw && Math.abs(lz) < h.hd) return h;
   }
-  return false;
+  return null;
 };
 
-W.buildCrates = function (scene, rnd) {
-  const parts = [];
+// casas em ruas, olhando para a rua
+W.placeHouses = function (P, a, list, style, sizeFn) {
+  const base = a.h - 0.05;
+  list.forEach((p, i) => W.house(P, a.x + p[0], a.z + p[1], p[2], base, i + (style === 'colorida' ? 3 : 0), style, sizeFn ? sizeFn(i) : null));
+};
+
+W.buildVillages = function (P) {
+  // Bairro Tropical (como no vídeo): casas brancas, telhado laranja, janelas azuis
+  const B = W.A['BAIRRO TROPICAL'];
+  W.placeHouses(P, B, [[-20, -18, 0], [-5, -19, 0.04], [10, -17, -0.04], [24, -14, 0.06], [-21, -1, Math.PI], [-6, -2, Math.PI], [9, 0, Math.PI + 0.05],
+    [-19, 16, 0], [-4, 17, 0.03], [11, 18, -0.03], [26, 9, Math.PI / 2], [-31, 6, -Math.PI / 2], [24, 26, 0.1], [-14, 30, Math.PI]], 'tropical');
+};
+
+W.buildCentral = function (P) {
+  const a = W.A['VILA CENTRAL'], base = a.h - 0.05;
+  // praça com chafariz, bancos e caixa d'água; casas coloridas em volta
+  W.box(P, a.x, a.z, 14, 0.12, 14, 0.785, 0xd9d2c4, base, { walkable: true }, 'stone');
+  P.push(U.part(new THREE.CylinderGeometry(2.4, 2.6, 0.7, 20), 0xcfc6b4, U.mat4(a.x, base + 0.35, a.z), null, 'stone'));
+  P.push(U.part(new THREE.CylinderGeometry(2.15, 2.15, 0.08, 20), 0x5fc6e8, U.mat4(a.x, base + 0.66, a.z), null, 'glass'));
+  P.push(U.part(new THREE.CylinderGeometry(0.3, 0.45, 1.8, 10), 0xe6dccb, U.mat4(a.x, base + 1.2, a.z), null, 'stone'));
+  P.push(U.part(new THREE.CylinderGeometry(0.9, 0.6, 0.3, 14), 0xe6dccb, U.mat4(a.x, base + 2.1, a.z), null, 'stone'));
+  W.addCollider({ type: 'c', x: a.x, z: a.z, r: 2.5, y0: base, y1: base + 0.75 });
+  for (let i = 0; i < 4; i++) {
+    const an = i * Math.PI / 2 + 0.785, bx = a.x + Math.cos(an) * 5, bz = a.z + Math.sin(an) * 5;
+    W.box(P, bx, bz, 1.8, 0.45, 0.5, -an + Math.PI / 2, 0x9a6233, base, { walkable: true }, 'wood');
+  }
+  // caixa d'água
+  const tx = a.x + 16, tz = a.z - 16;
+  for (const [ox, oz] of [[-1.4, -1.4], [1.4, -1.4], [-1.4, 1.4], [1.4, 1.4]]) {
+    P.push(U.part(new THREE.CylinderGeometry(0.14, 0.18, 9, 6), 0x9aa3a8, U.mat4(tx + ox, base + 4.5, tz + oz), null, 'metal'));
+    W.addCollider({ type: 'c', x: tx + ox, z: tz + oz, r: 0.2, y0: base, y1: base + 9 });
+  }
+  P.push(U.part(new THREE.CylinderGeometry(2.4, 2.4, 3, 16), 0x5aa3d8, U.mat4(tx, base + 10.5, tz), null, 'metal'));
+  P.push(U.part(new THREE.ConeGeometry(2.6, 1.2, 16), 0xd84f2a, U.mat4(tx, base + 12.6, tz), 'radial', 'roof'));
+  W.occupied.push([tx, tz, 4], [a.x, a.z, 9]);
+  W.placeHouses(P, a, [[-18, -8, Math.PI / 2], [-18, 9, Math.PI / 2], [18, 8, -Math.PI / 2], [-6, 20, Math.PI], [9, 20, Math.PI], [-8, -20, 0], [7, -21, 0]], 'colorida');
+};
+
+W.buildFishing = function (P) {
+  const a = W.A['VILA PESQUEIRA'];
+  W.placeHouses(P, a, [[-12, -12, -Math.PI / 2], [-12, 2, -Math.PI / 2], [-11, 15, -Math.PI / 2], [2, -16, 0], [4, 16, Math.PI]], 'pescador', () => [3.0, 2.6]);
+  // píer de madeira entrando no mar
+  const py = W.SEA_Y + 0.7, ang = Math.atan2(a.z, a.x);
+  const dir = [Math.cos(ang), Math.sin(ang)], rot = -ang;
+  for (let i = 0; i < 9; i++) {
+    const d = 10 + i * 3, x = a.x + dir[0] * d, z = a.z + dir[1] * d;
+    W.box(P, x, z, 3, 0.25, 3.2, rot, 0xa87a4c, py - 0.25, { walkable: true }, 'wood');
+    for (const sd of [-1.4, 1.4]) {
+      const px = x - dir[1] * sd, pz = z + dir[0] * sd;
+      P.push(U.part(new THREE.CylinderGeometry(0.12, 0.12, 3, 6), 0x6b4a2a, U.mat4(px, py - 1.4, pz), null, 'wood'));
+    }
+  }
+  // barcos
+  for (let i = 0; i < 4; i++) {
+    const d = 16 + i * 6, sd = (i % 2 ? 1 : -1) * 4.2;
+    const x = a.x + dir[0] * d - dir[1] * sd, z = a.z + dir[1] * d + dir[0] * sd;
+    const r2 = rot + (i % 2 ? 0.2 : -0.15);
+    P.push(U.part(new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), BOATWOOD[i], U.mat4(x, W.SEA_Y + 0.55, z, 0, r2, 0, 1.4, 0.75, 3.2), 'radial', 'wood'));
+    P.push(U.part(new THREE.BoxGeometry(2.3, 0.12, 5.4), 0xe8dcc4, U.mat4(x, W.SEA_Y + 0.5, z, 0, r2, 0), 'radial', 'wood'));
+    W.addCollider({ type: 'b', x: x, z: z, hx: 1.3, hz: 3, rot: r2, y0: W.SEA_Y - 1, y1: W.SEA_Y + 0.9, walkable: true });
+  }
+  // redes e caixas de peixe
+  for (let i = 0; i < 5; i++) W.box(P, a.x + 6 + i * 1.3, a.z - 6 + (i % 2) * 1.4, 1.1, 0.6, 0.8, 0.2 * i, 0x3f7fb0, a.h - 0.05, { walkable: true }, 'wood');
+  W.occupied.push([a.x + dir[0] * 20, a.z + dir[1] * 20, 14]);
+};
+
+W.buildPort = function (P, rnd) {
+  const a = W.A.PORTO, base = a.h - 0.05;
+  const cols = [0xc0392b, 0x2e6fb5, 0x3fa36b, 0xe67e22, 0xe8c11c, 0x7d3c98];
+  // contêineres em fileiras (cobertura boa para trocação)
+  let k = 0;
+  for (let row = -2; row <= 2; row++) for (let i = -3; i <= 3; i++) {
+    if (rnd() < 0.25) continue;
+    const x = a.x + i * 7.4, z = a.z + row * 6.2, rot = (rnd() - 0.5) * 0.06;
+    const col = cols[k++ % cols.length];
+    W.box(P, x, z, 6.1, 2.6, 2.45, rot, col, base, { walkable: true }, 'metal');
+    if (rnd() < 0.4) W.box(P, x + (rnd() - 0.5) * 0.4, z, 6.1, 2.6, 2.45, rot + (rnd() - 0.5) * 0.1, cols[k++ % cols.length], base + 2.6, { walkable: true }, 'metal');
+  }
+  // guindaste
+  const cx = a.x - 10, cz = a.z - 24;
+  for (const [ox, oz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) {
+    P.push(U.part(new THREE.BoxGeometry(0.5, 16, 0.5), 0xe8b21c, U.mat4(cx + ox, base + 8, cz + oz), 'radial', 'metal'));
+    W.addCollider({ type: 'b', x: cx + ox, z: cz + oz, hx: 0.25, hz: 0.25, rot: 0, y0: base, y1: base + 16 });
+  }
+  P.push(U.part(new THREE.BoxGeometry(7, 1.2, 7), 0xe8b21c, U.mat4(cx, base + 16.5, cz), 'radial', 'metal'));
+  P.push(U.part(new THREE.BoxGeometry(26, 1, 1.4), 0xe8b21c, U.mat4(cx - 6, base + 17.5, cz), 'radial', 'metal'));
+  P.push(U.part(new THREE.BoxGeometry(2.4, 2, 2.4), 0x2f3b45, U.mat4(cx + 2, base + 18.2, cz), 'radial', 'metal'));
+  W.occupied.push([a.x, a.z, a.r - 2]);
+};
+
+// galpão/celeiro com telhado de duas águas e portão aberto
+W.shed = function (P, x, z, rot, base, HW, HD, H, wallCol, roofCol, wallMat, roofMat) {
+  const c = Math.cos(rot), s = Math.sin(rot), T = 0.3;
+  const wx = (lx, lz) => x + lx * c + lz * s, wz = (lx, lz) => z - lx * s + lz * c;
+  const box = (lx, ly, lz, w, h, d, col, collide, mat) => {
+    P.push(U.part(new THREE.BoxGeometry(w, h, d), col, U.mat4(wx(lx, lz), base + ly + h / 2, wz(lx, lz), 0, rot, 0), 'radial', mat));
+    if (collide) W.addCollider({ type: 'b', x: wx(lx, lz), z: wz(lx, lz), hx: w / 2, hz: d / 2, rot: rot, y0: base + ly, y1: base + ly + h, walkable: false });
+  };
+  const door = HW * 0.45;
+  box(-HW + (HW - door) / 2, 0, HD, HW - door, H, T, wallCol, true, wallMat);
+  box(HW - (HW - door) / 2, 0, HD, HW - door, H, T, wallCol, true, wallMat);
+  box(0, H * 0.72, HD, door * 2, H * 0.28, T, wallCol, true, wallMat);
+  box(0, 0, -HD, HW * 2, H, T, wallCol, true, wallMat);
+  box(-HW, 0, 0, T, H, HD * 2, wallCol, true, wallMat);
+  box(HW, 0, 0, T, H, HD * 2, wallCol, true, wallMat);
+  box(0, -0.4, 0, HW * 2, 0.45, HD * 2, 0x8a6a48, false, 'wood');
+  W.addCollider({ type: 'b', x: x, z: z, hx: HW + 0.4, hz: HD + 0.4, rot: rot, y0: base + H, y1: base + H + 1.0, walkable: false, ceiling: true });
+  // empena e telhado
+  const ang = 0.55, half = (HW + 0.6) / Math.cos(ang);
+  for (const sd of [-1, 1]) {
+    const m = new THREE.Matrix4().compose(new THREE.Vector3(wx(sd * (HW + 0.6) / 2, 0), base + H + Math.tan(ang) * (HW + 0.6) / 2, wz(sd * (HW + 0.6) / 2, 0)),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, -sd * ang, 'YXZ')), new THREE.Vector3(half, 0.2, HD * 2 + 1));
+    P.push(U.part(new THREE.BoxGeometry(1, 1, 1), roofCol, m, 'radial', roofMat));
+  }
+  const tri = new THREE.CylinderGeometry(1, 1, 1, 3, 1).rotateX(Math.PI / 2).rotateZ(Math.PI / 2);
+  for (const sd of [-1, 1]) {
+    P.push(U.part(tri, wallCol, new THREE.Matrix4().compose(new THREE.Vector3(wx(0, sd * HD), base + H + 0.01, wz(0, sd * HD)),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, 0)), new THREE.Vector3(Math.tan(ang) * HW * 1.33, HW * 1.15, T)), 'radial', wallMat));
+  }
+  W.occupied.push([x, z, Math.max(HW, HD) + 3]);
+  W.lootSpots.push([wx(0, 0), wz(0, 0)], [wx(HW * 0.5, -HD * 0.5), wz(HW * 0.5, -HD * 0.5)]);
+};
+
+W.buildFarm = function (P) {
+  const a = W.A.FAZENDA, base = a.h - 0.05;
+  W.shed(P, a.x - 14, a.z - 12, 0.3, base, 6, 8, 5.5, 0xb8322a, 0x5b5f63, 'wood', 'metal');
+  // silos
+  for (const [ox, oz] of [[-2, -26], [4, -27]]) {
+    const x = a.x + ox, z = a.z + oz;
+    P.push(U.part(new THREE.CylinderGeometry(2.4, 2.4, 11, 18), 0xd9dde0, U.mat4(x, base + 5.5, z), null, 'metal'));
+    P.push(U.part(new THREE.SphereGeometry(2.4, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0xb0b7bd, U.mat4(x, base + 11, z), 'radial', 'metal'));
+    W.addCollider({ type: 'c', x: x, z: z, r: 2.4, y0: base, y1: base + 13 });
+    W.occupied.push([x, z, 4]);
+  }
+  // fardos de feno
+  for (let i = 0; i < 9; i++) {
+    const x = a.x + 6 + (i % 3) * 2.8, z = a.z - 10 + Math.floor(i / 3) * 3.2;
+    P.push(U.part(new THREE.CylinderGeometry(0.85, 0.85, 1.3, 14).rotateZ(Math.PI / 2), 0xe2c25a, U.mat4(x, base + 0.85, z, 0, i * 0.4, 0), null, 'plain'));
+    W.addCollider({ type: 'c', x: x, z: z, r: 0.9, y0: base, y1: base + 1.7 });
+  }
+  // cerca
+  const fr = 24;
+  for (let i = 0; i < 40; i++) {
+    const an = i / 40 * Math.PI * 2;
+    if (i % 10 === 2) continue;
+    const x = a.x + 10 + Math.cos(an) * fr, z = a.z + 8 + Math.sin(an) * fr;
+    P.push(U.part(new THREE.BoxGeometry(0.14, 1.1, 0.14), 0x8a5a33, U.mat4(x, W.height(x, z) + 0.45, z), 'radial', 'wood'));
+    P.push(U.part(new THREE.BoxGeometry(0.08, 0.12, fr * 2 * Math.PI / 40), 0x9a6a43, U.mat4(x, W.height(x, z) + 0.8, z, 0, -an, 0), 'radial', 'wood'));
+  }
+  W.house(P, a.x + 20, a.z - 20, -0.4, base, 2, 'colorida');
+  W.occupied.push([a.x + 10, a.z + 8, 20]);
+};
+
+W.buildLighthouse = function (P) {
+  const a = W.A.FAROL, base = a.h - 0.05;
+  const x = a.x, z = a.z;
+  for (let i = 0; i < 6; i++) {
+    const r0 = 2.6 - i * 0.22, r1 = 2.6 - (i + 1) * 0.22;
+    P.push(U.part(new THREE.CylinderGeometry(r1, r0, 3, 18), i % 2 ? 0xd93a2f : 0xf6f4ef, U.mat4(x, base + 1.5 + i * 3, z), null, 'plaster'));
+  }
+  P.push(U.part(new THREE.CylinderGeometry(2.2, 2.2, 0.3, 18), 0x2f3b45, U.mat4(x, base + 18.15, z), null, 'metal'));
+  P.push(U.part(new THREE.CylinderGeometry(1.1, 1.1, 1.8, 12), 0xfff3a8, U.mat4(x, base + 19.2, z), null, 'glass'));
+  P.push(U.part(new THREE.ConeGeometry(1.5, 1.4, 12), 0xd93a2f, U.mat4(x, base + 20.8, z), 'radial', 'roof'));
+  W.addCollider({ type: 'c', x: x, z: z, r: 2.6, y0: base, y1: base + 21 });
+  W.house(P, x + 7, z + 6, Math.PI * 0.85, base, 1, 'tropical', [2.6, 2.2]);
+  W.occupied.push([x, z, 6]);
+};
+
+W.buildRuins = function (P) {
+  const a = W.A['RUÍNAS'];
+  const stone = [0xe6d7b4, 0xd9c9a3, 0xeee2c6];
+  const base = a.h - 0.3;
+  const R = (i) => stone[i % 3];
+  const wall = (x0, z0, x1, z1, gaps, hBase) => {
+    const len = Math.hypot(x1 - x0, z1 - z0), rot = -Math.atan2(z1 - z0, x1 - x0);
+    const n = Math.round(len / 2.6);
+    for (let i = 0; i < n; i++) {
+      if (gaps.indexOf(i) >= 0) continue;
+      const t = (i + 0.5) / n;
+      const h = hBase * (0.55 + U.hash2(x0 + i, z0) * 0.6);
+      W.box(P, U.lerp(x0, x1, t) + a.x, U.lerp(z0, z1, t) + a.z, len / n - 0.15, h, 1.0, rot, R(i), base, null, 'stone');
+    }
+  };
+  wall(-16, -16, 16, -16, [2, 3, 8], 1.8);
+  wall(16, -16, 16, 16, [5, 6], 1.6);
+  wall(16, 16, -16, 16, [1, 7, 8], 1.8);
+  wall(-16, 16, -16, -16, [3, 4, 5], 1.4);
+  const blocks = [[-6, -4, 3, 0.9, 3, 0.2], [5, 6, 4, 1.1, 2.4, -0.4], [7, -7, 2.2, 0.8, 2.2, 0.7], [-8, 8, 3.5, 0.7, 2, 0.1],
+    [0, 0, 5, 0.6, 5, 0], [0, 0, 3, 1.2, 3, 0.785], [-25, 4, 3, 1, 2, 0.3], [24, -6, 2.5, 0.9, 3, -0.2], [3, -25, 3, 1.2, 2, 0.5], [-4, 26, 4, 0.8, 2.5, 0.2]];
+  blocks.forEach((b, i) => W.box(P, a.x + b[0], a.z + b[1], b[2], b[3], b[4], b[5], R(i), base, null, 'stone'));
+  const pill = [[-12, -12], [12, -12], [12, 12], [-12, 12], [-20, -22], [22, 20]];
+  pill.forEach((p, i) => {
+    const h = i < 4 ? 4.2 : 2.6;
+    const x = a.x + p[0], z = a.z + p[1];
+    P.push(U.part(new THREE.CylinderGeometry(0.55, 0.62, h, 12), 0xf4efe2, U.mat4(x, base + h / 2, z), null, 'stone'));
+    P.push(U.part(new THREE.BoxGeometry(1.5, 0.35, 1.5), 0xe2d6bb, U.mat4(x, base + h + 0.17, z), 'radial', 'stone'));
+    W.addCollider({ type: 'c', x: x, z: z, r: 0.62, y0: base, y1: base + h + 0.4 });
+  });
+  W.occupied.push([a.x, a.z, a.r]);
+};
+
+W.buildRocks = function (P, rnd) {
   let n = 0, tries = 0;
-  while (n < 34 && tries < 2000) {
+  while (n < 60 && tries < 3000) {
     tries++;
-    const a = rnd() * Math.PI * 2, r = 15 + Math.sqrt(rnd()) * 108;
+    const an = rnd() * 6.28, r = Math.sqrt(rnd()) * (W.LAND_R - 4);
+    const x = Math.cos(an) * r, z = Math.sin(an) * r;
+    if (W.keepOutAreas(x, z, 2) || W.pathDist(x, z) < 4 || !W.isFree(x, z, 3, W.occupied)) continue;
+    const s = 0.8 + rnd() * 1.8, y = W.height(x, z);
+    P.push(U.part(new THREE.IcosahedronGeometry(1, 0), 0x9a9b90, U.mat4(x, y + s * 0.3, z, rnd(), rnd() * 6, rnd(), s * 1.3, s * 0.8, s), 'radial', 'stone'));
+    W.addCollider({ type: 'c', x: x, z: z, r: s * 1.05, y0: y - 1, y1: y + s * 1.05 });
+    W.occupied.push([x, z, s + 1.5]);
+    n++;
+  }
+};
+
+W.buildCrates = function (P, rnd) {
+  let n = 0, tries = 0;
+  while (n < 50 && tries < 3000) {
+    tries++;
+    const a = rnd() * Math.PI * 2, r = 12 + Math.sqrt(rnd()) * (W.LAND_R - 22);
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (!W.isFree(x, z, 2.5, W.occupied)) continue;
-    const s = 1.1 + rnd() * 0.4;
-    const rot = rnd() * 3;
-    W.box(parts, x, z, s, s, s, rot, n % 2 ? 0xb47c45 : 0xa86f3c, W.height(x, z) - 0.05);
-    parts.push(U.part(new THREE.BoxGeometry(s * 1.02, 0.14, s * 1.02), 0x7d4f28, U.mat4(x, W.height(x, z) + s * 0.5, z, 0, rot, 0)));
+    if (!W.isFree(x, z, 2.5, W.occupied) || W.height(x, z) < 0.2) continue;
+    const s = 1.1 + rnd() * 0.4, rot = rnd() * 3;
+    W.box(P, x, z, s, s, s, rot, n % 2 ? 0xb47c45 : 0xa86f3c, W.height(x, z) - 0.05, null, 'wood');
+    P.push(U.part(new THREE.BoxGeometry(s * 1.02, 0.14, s * 1.02), 0x7d4f28, U.mat4(x, W.height(x, z) + s * 0.5, z, 0, rot, 0), 'radial', 'wood'));
     W.occupied.push([x, z, 1.5]);
     n++;
   }
-  W.solidMesh(scene, parts, 0.04);
 };
 
 // --- grama instanciada que acompanha o jogador (fixa no mundo, sem "deslizar") ---
 W.buildGrass = function (scene, quality) {
-  const counts = { baixa: 2600, media: 5200, alta: 9000 };
-  W.grassN = counts[quality] || 5200;
-  W.grassSize = quality === 'baixa' ? 44 : 60;
+  const counts = { baixa: 3200, media: 7000, alta: 12000 };
+  W.grassN = counts[quality] || 7000;
+  W.grassSize = quality === 'baixa' ? 44 : quality === 'alta' ? 70 : 60;
   const blade = new THREE.BufferGeometry();
   const v = [];
-  for (let i = 0; i < 4; i++) {
-    const a = i / 4 * Math.PI + 0.3, c = Math.cos(a) * 0.1, s = Math.sin(a) * 0.1;
-    const lx = Math.cos(a + 1.2) * 0.12, lz = Math.sin(a + 1.2) * 0.12;
-    v.push(-c, 0, -s, c, 0, s, lx, 0.34 + i * 0.05, lz);
+  // tufo de 5 folhas curvas (2 triângulos cada)
+  for (let i = 0; i < 5; i++) {
+    const a = i / 5 * Math.PI * 2 + 0.4, ca = Math.cos(a), sa = Math.sin(a);
+    const w = 0.055, h = 0.34 + (i % 3) * 0.07, lean = 0.12;
+    const px = -sa * w, pz = ca * w;
+    const tx = ca * lean, tz = sa * lean;
+    v.push(-px, 0, -pz, px, 0, pz, px * 0.4 + tx * 0.6, h * 0.6, pz * 0.4 + tz * 0.6);
+    v.push(-px, 0, -pz, px * 0.4 + tx * 0.6, h * 0.6, pz * 0.4 + tz * 0.6, -px * 0.4 + tx * 0.6, h * 0.6, -pz * 0.4 + tz * 0.6);
+    v.push(-px * 0.4 + tx * 0.6, h * 0.6, -pz * 0.4 + tz * 0.6, px * 0.4 + tx * 0.6, h * 0.6, pz * 0.4 + tz * 0.6, tx, h, tz);
   }
   blade.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
   blade.computeVertexNormals();
   const mat = new THREE.ShaderMaterial({
     side: THREE.DoubleSide,
-    uniforms: { uTime: { value: 0 }, uBase: { value: new THREE.Color(0x3f8f2a) }, uTip: { value: new THREE.Color(0xa8e05c) } },
+    uniforms: { uTime: { value: 0 }, uPlayer: { value: new THREE.Vector3() } },
     vertexShader: [
-      'uniform float uTime; varying float vH; varying float vR;',
+      'uniform float uTime; uniform vec3 uPlayer; varying float vH; varying float vR; varying vec3 vC;',
       'void main(){',
       ' vec4 wp = modelMatrix * instanceMatrix * vec4(position,1.0);',
-      ' float h = position.y; vH = h / 0.5;',
+      ' float h = position.y; vH = h / 0.48;',
       ' vR = fract(sin(dot(wp.xz, vec2(12.9898,78.233))) * 43758.5453);',
+      ' vC = vec3(0.45, 0.72, 0.3);',
+      ' #ifdef USE_INSTANCING_COLOR',
+      ' vC = instanceColor;',
+      ' #endif',
       ' float w = sin(uTime*2.2 + wp.x*0.35 + wp.z*0.25) * 0.5 + sin(uTime*3.7 + wp.x*0.9) * 0.25;',
-      ' wp.x += w * 0.16 * vH; wp.z += w * 0.08 * vH;',
+      ' wp.x += w * 0.14 * vH; wp.z += w * 0.07 * vH;',
+      // a grama se abre quando o personagem passa
+      ' vec2 dp = wp.xz - uPlayer.xz; float dl = length(dp);',
+      ' wp.xz += normalize(dp + 0.0001) * max(0.0, 0.9 - dl) * 0.55 * vH;',
       ' gl_Position = projectionMatrix * viewMatrix * wp;',
       '}'].join('\n'),
     fragmentShader: [
-      'uniform vec3 uBase; uniform vec3 uTip; varying float vH; varying float vR;',
-      'void main(){ vec3 c = mix(uBase, uTip, smoothstep(0.0, 1.0, vH)); c *= 0.88 + vR*0.22; gl_FragColor = vec4(c,1.0); }'].join('\n'),
+      'varying float vH; varying float vR; varying vec3 vC;',
+      'void main(){ vec3 base = vC * 0.62; vec3 tip = vC * 1.32 + vec3(0.05, 0.06, 0.0);',
+      ' vec3 c = mix(base, tip, smoothstep(0.0, 1.0, vH)); c *= 0.88 + vR * 0.24; gl_FragColor = vec4(c, 1.0); }'].join('\n'),
   });
   W.grass = new THREE.InstancedMesh(blade, mat, W.grassN);
   W.grass.frustumCulled = false;
+  W.grass.setColorAt(0, new THREE.Color(1, 1, 1));
   scene.add(W.grass);
   W.grassMat = mat;
 
-  // flores brancas e rosas
   const fl = [];
   fl.push(U.part(new THREE.CylinderGeometry(0.012, 0.012, 0.35, 3), 0x4a9a30, U.mat4(0, 0.17, 0)).g);
   for (let i = 0; i < 5; i++) {
@@ -699,19 +1072,22 @@ W.buildGrass = function (scene, quality) {
 W.placeGrass = function (cx, cz) {
   const S = W.grassSize, N = W.grassN, side = Math.ceil(Math.sqrt(N)), sp = S / side;
   const ox = Math.floor((cx - S / 2) / sp), oz = Math.floor((cz - S / 2) / sp);
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), s = new THREE.Vector3();
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), s = new THREE.Vector3(), col = new THREE.Color();
   let k = 0, f = 0;
   const fcol = [new THREE.Color(0xffffff), new THREE.Color(0xff9fc8), new THREE.Color(0xfff07a)];
   for (let i = 0; i < side && k < N; i++) for (let j = 0; j < side && k < N; j++) {
     const gx = ox + i, gz = oz + j;
     const x = (gx + U.hash2(gx, gz)) * sp, z = (gz + U.hash2(gz + 7, gx - 3)) * sp;
-    const sa = W.sand(x, z), y = W.height(x, z);
-    let sc = (0.8 + U.hash2(gx * 3, gz) * 0.6) * (1 - U.smooth(0.15, 0.55, sa));
-    if (y < W.SEA_Y + 0.2 || W.inHouse(x, z)) sc = 0;
+    const T = W.tg, sa = W.grid2(T.sand, x, z), y = W.grid2(T.h, x, z);
+    let sc = (0.8 + U.hash2(gx * 3, gz) * 0.65) * (1 - U.smooth(0.15, 0.5, sa));
+    if (sc > 0 && (y < W.SEA_Y + 0.2 || W.inHouse(x, z))) sc = 0;
     e.set(0, U.hash2(gx, gz * 5) * 6.28, 0); q.setFromEuler(e);
-    p.set(x, y - 0.03, z); s.set(sc, sc * (0.75 + U.hash2(gz, gx) * 0.6), sc);
+    p.set(x, y - 0.03, z); s.set(sc, sc * (0.75 + U.hash2(gz, gx) * 0.7), sc);
     m.compose(p, q, s);
-    W.grass.setMatrixAt(k++, m);
+    W.grass.setMatrixAt(k, m);
+    col.setRGB(W.grid2(T.col, x, z, 3, 0), W.grid2(T.col, x, z, 3, 1), W.grid2(T.col, x, z, 3, 2));
+    W.grass.setColorAt(k, col);
+    k++;
     if (f < W.flowerN && U.hash2(gx * 13, gz * 7) < 0.075 && sc > 0.3) {
       m.compose(p, q, s.set(1, 0.8 + U.hash2(gx, gz) * 0.6, 1));
       W.flowers.setMatrixAt(f, m);
@@ -722,16 +1098,19 @@ W.placeGrass = function (cx, cz) {
   W.grass.count = k;
   W.flowers.count = f;
   W.grass.instanceMatrix.needsUpdate = true;
+  if (W.grass.instanceColor) W.grass.instanceColor.needsUpdate = true;
   W.flowers.instanceMatrix.needsUpdate = true;
   if (W.flowers.instanceColor) W.flowers.instanceColor.needsUpdate = true;
 };
 
-W.update = function (dt, px, pz) {
+W.update = function (dt, px, pz, py) {
   W.time += dt;
-  if (W.grassMat) W.grassMat.uniforms.uTime.value = W.time;
+  if (W.grassMat) { W.grassMat.uniforms.uTime.value = W.time; W.grassMat.uniforms.uPlayer.value.set(px, py || 0, pz); }
+  if (W.seaMat) W.seaMat.uniforms.uTime.value = W.time;
   if (Math.hypot(px - W.grassCenter.x, pz - W.grassCenter.z) > W.grassSize * 0.14) {
     W.grassCenter.x = px; W.grassCenter.z = pz;
     W.placeGrass(px, pz);
+    W.updateOutlines(px, pz);
   }
   if (W.clouds) W.clouds.rotation.y += dt * 0.002;
 };

@@ -79,9 +79,10 @@ U.addOutline = function (mesh, thick) {
   return o;
 };
 
-// Converte uma geometria em peça não indexada com cor por vértice.
+// Converte uma geometria em peça não indexada com cor por vértice e UV projetada (textura sem esticar).
 // mode 'radial' gera também normais de contorno a partir do centro (para caixas e bolhas).
-U.part = function (geo, color, matrix, mode) {
+// mat escolhe a textura de detalhe da peça (ver TX.SCALE): 'plain', 'plaster', 'roof', 'wood', 'stone'...
+U.part = function (geo, color, matrix, mode, mat) {
   let g = geo.index ? geo.toNonIndexed() : geo.clone();
   if (!g.attributes.normal) g.computeVertexNormals();
   const n = g.attributes.position.count;
@@ -98,7 +99,26 @@ U.part = function (geo, color, matrix, mode) {
     }
   }
   if (matrix) { g.applyMatrix4(matrix); o.applyMatrix4(matrix); }
-  return { g: g, o: o };
+  U.projectUV(g, (typeof TX !== 'undefined' && TX.SCALE[mat || 'plain']) || 0.5);
+  return { g: g, o: o, mat: mat || 'plain' };
+};
+
+// UV a partir da posição: cada face usa o plano do eixo dominante da sua normal
+U.projectUV = function (g, scale) {
+  const p = g.attributes.position, nrm = g.attributes.normal, n = p.count;
+  const uv = new Float32Array(n * 2);
+  for (let i = 0; i < n; i += 3) {
+    let nx = 0, ny = 0, nz = 0;
+    for (let k = 0; k < 3 && i + k < n; k++) { nx += nrm.getX(i + k); ny += nrm.getY(i + k); nz += nrm.getZ(i + k); }
+    const ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
+    for (let k = 0; k < 3 && i + k < n; k++) {
+      const x = p.getX(i + k), y = p.getY(i + k), z = p.getZ(i + k), j = (i + k) * 2;
+      if (ay >= ax && ay >= az) { uv[j] = x * scale; uv[j + 1] = z * scale; }
+      else if (ax >= az) { uv[j] = z * scale; uv[j + 1] = y * scale; }
+      else { uv[j] = x * scale; uv[j + 1] = y * scale; }
+    }
+  }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 };
 
 U.mat4 = function (x, y, z, rx, ry, rz, sx, sy, sz) {
@@ -112,18 +132,20 @@ U.mat4 = function (x, y, z, rx, ry, rz, sx, sy, sz) {
 U.merge = function (list) {
   let total = 0;
   for (const g of list) total += g.attributes.position.count;
-  const pos = new Float32Array(total * 3), nor = new Float32Array(total * 3), col = new Float32Array(total * 3);
+  const pos = new Float32Array(total * 3), nor = new Float32Array(total * 3), col = new Float32Array(total * 3), uv = new Float32Array(total * 2);
   let off = 0;
   for (const g of list) {
     pos.set(g.attributes.position.array, off * 3);
     nor.set(g.attributes.normal.array, off * 3);
     if (g.attributes.color) col.set(g.attributes.color.array, off * 3);
+    if (g.attributes.uv && g.attributes.uv.itemSize === 2) uv.set(g.attributes.uv.array.subarray(0, g.attributes.position.count * 2), off * 2);
     off += g.attributes.position.count;
   }
   const out = new THREE.BufferGeometry();
   out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  out.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   out.computeBoundingSphere();
   return out;
 };
@@ -131,6 +153,15 @@ U.merge = function (list) {
 // Monta um par {main, outline} a partir de várias peças.
 U.build = function (parts) {
   return { g: U.merge(parts.map(p => p.g)), o: U.merge(parts.map(p => p.o)) };
+};
+
+// Agrupa as peças por textura: {mats: {chave: geometria}, o: contorno único}
+U.buildBy = function (parts) {
+  const by = {};
+  for (const p of parts) (by[p.mat] = by[p.mat] || []).push(p.g);
+  const mats = {};
+  for (const k in by) mats[k] = U.merge(by[k]);
+  return { mats: mats, o: U.merge(parts.map(p => p.o)) };
 };
 
 U.blob = function (r, detail) {

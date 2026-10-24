@@ -14,7 +14,12 @@ próprios, além de conteúdo original: nenhum asset, protocolo ou chave do Free
   - ranking próprio.
 - Cliente web para o navegador do celular (`client/`), com PHSWK no topo da tela de carregamento.
 - `npm test`: 15 testes passando (unidade + integração por HTTP/WebSocket).
-- **Ainda não verificado:** cliente testado em navegador/celular real.
+- Fluxo completo testado no Chromium em tela de celular com toque: carregamento, login, compra, fila, partida com bots e resultado (capturas em `docs/capturas/`).
+- **Ainda não verificado:** celular Android real e Termux.
+
+Documentos: [INVENTARIO](docs/INVENTARIO.md) · [ARQUITETURA](docs/ARQUITETURA.md) · [COMPATIBILIDADE](docs/COMPATIBILIDADE.md) · [PLANO](docs/PLANO.md) · [REGISTRO](docs/REGISTRO.md)
+
+![Tela de carregamento](docs/capturas/01-loading.png)
 
 ## Rodar só pelo celular (Termux)
 

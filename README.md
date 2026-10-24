@@ -52,3 +52,6 @@ Todos os botões "Fazer pedido / Pedir agora / Ver cardápio completo" abrem `ht
 
 ## Animação da pizza
 Montagem **ilustrativa** em SVG (massa → molho → mussarela → ingredientes → orégano) sincronizada com a rolagem; no fim a pizza "deita" em perspectiva e dá lugar à foto real da calabresa da MKS. Não foi possível montar com fotos reais por camadas (só há fotos da pizza pronta). Com "movimento reduzido" ativado, a seção vira uma lista estática com a foto final.
+
+## Jogo "Ilha Toon"
+A pasta [`jogo/`](jogo/) contém um jogo 3D jogável no navegador do celular. Ele é independente do site e tem instruções próprias em [`jogo/README.md`](jogo/README.md).

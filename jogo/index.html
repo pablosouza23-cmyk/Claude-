@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1b6fd0">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Ilha Toon</title>
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="compass"><div id="compassStrip"></div><div class="compassMark"></div><div id="compassNum">0</div></div>
+  <div id="zoneBar"><span class="hg">⌛</span><span id="zoneText"></span></div>
+  <div id="announce"></div>
+  <div id="areaBanner"><small>ENTRANDO EM</small><b id="areaName"></b></div>
+
+  <div id="weaponBox">
+    <div class="wtop"><span class="slot">1</span><span class="wname">UMP</span></div>
+    <svg viewBox="0 0 64 28" class="gunIcon" aria-hidden="true">
+      <path d="M4 9h34l4-3h8v4h10v4H50v3h-6l-2 9h-7l2-9H22l-3 5h-7l2-5H6l-2-3z" fill="#ff9a1f" stroke="#2a1a05" stroke-width="1.2"/>
+      <rect x="27" y="16" width="6" height="10" fill="#222"/>
+    </svg>
+    <div class="wammo"><span id="ammo">30</span><span id="reserve">/ 90</span></div>
+    <div id="reloadTxt"></div>
+  </div>
+
+  <canvas id="minimap" width="120" height="120"></canvas>
+  <div id="alive"></div>
+  <button id="btnPause" aria-label="Pausar">II</button>
+  <div id="fps" class="hidden"></div>
+
+  <div id="crosshair"><div class="ring"></div><div class="dot"></div><div class="tk t1"></div><div class="tk t2"></div><div class="tk t3"></div><div class="tk t4"></div></div>
+  <div id="hitmark"></div>
+  <div id="hurtArrow"></div>
+  <div id="killfeed"></div>
+  <div id="toast"></div>
+  <div id="dmgLayer"></div>
+  <div id="vignette"></div>
+
+  <div id="hpWrap">
+    <span class="hpl">HP</span>
+    <div id="hpBar"><div id="hpFill"></div><span id="hpText">200 / 200</span></div>
+    <div class="slotbox" id="slotKit" title="Kit médico (H)"><span class="ico">✚</span><span id="kitCount">2</span><div id="kitProg"></div></div>
+    <div class="slotbox" id="slotWall" title="Parede de gelo (Q)"><span class="ico ice">▰</span><span id="wallCount">4</span></div>
+    <span id="armorTag"></span>
+  </div>
+</div>
+
+<div id="touch" class="hidden">
+  <div id="joyBase"><div id="joyKnob"></div></div>
+  <button class="tbtn" id="btnFireL" aria-label="Atirar">✹</button>
+  <button class="tbtn" id="btnFire" aria-label="Atirar">✹</button>
+  <button class="tbtn" id="btnAim" aria-label="Mirar">◎</button>
+  <button class="tbtn" id="btnJump" aria-label="Pular">⤒</button>
+  <button class="tbtn" id="btnReload" aria-label="Recarregar">⟳</button>
+  <button class="tbtn" id="btnWall" aria-label="Parede de gelo">▰<small id="wallBtnCount">4</small></button>
+  <button class="tbtn hidden" id="btnUse">ABRIR</button>
+</div>
+
+<div id="menu" class="screen">
+  <div class="menuCard">
+    <h1>ILHA <span>TOON</span></h1>
+    <p class="sub">Batalha na ilha · 12 jogadores · parede de gelo</p>
+    <button id="playBtn" class="big">JOGAR</button>
+    <div class="opts">
+      <label>Nome <input id="nameInput" maxlength="14" autocomplete="off"></label>
+      <label>Qualidade
+        <select id="qualSel"><option value="baixa">Baixa (mais rápido)</option><option value="media">Média</option><option value="alta">Alta</option></select>
+      </label>
+      <label>Sensibilidade <input id="sensRange" type="range" min="0.4" max="2" step="0.1"></label>
+      <label class="chk"><input id="soundChk" type="checkbox"> Som</label>
+      <label class="chk"><input id="fpsChk" type="checkbox"> Mostrar FPS</label>
+    </div>
+    <button id="helpBtn" class="small">Como jogar</button>
+    <div id="helpBox" class="hidden">
+      <p><b>Celular:</b> lado esquerdo da tela = andar (joystick). Lado direito = girar a câmera. ✹ segurar para atirar (arraste o botão para mirar enquanto atira). ◎ mira, ⤒ pular, ⟳ recarregar, ▰ parede de gelo. Toque no ✚ ao lado da vida para usar o kit médico.</p>
+      <p><b>Computador:</b> WASD andar · mouse mirar (clique na tela) · clique atirar · botão direito/F mira · Espaço pular · R recarregar · Q parede de gelo · H kit · E abrir suprimento · Esc pausa.</p>
+      <p>Fique dentro da zona segura (parede azul), pegue coletes, kits e munição no chão e procure o suprimento aéreo (fumaça vermelha). Seja o último de pé.</p>
+    </div>
+  </div>
+</div>
+
+<div id="pauseScr" class="screen hidden">
+  <div class="menuCard">
+    <h2>PAUSADO</h2>
+    <button id="resumeBtn" class="big">CONTINUAR</button>
+    <button id="restartBtn" class="small">Reiniciar partida</button>
+    <button id="quitBtn" class="small">Sair para o menu</button>
+  </div>
+</div>
+
+<div id="endScr" class="screen hidden">
+  <div class="menuCard">
+    <h1 id="endTitle"></h1>
+    <p id="endSub" class="sub"></p>
+    <div id="endStats"></div>
+    <button id="againBtn" class="big">JOGAR NOVAMENTE</button>
+    <button id="menuBtn" class="small">Menu</button>
+  </div>
+</div>
+
+<div id="loading" class="hidden"><div>Carregando a ilha…</div></div>
+<div id="rotateHint" class="hidden">Gire o celular para a horizontal para jogar melhor</div>
+<div id="errorBox" class="hidden"></div>
+
+<script src="js/three.min.js"></script>
+<script src="js/util.js"></script>
+<script src="js/world.js"></script>
+<script src="js/character.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

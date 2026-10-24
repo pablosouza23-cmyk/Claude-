@@ -16,7 +16,7 @@ FX.init = function (scene) {
   }
   // sprites (fumaça, poeira, clarão)
   FX.sprites = [];
-  for (let i = 0; i < 140; i++) {
+  for (let i = 0; i < 240; i++) {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: U.softDot(), transparent: true, depthWrite: false, color: 0xffffff }));
     s.visible = false;
     scene.add(s);
@@ -73,6 +73,15 @@ FX.sprite = function (pos, color, size, life, vel, grow, alpha) {
 
 FX.flash = function (pos) {
   FX.sprite(pos, 0xffd25a, 0.55, 0.05, null, 0, 1);
+};
+
+// explosão de granada em estilo desenho: bolas amarelas/laranja + fumaça escura + lascas
+FX.explosion = function (pos) {
+  const v = (s, up) => ({ x: (Math.random() - 0.5) * s, y: up + Math.random() * s * 0.5, z: (Math.random() - 0.5) * s });
+  for (let i = 0; i < 7; i++) FX.sprite(new THREE.Vector3(pos.x + (Math.random() - 0.5) * 1.2, pos.y + 0.6 + Math.random(), pos.z + (Math.random() - 0.5) * 1.2), i < 4 ? 0xffd93a : 0xff9a1f, 2.2 + Math.random() * 1.2, 0.55, v(4, 2), 1.3, 1);
+  for (let i = 0; i < 9; i++) FX.sprite(new THREE.Vector3(pos.x + (Math.random() - 0.5) * 2, pos.y + 1, pos.z + (Math.random() - 0.5) * 2), i % 2 ? 0x3a3a3a : 0x55504a, 1.6 + Math.random(), 2.4, v(3, 2.5), 1.6, 0.85);
+  for (let i = 0; i < 8; i++) FX.sprite(new THREE.Vector3(pos.x, pos.y + 0.3, pos.z), 0xd9c69a, 1.2, 1.2, v(9, 0.5), 1.2, 0.7);
+  FX.sprite(new THREE.Vector3(pos.x, pos.y + 1, pos.z), 0xffffff, 5, 0.12, null, 0.5, 0.9);
 };
 
 FX.dust = function (pos, color) {

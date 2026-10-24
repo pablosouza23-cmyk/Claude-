@@ -37,7 +37,7 @@ W.pathDist = function (x, z) {
 
 W.areaDefs = [
   { name: 'RUÍNAS', x: 70, z: -58, r: 30, flat: true },
-  { name: 'VILA DO CAJU', x: -30, z: -98, r: 26, flat: true },
+  { name: 'BAIRRO TROPICAL', x: -30, z: -98, r: 34, flat: true },
   { name: 'FLORESTA', x: -55, z: 45, r: 42 },
   { name: 'CAMPO ABERTO', x: 40, z: 40, r: 38 },
 ];
@@ -284,9 +284,10 @@ W.build = function (scene, quality) {
   scene.add(shallow);
 
   W.buildTerrain(scene);
+  W.occupied = [];
+  W.buildVillage(scene);
   W.buildTrees(scene, rnd);
   W.buildRuins(scene);
-  W.buildVillage(scene);
   W.buildCrates(scene, rnd);
   W.buildGrass(scene, quality);
 };
@@ -416,7 +417,6 @@ W.isFree = function (x, z, rad, list) {
 };
 
 W.buildTrees = function (scene, rnd) {
-  W.occupied = [];
   const keepOut = [W.areaDefs[0], W.areaDefs[1]];
   const variants = [W.treeGeo(11), W.treeGeo(29), W.treeGeo(57)];
   const vm = [[], [], []];
@@ -468,6 +468,18 @@ W.buildTrees = function (scene, rnd) {
     W.occupied.push([x, z, 1]);
   }
   W.instanced(scene, W.bushGeo(), bm, 0.04, true);
+  // coqueiros entre as casas do Bairro Tropical
+  const v = W.areaDefs[1], vp = [[], []];
+  for (let i = 0; i < 26; i++) {
+    const a = rnd() * Math.PI * 2, r = 6 + rnd() * 30;
+    const x = v.x + Math.cos(a) * r, z = v.z + Math.sin(a) * r;
+    if (!W.isFree(x, z, 1.5, W.occupied)) continue;
+    const s = 0.75 + rnd() * 0.3, y = W.height(x, z);
+    vp[i % 2].push(U.mat4(x, y - 0.1, z, 0, rnd() * 6, 0, s, s, s));
+    W.occupied.push([x, z, 2]);
+    W.addCollider({ type: 'c', x: x, z: z, r: 0.2 * s, y0: y - 1, y1: y + 5 * s });
+  }
+  palms.forEach((g, i) => W.instanced(scene, g, vp[i], 0.04, true));
 };
 
 W.solidMesh = function (scene, parts, thick) {
@@ -522,28 +534,97 @@ W.buildRuins = function (scene) {
   W.solidMesh(scene, parts, 0.05);
 };
 
+// Bairro Tropical: casas brancas com telhado de cerâmica, janelas azuis com venezianas e interior visitável
+W.houses = [];
+W.lootSpots = [];
 W.buildVillage = function (scene) {
   const a = W.areaDefs[1], parts = [];
-  const walls = [0xf2e2c4, 0xf6c9a1, 0xcfe3f2, 0xf1d3e0, 0xe9edc9];
-  const houses = [[-10, -8, 0.2], [8, -10, -0.3], [12, 8, 0.1], [-9, 10, -0.15], [0, 18, 0.5]];
-  const base = a.h - 0.3;
-  houses.forEach((h, i) => {
-    const x = a.x + h[0], z = a.z + h[1], rot = h[2];
-    const w = 6, d = 5, ht = 3;
-    W.box(parts, x, z, w, ht, d, rot, walls[i], base, { walkable: false });
-    // telhado em prisma triangular
-    const roof = new THREE.CylinderGeometry(3.6, 3.6, w + 0.6, 3, 1);
-    parts.push(U.part(roof, 0xc4553a, new THREE.Matrix4().compose(new THREE.Vector3(x, base + ht + 0.85, z),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, Math.PI / 2, 'YXZ')), new THREE.Vector3(1, 1, 0.48)), 'radial'));
-    // porta e janelas (detalhes)
-    const fx = Math.sin(rot), fz = Math.cos(rot);
-    parts.push(U.part(new THREE.BoxGeometry(1.1, 2, 0.1), 0x7a4a2a, U.mat4(x + fx * (d / 2 + 0.03), base + 1.0, z + fz * (d / 2 + 0.03), 0, rot, 0)));
-    parts.push(U.part(new THREE.BoxGeometry(1, 0.9, 0.1), 0x5aa9d8, U.mat4(x + fx * (d / 2 + 0.03) + Math.cos(rot) * 1.8, base + 1.7, z + fz * (d / 2 + 0.03) - Math.sin(rot) * 1.8, 0, rot, 0)));
-    W.occupied.push([x, z, 5]);
-  });
-  // cerca baixa
-  for (let i = 0; i < 10; i++) W.box(parts, a.x - 20 + i * 2.2, a.z - 20, 2, 0.8, 0.25, 0, 0xa36b3c, undefined, { walkable: false });
-  W.solidMesh(scene, parts, 0.05);
+  const base = a.h - 0.05;
+  const spots = [[-17, -15, 0], [-2, -16, 0.04], [13, -14, -0.04], [-18, 1, Math.PI], [-3, 0, Math.PI], [12, 2, Math.PI + 0.05],
+    [-16, 16, 0], [-1, 17, 0.03], [14, 17, -0.03], [27, -3, Math.PI / 2], [-29, 3, -Math.PI / 2]];
+  spots.forEach((p, i) => W.house(parts, a.x + p[0], a.z + p[1], p[2], base, i));
+  W.solidMesh(scene, parts, 0.035);
+};
+
+W.house = function (parts, x, z, rot, base, idx) {
+  const HW = 3.4, HD = 2.8, H = 2.9, T = 0.22;
+  const c = Math.cos(rot), s = Math.sin(rot);
+  const wx = (lx, lz) => x + lx * c + lz * s, wz = (lx, lz) => z - lx * s + lz * c;
+  const WALL = 0xf7f5ef, BAND = 0xe2763a, BLUE = 0x2f6fd6, WOOD = 0x9a6233;
+  const box = (lx, ly, lz, w, h, d, col, collide, walk) => {
+    parts.push(U.part(new THREE.BoxGeometry(w, h, d), col, U.mat4(wx(lx, lz), base + ly + h / 2, wz(lx, lz), 0, rot, 0), 'radial'));
+    if (collide) W.addCollider({ type: 'b', x: wx(lx, lz), z: wz(lx, lz), hx: w / 2, hz: d / 2, rot: rot, y0: base + ly, y1: base + ly + h, walkable: !!walk });
+  };
+  // parede com aberturas [centro, largura, y0, y1]; along = 'x' (frente/fundos) ou 'z' (laterais)
+  const wallRun = (along, fixed, half, ops, out) => {
+    let cur = -half;
+    const seg = (a, b, y0, y1, band) => {
+      const len = b - a, mid = (a + b) / 2;
+      if (len <= 0.01 || y1 - y0 <= 0.01) return;
+      if (along === 'x') box(mid, y0, fixed, len, y1 - y0, T, WALL, true);
+      else box(fixed, y0, mid, T, y1 - y0, len, WALL, true);
+      if (band) {
+        if (along === 'x') box(mid, 0, fixed, len, 0.32, T + 0.05, BAND, false);
+        else box(fixed, 0, mid, T + 0.05, 0.32, len, BAND, false);
+      }
+    };
+    ops.sort((p, q) => p[0] - q[0]);
+    for (const o of ops) {
+      const a = o[0] - o[1] / 2, b = o[0] + o[1] / 2;
+      seg(cur, a, 0, H, true);
+      if (o[2] > 0) seg(a, b, 0, o[2], true);
+      seg(a, b, o[3], H, false);
+      // moldura azul e venezianas abertas (janelas) ou batente de madeira (porta)
+      const isDoor = o[2] <= 0, fc = isDoor ? WOOD : BLUE, w = o[1], hh = o[3] - o[2];
+      const fr = (p, q, y, fw, fh) => (along === 'x' ? box(p, y, fixed, fw, fh, T + 0.08, fc, false) : box(fixed, y, p, T + 0.08, fh, fw, fc, false));
+      fr(a - 0.04, 0, o[2], 0.08, hh); fr(b + 0.04, 0, o[2], 0.08, hh);
+      fr(o[0], 0, o[3], w + 0.16, 0.08);
+      if (!isDoor) {
+        fr(o[0], 0, o[2] - 0.08, w + 0.16, 0.08);
+        for (const sd of [-1, 1]) {
+          const p = o[0] + sd * (w / 2 + w / 4 + 0.1);
+          if (along === 'x') box(p, o[2] - 0.05, fixed + out * (T / 2 + 0.05), w / 2, hh + 0.1, 0.05, BLUE, false);
+          else box(fixed + out * (T / 2 + 0.05), o[2] - 0.05, p, 0.05, hh + 0.1, w / 2, BLUE, false);
+        }
+      }
+      cur = b;
+    }
+    seg(cur, half, 0, H, true);
+  };
+  wallRun('x', HD, HW + T / 2, [[-1.0, 1.3, 0, 2.2], [1.6, 1.1, 1.0, 2.0]], 1);
+  wallRun('x', -HD, HW + T / 2, [[0.8 * (idx % 2 ? 1 : -1), 1.1, 1.0, 2.0]], -1);
+  wallRun('z', HW, HD - T / 2, [[0.3, 1.1, 1.0, 2.0]], 1);
+  wallRun('z', -HW, HD - T / 2, [[-0.3, 1.1, 1.0, 2.0]], -1);
+  // piso, forro, telhado de quatro águas e chaminé
+  box(0, -0.4, 0, HW * 2, 0.5, HD * 2, 0xd4823a, true, true);
+  box(0, H, 0, HW * 2 + T, 0.1, HD * 2 + T, 0xffffff, false);
+  const roof = new THREE.ConeGeometry(1, 1, 4, 1).rotateY(Math.PI / 4);
+  parts.push(U.part(roof, 0xd84f2a, new THREE.Matrix4().compose(new THREE.Vector3(x, base + H + 0.1 + 0.8, z),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, 0)), new THREE.Vector3((HW * 2 + 1) / Math.SQRT2, 1.6, (HD * 2 + 1) / Math.SQRT2)), 'radial'));
+  box(HW * 0.45, H + 0.5, -HD * 0.3, 0.45, 1.0, 0.45, 0xf2efe6, false);
+  // móveis
+  box(-HW + 0.7, 0.1, -HD + 1.15, 1.0, 0.35, 1.9, WOOD, true, true);
+  box(-HW + 0.7, 0.45, -HD + 1.35, 0.95, 0.1, 1.4, 0x2f63c8, false);
+  box(-HW + 0.7, 0.45, -HD + 0.45, 0.75, 0.12, 0.35, 0xffffff, false);
+  box(HW - 1.1, 0.1, 0.3, 0.18, 0.66, 0.18, WOOD, true);
+  box(HW - 1.1, 0.76, 0.3, 1.1, 0.08, 0.75, 0xb57a42, false);
+  box(0.6, 0.1, -HD + 0.38, 1.3, 1.5, 0.4, 0x7a4a26, true);
+  box(0.4, 0.1, 0.6, 1.6, 0.02, 1.1, 0x3f9f6a, false);
+  // lixeira verde do lado de fora
+  box(HW + 0.75, 0, HD + 0.5, 0.55, 0.85, 0.55, 0x2e9a4a, true);
+  W.lootSpots.push([wx(0.2, 0.8), wz(0.2, 0.8)], [wx(-1.8, 1.6), wz(-1.8, 1.6)]);
+  W.occupied.push([x, z, 6.5]);
+  W.houses.push({ x: x, z: z, c: c, s: s, hw: HW + 0.35, hd: HD + 0.35 });
+};
+
+W.inHouse = function (x, z) {
+  for (const h of W.houses) {
+    const dx = x - h.x, dz = z - h.z;
+    if (dx * dx + dz * dz > 30) continue;
+    const lx = dx * h.c - dz * h.s, lz = dx * h.s + dz * h.c;
+    if (Math.abs(lx) < h.hw && Math.abs(lz) < h.hd) return true;
+  }
+  return false;
 };
 
 W.buildCrates = function (scene, rnd) {
@@ -626,7 +707,7 @@ W.placeGrass = function (cx, cz) {
     const x = (gx + U.hash2(gx, gz)) * sp, z = (gz + U.hash2(gz + 7, gx - 3)) * sp;
     const sa = W.sand(x, z), y = W.height(x, z);
     let sc = (0.8 + U.hash2(gx * 3, gz) * 0.6) * (1 - U.smooth(0.15, 0.55, sa));
-    if (y < W.SEA_Y + 0.2) sc = 0;
+    if (y < W.SEA_Y + 0.2 || W.inHouse(x, z)) sc = 0;
     e.set(0, U.hash2(gx, gz * 5) * 6.28, 0); q.setFromEuler(e);
     p.set(x, y - 0.03, z); s.set(sc, sc * (0.75 + U.hash2(gz, gx) * 0.6), sc);
     m.compose(p, q, s);

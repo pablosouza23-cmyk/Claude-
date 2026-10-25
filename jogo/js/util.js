@@ -190,6 +190,67 @@ U.canvasTex = function (w, h, draw) {
   return t;
 };
 
+// Muitos quadrados virados para a câmera num único desenho (partículas e nuvens).
+// Cada um tem posição, tamanho, giro, cor e transparência próprios.
+U.Billboards = function (max, map, opts) {
+  opts = opts || {};
+  const g = new THREE.InstancedBufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0], 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
+  g.setIndex([0, 1, 2, 0, 2, 3]);
+  this.off = new Float32Array(max * 3); this.col = new Float32Array(max * 4); this.sr = new Float32Array(max * 3);
+  const mk = (arr, n) => { const a = new THREE.InstancedBufferAttribute(arr, n); a.setUsage(THREE.DynamicDrawUsage); return a; };
+  this.attrs = [mk(this.off, 3), mk(this.col, 4), mk(this.sr, 3)];
+  g.setAttribute('iOff', this.attrs[0]); g.setAttribute('iCol', this.attrs[1]); g.setAttribute('iSR', this.attrs[2]);
+  const tiles = opts.tiles || 1;
+  if (tiles > 1) { this.tile = new Float32Array(max); this.attrs.push(mk(this.tile, 1)); g.setAttribute('iTile', this.attrs[3]); }
+  g.instanceCount = 0;
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, fog: !!opts.fog, toneMapped: !opts.additive,
+    blending: opts.additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { map: { value: null } }]),
+    vertexShader: [
+      'attribute vec3 iOff; attribute vec4 iCol; attribute vec3 iSR;', tiles > 1 ? 'attribute float iTile;' : '',
+      'varying vec2 vUv; varying vec4 vCol;',
+      '#include <fog_pars_vertex>',
+      'void main(){',
+      ' vec4 mvPosition = modelViewMatrix * vec4(iOff, 1.0);',
+      ' float c = cos(iSR.z), s = sin(iSR.z); vec2 p = position.xy * iSR.xy;',
+      ' mvPosition.xy += vec2(c * p.x - s * p.y, s * p.x + c * p.y);',
+      ' vUv = uv;', tiles > 1 ? ' vUv.y = (uv.y + iTile) / ' + tiles.toFixed(1) + ';' : '',
+      ' vCol = iCol; gl_Position = projectionMatrix * mvPosition;',
+      '#include <fog_vertex>',
+      '}'].join('\n'),
+    fragmentShader: [
+      'uniform sampler2D map; varying vec2 vUv; varying vec4 vCol;',
+      '#include <fog_pars_fragment>',
+      'void main(){ vec4 t = texture2D(map, vUv); gl_FragColor = vec4(vCol.rgb * t.rgb, vCol.a * t.a); if (gl_FragColor.a < 0.004) discard;',
+      '#include <tonemapping_fragment>',
+      '#include <colorspace_fragment>',
+      '#include <fog_fragment>',
+      '}'].join('\n'),
+  });
+  mat.uniforms.map.value = map;
+  this.mesh = new THREE.Mesh(g, mat);
+  this.mesh.frustumCulled = false;
+  this.mesh.renderOrder = opts.order || 0;
+  this.max = max; this.n = 0; this.g = g;
+};
+U.Billboards.prototype.begin = function () { this.n = 0; };
+U.Billboards.prototype.push = function (x, y, z, sx, sy, rot, r, g, b, a, tile) {
+  if (this.n >= this.max) return;
+  const i = this.n++;
+  this.off[i * 3] = x; this.off[i * 3 + 1] = y; this.off[i * 3 + 2] = z;
+  this.sr[i * 3] = sx; this.sr[i * 3 + 1] = sy; this.sr[i * 3 + 2] = rot;
+  this.col[i * 4] = r; this.col[i * 4 + 1] = g; this.col[i * 4 + 2] = b; this.col[i * 4 + 3] = a;
+  if (this.tile) this.tile[i] = tile || 0;
+};
+U.Billboards.prototype.end = function () {
+  this.g.instanceCount = this.n;
+  if (this.n) for (const a of this.attrs) a.needsUpdate = true;
+  this.mesh.visible = this.n > 0;
+};
+
 U.softDot = (function () {
   let tex = null;
   return function () {

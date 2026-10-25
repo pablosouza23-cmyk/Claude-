@@ -398,30 +398,25 @@ W.cloudTex = function (seed) {
   });
 };
 
-// nuvens: anel no horizonte e uma camada sobre a ilha na altura do salto (sprites suaves)
+// nuvens: anel no horizonte e uma camada sobre a ilha na altura do salto (todas num desenho só)
 W.buildClouds = function (scene, rnd) {
   const texs = [W.cloudTex(3), W.cloudTex(9), W.cloudTex(21)];
-  const mats = texs.map(t => new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, fog: false, color: 0xffffff }));
-  const grp = new THREE.Group();
+  // junta as 3 texturas numa faixa vertical
+  const atlas = U.canvasTex(256, 384, (g) => { texs.forEach((t, i) => g.drawImage(t.image, 0, (2 - i) * 128)); });
+  const bb = new U.Billboards(60, atlas, { tiles: 3, fog: false, order: -5 });
+  const add = (x, y, z, w, h, i) => bb.push(x, y, z, w, h, 0, 1, 1, 1, 1, i % 3);
+  bb.begin();
   for (let i = 0; i < 34; i++) {
-    const a = rnd() * Math.PI * 2, r = 520 + rnd() * 380;
-    const sp = new THREE.Sprite(mats[i % 3]);
-    const w = 160 + rnd() * 200;
-    sp.scale.set(w, w * 0.42, 1);
-    sp.position.set(Math.cos(a) * r, 70 + rnd() * 120, Math.sin(a) * r);
-    grp.add(sp);
+    const a = rnd() * Math.PI * 2, r = 520 + rnd() * 380, w = 160 + rnd() * 200;
+    add(Math.cos(a) * r, 70 + rnd() * 120, Math.sin(a) * r, w, w * 0.42, i);
   }
   for (let i = 0; i < 22; i++) {
-    const a = rnd() * Math.PI * 2, r = 30 + rnd() * 280;
-    const sp = new THREE.Sprite(mats[i % 3]);
-    const w = 55 + rnd() * 60;
-    sp.scale.set(w, w * 0.45, 1);
-    sp.position.set(Math.cos(a) * r, 150 + rnd() * 55, Math.sin(a) * r);
-    grp.add(sp);
+    const a = rnd() * Math.PI * 2, r = 30 + rnd() * 280, w = 55 + rnd() * 60;
+    add(Math.cos(a) * r, 150 + rnd() * 55, Math.sin(a) * r, w, w * 0.45, i);
   }
-  grp.renderOrder = -5;
-  scene.add(grp);
-  W.clouds = grp;
+  bb.end();
+  scene.add(bb.mesh);
+  W.clouds = bb.mesh;
 };
 
 // mapa de ambiente (reflexos do céu em metal, vidro e água) gerado a partir do próprio céu
@@ -663,20 +658,28 @@ W.bushGeo = function () {
 
 W.instanced = function (scene, pack, mats, thick, shadow) {
   if (!mats.length) return;
+  const pos = mats.map(m => [m.elements[12], m.elements[14]]);
   for (const k in pack.mats) {
     const main = new THREE.InstancedMesh(pack.mats[k], TX.mat(k), mats.length);
     for (let i = 0; i < mats.length; i++) main.setMatrixAt(i, mats[i]);
-    main.castShadow = !!shadow;
+    main.castShadow = false;
     main.computeBoundingSphere();
     scene.add(main);
+    // sombra só das árvores perto do jogador: cópia na camada 1, que só a luz do sol enxerga
+    if (shadow) {
+      const sm = new THREE.InstancedMesh(pack.mats[k], TX.mat(k), Math.min(mats.length, 40));
+      sm.castShadow = true; sm.layers.set(1); sm.count = 0; sm.frustumCulled = false;
+      scene.add(sm);
+      W.olSets.push({ mesh: sm, mats: mats, pos: pos, max: sm.count = Math.min(mats.length, 40), R: 48 });
+      sm.count = 0;
+    }
   }
   if (!pack.o) return;
   // contorno só nas instâncias mais próximas do jogador (atualizado em W.update)
   const maxOl = Math.min(mats.length, 45);
   const ol = new THREE.InstancedMesh(pack.o, U.outlineMat(thick), maxOl);
   ol.frustumCulled = false;
-  const pos = mats.map(m => [m.elements[12], m.elements[14]]);
-  W.olSets.push({ mesh: ol, mats: mats, pos: pos, max: maxOl });
+  W.olSets.push({ mesh: ol, mats: mats, pos: pos, max: maxOl, R: 95 });
   scene.add(ol);
 };
 W.olSets = [];
@@ -686,7 +689,7 @@ W.updateOutlines = function (px, pz) {
     idx.sort((a, b) => a[0] - b[0]);
     let n = 0;
     for (let k = 0; k < s.max; k++) {
-      if (idx[k][0] > 95 * 95) break;
+      if (idx[k][0] > s.R * s.R) break;
       s.mesh.setMatrixAt(n++, s.mats[idx[k][1]]);
     }
     s.mesh.count = n;

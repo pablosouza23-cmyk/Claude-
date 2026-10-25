@@ -58,11 +58,18 @@ WPN.MDL = {
   FUTURISTA: { src: 'Bullpup_2', len: 0.74, grip: [0.27, 0.48], fore: [0.82, 0.61], top: [0.5, 0.98], muzzle: 0.81, tint: [0.55, 0.7, 1.15], glowLine: [0.3, 0.86, 0.74] },
   BLASTER: { src: 'Bullpup_3', len: 0.75, grip: [0.37, 0.50], fore: [0.68, 0.62], top: [0.5, 0.98], muzzle: 0.88, tint: [0.75, 0.68, 0.62], glowRings: [0.72, 0.95, 0.8] },
 };
-WPN.models = null;
+WPN.models = null; WPN.modelsLod = null;
 WPN.load = async function () {
   try {
-    const r = await fetch(CH.url('assets/guns.bin'));
-    if (!r.ok) throw new Error('sem armas');
+    WPN.models = await WPN.loadFile('assets/guns.bin');
+    try { WPN.modelsLod = await WPN.loadFile('assets/guns_lod.bin'); } catch (e) { WPN.modelsLod = null; }
+    WPN.cache = {};
+  } catch (e) { console.warn('armas 3D indisponíveis, usando modelos simples', e); }
+};
+WPN.loadFile = async function (path) {
+  {
+    const r = await fetch(CH.url(path));
+    if (!r.ok) throw new Error('sem ' + path);
     const buf = await r.arrayBuffer(), dv = new DataView(buf), hl = dv.getUint32(4, true);
     const H = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 8, hl)).replace(/[\0 ]+$/, '')), base = 8 + hl;
     const out = {};
@@ -85,14 +92,14 @@ WPN.load = async function () {
       g.computeBoundingBox();
       out[k] = g;
     }
-    WPN.models = out;
-    WPN.cache = {};
-  } catch (e) { console.warn('armas 3D indisponíveis, usando modelos simples', e); }
+    return out;
+  }
 };
 
-WPN.buildModel = function (id) {
+WPN.buildModel = function (id, lod) {
   const cfg = WPN.MDL[id], def = WPN.DEF[id];
-  const src = WPN.models[cfg.src];
+  const lib = lod && WPN.modelsLod ? WPN.modelsLod : WPN.models;
+  const src = lib[cfg.src] || WPN.models[cfg.src];
   const bb = src.boundingBox;
   const L = bb.max.z - bb.min.z, Hh = bb.max.y - bb.min.y, s = cfg.len / L;
   const at = (f) => new THREE.Vector3(0, (bb.min.y + f[1] * Hh) * s, (bb.min.z + f[0] * L) * s);
@@ -148,8 +155,8 @@ WPN.buildModel = function (id) {
     const a = pt([cfg.glowRings[0], cfg.glowRings[2]]), b = pt([cfg.glowRings[1], cfg.glowRings[2]]);
     for (let i = 0; i < 4; i++) { const z = U.lerp(a.z, b.z, i / 3); add(new THREE.TorusGeometry(WPN.halfW(src, s) + 0.012, 0.006, 6, 18), def.glow, U.mat4(0, a.y, z), true); }
   }
-  if (cfg.bipod && WPN.models['Accessories/Bipod']) {
-    const bp = WPN.models['Accessories/Bipod'].toNonIndexed(), q = pt(cfg.bipod), k = s * 0.7;
+  if (cfg.bipod && lib['Accessories/Bipod']) {
+    const bp = lib['Accessories/Bipod'].toNonIndexed(), q = pt(cfg.bipod), k = s * 0.7;
     bp.applyMatrix4(new THREE.Matrix4().makeTranslation(q.x, q.y, q.z).multiply(new THREE.Matrix4().makeScale(k * 0.55, k, k)).multiply(new THREE.Matrix4().makeRotationX(-0.5)));
     U.projectUV(bp, TX.SCALE.gun);
     P.push(bp);
@@ -160,14 +167,16 @@ WPN.buildModel = function (id) {
   pair.len = front.z; pair.muzzleY = front.y; pair.sightY = sightY; pair.sightZ = sightZ;
   pair.gripZ = gripZ; pair.pistol = !!cfg.pistol;
   if (cfg.fore) { const f = pt(cfg.fore); pair.foreZ = f.z; pair.foreY = f.y; } else { pair.foreZ = gripZ; pair.foreY = -0.09; }
-  WPN.cache[id] = pair;
+  WPN.cache[id + (lod ? '|lod' : '')] = pair;
   return pair;
 };
 WPN.halfW = (g, s) => (g.boundingBox.max.x - g.boundingBox.min.x) / 2 * s;
 
-WPN.build = function (id) {
-  if (WPN.cache[id]) return WPN.cache[id];
-  if (WPN.models && WPN.MDL[id] && WPN.models[WPN.MDL[id].src]) return WPN.buildModel(id);
+// lod = versão leve (loot no chão, armas dos outros personagens)
+WPN.build = function (id, lod) {
+  const key = id + (lod ? '|lod' : '');
+  if (WPN.cache[key]) return WPN.cache[key];
+  if (WPN.models && WPN.MDL[id] && WPN.models[WPN.MDL[id].src]) return WPN.buildModel(id, lod);
   const P = [], GL = [];
   const K = 0x34363c, K2 = 0x4a4e56, STEEL = 0x707780, BRASS = 0xc9a24a;
   const push = (geo, c, m, glow, mode) => (glow ? GL : P).push(U.part(geo, c, m, mode || 'radial', 'gun'));

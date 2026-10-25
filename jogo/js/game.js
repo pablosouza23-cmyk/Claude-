@@ -6,7 +6,7 @@ const V3 = THREE.Vector3;
 
 const G = {
   state: 'menu', time: 0, built: false,
-  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85 },
+  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false },
   actors: [], bots: [], walls: [], loot: [], nades: [], props: [],
 };
 
@@ -41,7 +41,25 @@ let renderer, scene, camera, sun, hemi;
 const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
 // ------------------------------------------------------------------ renderização
+// primeira vez: escolhe a qualidade pela placa de vídeo do aparelho
+function autoQuality() {
+  if (G.settings.qualityChosen) return;
+  let gpu = '';
+  try {
+    const gl = document.createElement('canvas').getContext('webgl');
+    const ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
+    gpu = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : (gl ? String(gl.getParameter(gl.RENDERER)) : '');
+  } catch (e) { /* sem informação */ }
+  const weak = /Mali-(T|G3|G5[12]|4)|Adreno \(TM\) [3-5]\d\d|PowerVR|SGX|Videocore|SwiftShader|llvmpipe/i.test(gpu);
+  const strong = /Adreno \(TM\) (7[3-9]\d|8\d\d)|Mali-G7[1-9]|Mali-G[6-9]1\d|Immortalis|Apple|NVIDIA|GeForce|Radeon|AMD/i.test(gpu);
+  G.settings.quality = weak ? 'baixa' : strong && !isTouch ? 'alta' : 'media';
+  if (isTouch && (navigator.deviceMemory || 4) <= 3) G.settings.quality = 'baixa';
+  G.settings.qualityChosen = true;
+  G.saveSettings();
+}
+
 function initRenderer() {
+  autoQuality();
   // anisotropia ajustada depois que o renderer existir
   const q = G.settings.quality;
   const canvas = $('c');
@@ -53,7 +71,9 @@ function initRenderer() {
     throw e;
   }
   const dpr = window.devicePixelRatio || 1;
-  renderer.setPixelRatio(q === 'baixa' ? Math.min(dpr, 1) * 0.75 : q === 'media' ? Math.min(dpr, 1.3) : Math.min(dpr, 2));
+  G.baseDPR = q === 'baixa' ? Math.min(dpr, 1) * 0.75 : q === 'media' ? Math.min(dpr, 1.3) : Math.min(dpr, 2);
+  G.dprScale = 1;
+  renderer.setPixelRatio(G.baseDPR);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.shadowMap.enabled = q !== 'baixa';
   renderer.shadowMap.type = q === 'alta' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
@@ -74,6 +94,7 @@ function initRenderer() {
   sun.shadow.mapSize.set(sz, sz);
   const sc = sun.shadow.camera;
   sc.left = -34; sc.right = 34; sc.top = 34; sc.bottom = -34; sc.near = 1; sc.far = 160;
+  sun.shadow.camera.layers.enable(1); // sombras das árvores próximas (camada 1)
   sun.shadow.bias = -0.0008;
   sun.shadow.normalBias = 0.04;
   scene.add(sun); scene.add(sun.target);
@@ -96,7 +117,7 @@ function onResize() {
 
 // ------------------------------------------------------------------ atores
 function makeActor(name, pal, isPlayer) {
-  const ch = CH.make(pal);
+  const ch = CH.make(pal, isPlayer);
   scene.add(ch.root);
   return {
     name: name, ch: ch, isPlayer: isPlayer,
@@ -639,39 +660,60 @@ function lootPair(type) {
 }
 
 const lootMat = U.toon({ vertexColors: true, emissive: 0x222222 });
-const ringMats = {};
-const ringGeo = new THREE.RingGeometry(0.45, 0.6, 24);
-function lootMesh(type) {
-  const grp = new THREE.Group();
-  let pair, ring;
-  const isW = type.indexOf('w:') === 0;
-  let holder;
-  if (isW) {
-    const id = type.slice(2);
-    ring = WPN.RARITY[WEAPONS[id].rarity].hex;
-    holder = new THREE.Group();
-    const gm = WPN.mesh(id, 0.018); gm.rotation.z = Math.PI / 2; gm.scale.setScalar(1.45);
-    holder.add(gm);
-  } else {
-    pair = lootPair(type); ring = LOOT[type].ring;
-    holder = new THREE.Group();
-    holder.add(new THREE.Mesh(pair.g, lootMat)); holder.add(new THREE.Mesh(pair.o, U.outlineMat(0.025)));
+const ringGeo = new THREE.RingGeometry(0.45, 0.6, 24).rotateX(-Math.PI / 2);
+// Loot desenhado por instâncias: um desenho por tipo de item (e um só para todos os anéis),
+// atualizado a cada quadro só para o que está perto do jogador.
+const LR = { types: {}, ring: null, max: 48 };
+function lootIM(type) {
+  let e = LR.types[type];
+  if (e) return e;
+  e = LR.types[type] = { list: [] };
+  const mk = (geo, mat) => { const m = new THREE.InstancedMesh(geo, mat, LR.max); m.count = 0; m.frustumCulled = false; scene.add(m); e.list.push(m); return m; };
+  if (type.indexOf('w:') === 0) {
+    const p = WPN.build(type.slice(2), true);
+    mk(p.g, WPN.gunMat());
+    if (p.glow) mk(p.glow, WPN.glowMat());
+  } else mk(lootPair(type).g, lootMat);
+  return e;
+}
+const _lm = new THREE.Matrix4(), _lq = new THREE.Quaternion(), _lq2 = new THREE.Quaternion().setFromAxisAngle(new V3(0, 0, 1), Math.PI / 2), _lp = new V3(), _ls = new V3(), _lc = new THREE.Color();
+const _ly = new V3(0, 1, 0);
+function renderLoot(px, pz) {
+  if (!LR.ring) {
+    LR.ring = new THREE.InstancedMesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false }), 260);
+    LR.ring.frustumCulled = false; scene.add(LR.ring);
+    LR.ring.setColorAt(0, _lc.setHex(0xffffff)); // cria a cor por instância antes do primeiro desenho
   }
-  grp.add(holder);
-  if (!ringMats[ring]) ringMats[ring] = new THREE.MeshBasicMaterial({ color: ring, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false });
-  const r = new THREE.Mesh(ringGeo, ringMats[ring]);
-  r.rotation.x = -Math.PI / 2; r.position.y = 0.04;
-  grp.add(r);
-  grp.userData.spin = holder;
-  return grp;
+  for (const k in LR.types) LR.types[k].n = 0;
+  let nr = 0;
+  const R = G.player && G.player.phase === 'ground' ? 70 : 0;
+  for (const it of G.loot) {
+    const dx = it.x - px, dz = it.z - pz;
+    if (dx * dx + dz * dz > R * R) continue;
+    const e = lootIM(it.type);
+    if (e.n >= LR.max) continue;
+    const near = dx * dx + dz * dz < 2500;
+    const bob = near ? Math.sin(it.t * 2.5) * 0.05 : 0;
+    _lq.setFromAxisAngle(_ly, near ? it.t * 1.4 : it.t);
+    if (it.isWeapon) { _lq.multiply(_lq2); _ls.setScalar(1.45); } else _ls.setScalar(1);
+    _lm.compose(_lp.set(it.x, it.y + 0.12 + bob, it.z), _lq, _ls);
+    for (const m of e.list) m.setMatrixAt(e.n, _lm);
+    e.n++;
+    if (nr < 260) {
+      _lm.makeTranslation(it.x, it.y + 0.04, it.z);
+      LR.ring.setMatrixAt(nr, _lm);
+      LR.ring.setColorAt(nr, _lc.setHex(it.isWeapon ? WPN.RARITY[WEAPONS[it.type.slice(2)].rarity].hex : LOOT[it.type].ring));
+      nr++;
+    }
+  }
+  for (const k in LR.types) { const e = LR.types[k]; for (const m of e.list) { m.count = e.n; if (e.n) m.instanceMatrix.needsUpdate = true; } }
+  LR.ring.count = nr;
+  if (nr) { LR.ring.instanceMatrix.needsUpdate = true; LR.ring.instanceColor.needsUpdate = true; }
 }
 
 function spawnLoot(type, x, z, extra, id) {
-  const grp = lootMesh(type);
   const y = W.groundAt(x, z, W.height(x, z) + 1.0);
-  grp.position.set(x, y, z);
-  scene.add(grp);
-  const it = { id: id !== undefined ? id : NET.lootSeq++, type: type, grp: grp, x: x, z: z, y: y, t: Math.random() * 6, extra: extra || null, isWeapon: type.indexOf('w:') === 0 };
+  const it = { id: id !== undefined ? id : NET.lootSeq++, type: type, x: x, z: z, y: y, t: Math.random() * 6, extra: extra || null, isWeapon: type.indexOf('w:') === 0 };
   G.loot.push(it);
   if (!G.scattering && id === undefined) NET.onLootAdd(it);
   return it;
@@ -744,7 +786,6 @@ function takeLoot(a, it) {
 }
 
 function removeLoot(it) {
-  scene.remove(it.grp);
   const i = G.loot.indexOf(it); if (i >= 0) G.loot.splice(i, 1);
   NET.onLootRemove(it);
 }
@@ -777,12 +818,6 @@ function updateLoot(dt) {
   for (let i = G.loot.length - 1; i >= 0; i--) {
     const it = G.loot[i];
     it.t += dt;
-    const dx0 = Math.abs(it.x - px), dz0 = Math.abs(it.z - pz);
-    it.grp.visible = dx0 < 110 && dz0 < 110;
-    if (dx0 < 50 && dz0 < 50) {
-      it.grp.userData.spin.rotation.y = it.t * 1.4;
-      it.grp.userData.spin.position.y = 0.12 + Math.sin(it.t * 2.5) * 0.05;
-    }
     for (const a of G.actors) {
       if (!a.alive || a.phase !== 'ground' || a.remote) continue;
       const dx = a.pos.x - it.x, dz = a.pos.z - it.z;
@@ -792,6 +827,7 @@ function updateLoot(dt) {
       }
     }
   }
+  renderLoot(px, pz);
 }
 
 // ------------------------------------------------------------------ zona segura
@@ -1137,11 +1173,46 @@ function consume(name, key) {
   return !!v;
 }
 
+// Assistência de mira: perto de um inimigo a mira fica mais "pesada" (fricção) e, atirando ou
+// mirando, puxa de leve para o peito dele. Devolve o fator de sensibilidade.
+const _aa = new V3(), _af = new V3();
+function aimAssist(p, dt) {
+  const w = curW(p);
+  if (!G.settings.aimAssist || !w || p.nadeHand || p.phase !== 'ground') { G.aaTarget = null; return 1; }
+  camForward(_af, G.yaw, G.pitch);
+  const eye = camera.position;
+  let best = null, bestS = 1;
+  for (const a of G.actors) {
+    if (a === p || !a.alive || a.phase !== 'ground') continue;
+    _aa.set(a.pos.x - eye.x, a.pos.y + (a.crouch ? 0.8 : 1.15) - eye.y, a.pos.z - eye.z);
+    const dist = _aa.length();
+    if (dist < 1.2 || dist > w.range) continue;
+    const ang = Math.acos(U.clamp(_aa.dot(_af) / dist, -1, 1));
+    const tol = Math.atan(0.55 / dist) + 0.04;
+    const sc = ang / tol;
+    if (sc < bestS) { best = a; bestS = sc; }
+  }
+  if (best && best !== G.aaTarget) { G.aaTarget = best; G.aaVis = -1; }
+  if (!best) { G.aaTarget = null; return 1; }
+  // linha de visão (checada poucas vezes por segundo)
+  if (G.time > G.aaVis) { G.aaVis = G.time + 0.2; actorEye(p, _aa); G.aaSee = visible(eye, _af.set(best.pos.x, best.pos.y + 1.1, best.pos.z)); }
+  if (!G.aaSee) return 1;
+  const firing = input.fire || G.mouseFire; // puxa só atirando; mirando, só a fricção
+  if (firing) {
+    const dx = best.pos.x - eye.x, dz = best.pos.z - eye.z, dy = best.pos.y + (best.crouch ? 0.8 : 1.15) - eye.y;
+    const yawT = Math.atan2(-dx, -dz), pitchT = Math.atan2(dy, Math.hypot(dx, dz));
+    const k = (isTouch ? 4.5 : 1.8) * (1 - bestS * 0.5) * dt;
+    G.yaw += U.angDiff(G.yaw, yawT) * Math.min(1, k);
+    G.pitch += (pitchT - G.pitch) * Math.min(1, k * 0.7);
+  }
+  return isTouch ? 0.55 + bestS * 0.3 : 0.8;
+}
+
 function updatePlayer(dt) {
   const p = G.player;
   if (!p.alive) { CH.animate(p.ch, dt, { dead: true }); return; }
   const ads = isScoped(p);
-  const sensK = G.settings.sens * (ads ? G.settings.adsSens * 1.2 / curW(p).zoom : 1);
+  const sensK = G.settings.sens * (ads ? G.settings.adsSens * 1.2 / curW(p).zoom : 1) * aimAssist(p, dt);
   G.yaw -= input.lookX * sensK; G.pitch -= input.lookY * sensK;
   input.lookX = 0; input.lookY = 0;
   const mv = readMove();
@@ -1216,7 +1287,7 @@ function updatePlayer(dt) {
   p.ch.body.rotation.y = p.face;
   p.ch.root.position.copy(p.pos);
   p.ch.root.visible = !isScoped(p);
-  CH.animate(p.ch, dt, { mode: 'ground', speed: p.speed, vx: p.vel.x, vz: p.vel.z, aim: combat && curSlot(p) ? Math.max(p.aim, 0.85) : p.aim, air: !p.onGround, pitch: combat ? G.pitch : 0, crouch: p.crouch, armed: !!curSlot(p) && !p.nadeHand });
+  CH.animate(p.ch, dt, { mode: 'ground', speed: p.speed, vx: p.vel.x, vz: p.vel.z, aim: combat && curSlot(p) ? Math.max(p.aim, 0.85) : p.aim, air: !p.onGround, pitch: combat ? G.pitch : 0, crouch: p.crouch, armed: !!curSlot(p) && !p.nadeHand, reload: reloadK(p) });
 
   // passos: poeirinha e som
   if (p.onGround && p.speed > 2.2) {
@@ -1252,9 +1323,15 @@ function playerShoot(p) {
 function startReload(a) {
   const s = curSlot(a);
   if (!s || a.reloadT > 0 || s.mag >= WEAPONS[s.id].mag || s.reserve <= 0) return;
-  a.reloadT = WEAPONS[s.id].type === 'shotgun' ? 2.6 : 1.9;
+  a.reloadT = a.reloadMax = WEAPONS[s.id].type === 'shotgun' ? 2.6 : 1.9;
   if (a.isPlayer) SND.play('reload');
 }
+function reloadK(a) { return a.reloadT > 0 ? 1 - a.reloadT / (a.reloadMax || 1.9) : 0; }
+// personagem dentro do que a câmera enxerga (atualizado uma vez por quadro)
+G.frustum = new THREE.Frustum();
+const _fs = new THREE.Sphere(new V3(), 1.6), _pm = new THREE.Matrix4();
+function updateFrustum() { camera.updateMatrixWorld(); G.frustum.setFromProjectionMatrix(_pm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)); }
+function inView(p) { _fs.center.set(p.x, p.y + 0.9, p.z); return G.frustum.intersectsSphere(_fs); }
 function updateReload(a, dt) {
   if (a.reloadT <= 0) return;
   a.reloadT -= dt;
@@ -1366,8 +1443,8 @@ function updateBot(b, dt) {
   const near = b.pos.distanceTo(G.player.pos);
   if (!b.alive) { if (near < 120) CH.animate(b.ch, dt, { dead: true }); return; }
   b.ch.root.visible = near < (b.phase === 'ground' ? 130 : 260);
-  CH.setOutlinesVisible(b.ch, near < (G.settings.quality === 'baixa' ? 22 : 45));
-  CH.setShadow(b.ch, near < 40);
+  CH.setShadow(b.ch, near < 22 && G.settings.quality !== 'baixa');
+  CH.setLod(b.ch, near, inView(b.pos));
   if (b.phase === 'fall' || b.phase === 'chute') {
     botAirControl(b, dt);
     if (b.ch.root.visible) CH.animate(b.ch, dt, { mode: b.phase, board: b.board });
@@ -1434,7 +1511,7 @@ function updateBot(b, dt) {
   b.face = U.dampAngle(b.face, faceT, 10, dt);
   b.ch.body.rotation.y = b.face;
   b.ch.root.position.copy(b.pos);
-  if (near < 120) CH.animate(b.ch, dt, { mode: 'ground', speed: b.speed, vx: b.vel.x, vz: b.vel.z, aim: t && armed ? 1 : 0, air: !b.onGround, pitch: 0, armed: !!curSlot(b) });
+  if (near < 120) CH.animate(b.ch, dt, { mode: 'ground', speed: b.speed, vx: b.vel.x, vz: b.vel.z, aim: t && armed ? 1 : 0, air: !b.onGround, pitch: 0, armed: !!curSlot(b), reload: reloadK(b) });
 }
 
 function botShoot(b, t, dist) {

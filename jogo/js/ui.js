@@ -596,6 +596,21 @@ function startMatch(msg) {
   H.prep.classList.remove('hidden');
   H.jumpHint.classList.remove('show');
   onResize();
+  warmup();
+}
+
+// pré-aquece: monta os modelos de todos os itens e compila todos os shaders antes de jogar,
+// para não engasgar na primeira vez que algo aparece (primeiro tiro, primeira granada...)
+let warmed = false;
+function warmup() {
+  if (warmed) return;
+  warmed = true;
+  for (const id of WPN.ORDER) { lootIM('w:' + id); WPN.build(id); WPN.build(id, true); }
+  for (const k in LOOT) lootIM(k);
+  const hidden = [];
+  scene.traverse(o => { if (!o.visible) { hidden.push(o); o.visible = true; } });
+  try { renderer.compile(scene, camera); if (fpScene) renderer.compile(fpScene, fpCam); } catch (e) { /* opcional */ }
+  for (const o of hidden) o.visible = false;
 }
 
 function pauseGame() {
@@ -753,9 +768,11 @@ const SETTINGS_UI = {
   ],
   graficos: [
     { k: 'quality', label: 'Qualidade gráfica', type: 'seg', opts: [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta']], reload: true },
+    { k: 'dynRes', label: 'Resolução automática (evita travar)', type: 'toggle' },
     { k: 'fps', label: 'Mostrar FPS', type: 'toggle' },
   ],
   controles: [
+    { k: 'aimAssist', label: 'Assistência de mira', type: 'toggle' },
     { k: 'btnSize', label: 'Tamanho dos botões', type: 'range', min: 0.75, max: 1.35, step: 0.05, show: v => Math.round(v * 100) + '%' },
     { k: 'btnAlpha', label: 'Opacidade dos botões', type: 'range', min: 0.35, max: 1, step: 0.05, show: v => Math.round(v * 100) + '%' },
   ],
@@ -975,8 +992,8 @@ function clearMatch() {
   for (const a of G.actors) scene.remove(a.ch.root);
   for (const w of G.walls.slice()) { w.dead = true; scene.remove(w.grp); }
   G.walls.length = 0; W.dynamic.length = 0;
-  for (const it of G.loot) scene.remove(it.grp);
   G.loot.length = 0;
+  renderLoot(0, 0);
   for (const n of G.nades) scene.remove(n.m);
   G.nades.length = 0;
   for (const p of G.props) scene.remove(p);
@@ -994,6 +1011,7 @@ function clearMatch() {
 // ------------------------------------------------------------------ laço principal
 function tick(dt) {
   G.time += dt;
+  updateFrustum();
   updateDrop(dt);
   updatePlayer(dt);
   for (const a of G.actors) if (a.human && a.remote) updatePuppet(a, dt);
@@ -1008,10 +1026,29 @@ function tick(dt) {
 }
 
 const clock = new THREE.Clock();
-function frame() {
+// resolução dinâmica: se o FPS cai, a imagem fica um pouco menor; quando sobra fôlego, volta
+const PERF = { t: 0, n: 0, last: 0, fps: 60 };
+function adaptQuality(raw) {
+  PERF.t += raw; PERF.n++;
+  if (PERF.t < 2) return;
+  PERF.fps = PERF.n / PERF.t; PERF.t = 0; PERF.n = 0;
+  if (G.state !== 'play') return;
+  let s = G.dprScale || 1;
+  if (!G.settings.dynRes) s = 1.25; // força voltar ao normal abaixo
+  if (PERF.fps < 40 && s > 0.55) s = Math.max(0.55, s - 0.12);
+  else if (PERF.fps > 56 && s < 1) s = Math.min(1, s + 0.06);
+  if (s > 1) s = 1;
+  if (s !== G.dprScale) { G.dprScale = s; renderer.setPixelRatio(G.baseDPR * s); renderer.setSize(window.innerWidth, window.innerHeight, false); }
+}
+function frame(now) {
   requestAnimationFrame(frame);
-  const dt = Math.min(clock.getDelta(), 0.05);
+  // no máximo 60 quadros por segundo (telas de 90/120 Hz gastam bateria à toa)
+  if (now && PERF.last && now - PERF.last < 15.5) return;
+  PERF.last = now || 0;
+  const raw = clock.getDelta();
+  const dt = Math.min(raw, 0.05);
   if (!G.built) return;
+  adaptQuality(raw);
   if (G.state === 'play' || (NET.live && G.player && G.player.ch && (G.state === 'pause' || G.state === 'end'))) tick(dt);
   const menu = G.state === 'menu' || G.state === 'lobby';
   const focus = menu ? G.show.pos : G.player.phase === 'ground' ? G.player.pos : camera.position;

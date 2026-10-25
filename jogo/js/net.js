@@ -238,7 +238,8 @@ function updatePuppet(a, dt) {
   if (a.phase === 'plane') { a.ch.root.visible = false; return; }
   const near = a.pos.distanceTo(G.player.pos);
   a.ch.root.visible = near < (a.phase === 'ground' ? 140 : 260);
-  CH.setShadow(a.ch, near < 40);
+  CH.setShadow(a.ch, near < 22 && G.settings.quality !== 'baixa');
+  CH.setLod(a.ch, near, inView(a.pos));
   a.ch.body.rotation.y = a.face;
   a.ch.root.position.copy(a.pos);
   a.ch.board.userData.trail.visible = a.phase === 'fall';
@@ -418,7 +419,7 @@ NET.clientGot = function (d) {
   const p = G.player;
   if (G.pending) delete G.pending[d.id];
   const it = G.loot.find(x => x.id === d.id) || { type: d.ty, extra: d.ex, isWeapon: d.ty.indexOf('w:') === 0, id: d.id };
-  if (it.grp) removeLoot(it);
+  if (G.loot.includes(it)) removeLoot(it);
   if (it.isWeapon) {
     const id = d.ty.slice(2);
     const old = giveWeapon(p, id, d.ex ? d.ex.mag : undefined, d.ex ? d.ex.reserve : undefined);

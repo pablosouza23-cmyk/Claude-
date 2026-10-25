@@ -4,24 +4,15 @@ const FX = {};
 
 FX.init = function (scene) {
   FX.scene = scene;
-  // traçantes
-  FX.tracers = [];
+  // traçantes: todos num desenho só
+  FX.MAXT = 40;
   const tg = new THREE.BoxGeometry(0.025, 0.025, 1).translate(0, 0, 0.5);
-  const tm = new THREE.MeshBasicMaterial({ color: 0xfff1a8, transparent: true, opacity: 0.9, depthWrite: false });
-  for (let i = 0; i < 28; i++) {
-    const m = new THREE.Mesh(tg, tm);
-    m.visible = false; m.frustumCulled = false;
-    scene.add(m);
-    FX.tracers.push({ m: m, life: 0 });
-  }
-  // sprites (fumaça, poeira, clarão)
-  FX.sprites = [];
-  for (let i = 0; i < 240; i++) {
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: U.softDot(), transparent: true, depthWrite: false, color: 0xffffff }));
-    s.visible = false;
-    scene.add(s);
-    FX.sprites.push({ s: s, life: 0, max: 1, vx: 0, vy: 0, vz: 0, grow: 0, a0: 1 });
-  }
+  FX.tracerMesh = new THREE.InstancedMesh(tg, new THREE.MeshBasicMaterial({ color: 0xfff1a8, transparent: true, opacity: 0.9, depthWrite: false, toneMapped: false }), FX.MAXT);
+  FX.tracerMesh.count = 0; FX.tracerMesh.frustumCulled = false;
+  scene.add(FX.tracerMesh);
+  FX.tracers = [];
+  // partículas (fumaça, poeira, sangue): um desenho para todas
+  FX.smokeP = new FX.Particles(scene, 320, U.softDot(), false, 'sprite');
   // cubos de gelo (estilhaços)
   FX.MAXS = 320;
   const cg = U.part(new THREE.BoxGeometry(1, 1, 1), 0xffffff, null, 'radial');
@@ -39,36 +30,66 @@ FX.init = function (scene) {
 };
 
 FX.reset = function () {
-  for (const t of FX.tracers) { t.life = 0; t.m.visible = false; }
-  for (const s of FX.sprites) { s.life = 0; s.s.visible = false; }
+  FX.tracers.length = 0; FX.tracerMesh.count = 0;
+  FX.smokeP.clear();
   FX.shards.length = 0;
   for (const n of FX.nums) n.el.remove();
   FX.nums.length = 0;
 };
 
+// sistema de partículas em arrays (sem objetos por partícula, sem lixo para o coletor)
+const _pc = new THREE.Color();
+FX.Particles = function (scene, max, map, additive, mode) {
+  this.bb = new U.Billboards(max, map, { additive: additive, fog: !additive, order: additive ? 3 : 2 });
+  scene.add(this.bb.mesh);
+  this.max = max; this.n = 0; this.mode = mode;
+  const F = () => new Float32Array(max);
+  this.px = F(); this.py = F(); this.pz = F(); this.vx = F(); this.vy = F(); this.vz = F();
+  this.life = F(); this.ml = F(); this.size = F(); this.grow = F(); this.a0 = F(); this.r = F(); this.g = F(); this.b = F(); this.grav = F(); this.rot = F();
+};
+FX.Particles.prototype.clear = function () { this.n = 0; this.bb.begin(); this.bb.end(); };
+FX.Particles.prototype.add = function (x, y, z, color, size, life, vx, vy, vz, grow, alpha, grav, rot) {
+  let i = this.n;
+  if (i >= this.max) { i = Math.floor(Math.random() * this.max); } else this.n++;
+  _pc.setHex(color);
+  this.px[i] = x; this.py[i] = y; this.pz[i] = z; this.vx[i] = vx || 0; this.vy[i] = vy || 0; this.vz[i] = vz || 0;
+  this.life[i] = this.ml[i] = life; this.size[i] = size; this.grow[i] = grow || 0; this.a0[i] = alpha === undefined ? 1 : alpha;
+  this.r[i] = _pc.r; this.g[i] = _pc.g; this.b[i] = _pc.b; this.grav[i] = grav || 0; this.rot[i] = rot || 0;
+};
+FX.Particles.prototype.update = function (dt) {
+  const bb = this.bb; bb.begin();
+  let w = 0;
+  for (let i = 0; i < this.n; i++) {
+    const l = this.life[i] - dt;
+    if (l <= 0) continue;
+    if (w !== i) {
+      this.px[w] = this.px[i]; this.py[w] = this.py[i]; this.pz[w] = this.pz[i]; this.vx[w] = this.vx[i]; this.vy[w] = this.vy[i]; this.vz[w] = this.vz[i];
+      this.ml[w] = this.ml[i]; this.size[w] = this.size[i]; this.grow[w] = this.grow[i]; this.a0[w] = this.a0[i];
+      this.r[w] = this.r[i]; this.g[w] = this.g[i]; this.b[w] = this.b[i]; this.grav[w] = this.grav[i]; this.rot[w] = this.rot[i];
+    }
+    this.life[w] = l;
+    this.vy[w] -= this.grav[w] * dt;
+    this.px[w] += this.vx[w] * dt; this.py[w] += this.vy[w] * dt; this.pz[w] += this.vz[w] * dt;
+    const k = l / this.ml[w];
+    let sz, a;
+    if (this.mode === 'sprite') { sz = this.size[w] * (1 + this.grow[w] * (1 - k)); a = this.a0[w] * k; }
+    else if (this.mode === 'glow') { sz = this.size[w] * (0.6 + 0.4 * k); a = k; }
+    else { sz = this.size[w]; a = 1; }
+    bb.push(this.px[w], this.py[w], this.pz[w], sz, sz, this.rot[w], this.r[w], this.g[w], this.b[w], a);
+    w++;
+  }
+  this.n = w;
+  bb.end();
+};
+
+const _tq = new THREE.Quaternion(), _tv = new THREE.Vector3(), _ts = new THREE.Vector3(), _tz = new THREE.Vector3(0, 0, 1);
 FX.tracer = function (from, to) {
-  const t = FX.tracers.find(t => t.life <= 0) || FX.tracers[0];
-  t.m.position.copy(from);
-  t.m.lookAt(to);
-  t.m.scale.set(1, 1, Math.max(0.1, from.distanceTo(to)));
-  t.m.visible = true;
-  t.life = 0.05;
+  if (FX.tracers.length >= FX.MAXT) FX.tracers.shift();
+  FX.tracers.push({ x: from.x, y: from.y, z: from.z, dx: to.x - from.x, dy: to.y - from.y, dz: to.z - from.z, life: 0.05 });
 };
 
 FX.sprite = function (pos, color, size, life, vel, grow, alpha) {
-  let p = null;
-  for (const s of FX.sprites) if (s.life <= 0) { p = s; break; }
-  if (!p) return;
-  p.s.position.copy(pos);
-  p.s.material.color.setHex(color);
-  p.s.material.opacity = alpha === undefined ? 1 : alpha;
-  p.a0 = p.s.material.opacity;
-  p.s.scale.set(size, size, 1);
-  p.size = size;
-  p.s.visible = true;
-  p.life = p.max = life;
-  p.vx = vel ? vel.x : 0; p.vy = vel ? vel.y : 0; p.vz = vel ? vel.z : 0;
-  p.grow = grow || 0;
+  FX.smokeP.add(pos.x, pos.y, pos.z, color, size, life, vel ? vel.x : 0, vel ? vel.y : 0, vel ? vel.z : 0, grow, alpha === undefined ? 1 : alpha, 0, 0);
 };
 
 FX.flash = function (pos) {
@@ -113,17 +134,20 @@ FX.number = function (pos, text, color) {
 };
 
 FX.update = function (dt, camera, W) {
-  for (const t of FX.tracers) if (t.life > 0) { t.life -= dt; if (t.life <= 0) t.m.visible = false; }
-  for (const p of FX.sprites) {
-    if (p.life <= 0) continue;
-    p.life -= dt;
-    if (p.life <= 0) { p.s.visible = false; continue; }
-    p.s.position.x += p.vx * dt; p.s.position.y += p.vy * dt; p.s.position.z += p.vz * dt;
-    const k = 1 - p.life / p.max;
-    const sc = p.size * (1 + p.grow * k);
-    p.s.scale.set(sc, sc, 1);
-    p.s.material.opacity = p.a0 * (1 - k);
+  let nt = 0;
+  for (let i = FX.tracers.length - 1; i >= 0; i--) {
+    const t = FX.tracers[i];
+    t.life -= dt;
+    if (t.life <= 0) { FX.tracers.splice(i, 1); continue; }
+    _tv.set(t.dx, t.dy, t.dz);
+    const len = Math.max(0.1, _tv.length());
+    _tq.setFromUnitVectors(_tz, _tv.divideScalar(len));
+    FX._m.compose(_ts.set(t.x, t.y, t.z), _tq, FX._s.set(1, 1, len));
+    FX.tracerMesh.setMatrixAt(nt++, FX._m);
   }
+  FX.tracerMesh.count = nt;
+  if (nt) FX.tracerMesh.instanceMatrix.needsUpdate = true;
+  FX.smokeP.update(dt);
   // estilhaços com gravidade e quique no chão
   let n = 0;
   const m = FX._m, q = FX._dq, s = FX._s;
@@ -247,19 +271,9 @@ FX.starTex = function () {
 const _fxInit = FX.init;
 FX.init = function (scene) {
   _fxInit(scene);
-  // sprites aditivos (clarão e faíscas)
-  FX.glows = [];
-  for (let i = 0; i < 90; i++) {
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: U.softDot(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: 0xffffff }));
-    s.visible = false; scene.add(s);
-    FX.glows.push({ s: s, life: 0, max: 1, v: new THREE.Vector3(), g: 0, size: 1 });
-  }
-  FX.flashes = [];
-  for (let i = 0; i < 12; i++) {
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: FX.starTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-    s.visible = false; scene.add(s);
-    FX.flashes.push({ s: s, life: 0 });
-  }
+  // brilhos aditivos (faíscas) e clarões do cano, cada grupo num desenho só
+  FX.glowP = new FX.Particles(scene, 200, U.softDot(), true, 'glow');
+  FX.flashP = new FX.Particles(scene, 24, FX.starTex(), true, 'flash');
   // cápsulas de latão
   FX.MAXC = 80;
   const cg = U.part(new THREE.CylinderGeometry(0.008, 0.008, 0.035, 6).rotateZ(Math.PI / 2), 0xd8b04a, null, null, 'gun');
@@ -267,15 +281,12 @@ FX.init = function (scene) {
   FX.caseMesh.count = 0; FX.caseMesh.frustumCulled = false;
   scene.add(FX.caseMesh);
   FX.cases = [];
-  // marcas de tiro
+  // marcas de tiro (instanciadas; somem encolhendo)
+  FX.MAXD = 60;
+  FX.decalMesh = new THREE.InstancedMesh(new THREE.CircleGeometry(0.05, 8), new THREE.MeshBasicMaterial({ color: 0x1a1612, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), FX.MAXD);
+  FX.decalMesh.count = 0; FX.decalMesh.frustumCulled = false;
+  scene.add(FX.decalMesh);
   FX.decals = [];
-  const dg = new THREE.CircleGeometry(0.05, 8);
-  const dm = new THREE.MeshBasicMaterial({ color: 0x1a1612, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
-  for (let i = 0; i < 60; i++) {
-    const m = new THREE.Mesh(dg, dm.clone()); m.visible = false; scene.add(m);
-    FX.decals.push({ m: m, life: 0 });
-  }
-  FX.decalIdx = 0;
   // anéis de onda de choque
   FX.rings = [];
   const rg = new THREE.RingGeometry(0.8, 1, 32);
@@ -287,23 +298,13 @@ FX.init = function (scene) {
 };
 
 FX.glow = function (pos, color, size, life, vel, grav) {
-  let p = null;
-  for (const s of FX.glows) if (s.life <= 0) { p = s; break; }
-  if (!p) return;
-  p.s.position.copy(pos); p.s.material.color.setHex(color); p.s.material.opacity = 1;
-  p.size = size; p.s.scale.set(size, size, 1); p.s.visible = true;
-  p.life = p.max = life; p.v.set(vel ? vel.x : 0, vel ? vel.y : 0, vel ? vel.z : 0); p.g = grav || 0;
+  FX.glowP.add(pos.x, pos.y, pos.z, color, size, life, vel ? vel.x : 0, vel ? vel.y : 0, vel ? vel.z : 0, 0, 1, grav || 0, 0);
 };
 
 // clarão do cano (estrela aditiva girada ao acaso)
 FX.muzzle = function (pos, big, color) {
-  const f = FX.flashes.find(f => f.life <= 0) || FX.flashes[0];
-  f.s.position.copy(pos);
   const s = (big ? 0.9 : 0.55) * (0.8 + Math.random() * 0.4);
-  f.s.scale.set(s, s, 1);
-  f.s.material.rotation = Math.random() * Math.PI;
-  f.s.material.color.setHex(color || 0xffffff);
-  f.s.visible = true; f.life = 0.05;
+  FX.flashP.add(pos.x, pos.y, pos.z, color || 0xffffff, s, 0.05, 0, 0, 0, 0, 1, 0, Math.random() * Math.PI);
   FX.glow(pos, color || 0xffb347, s * 1.6, 0.07, null, 0);
 };
 
@@ -313,13 +314,13 @@ FX.casing = function (pos, right) {
     q: new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.random() * 6, Math.random() * 6, 0)), w: new THREE.Vector3(Math.random() * 20, Math.random() * 20, 0), life: 2.2, bounced: 0 });
 };
 
+const _dz = new THREE.Vector3(0, 0, 1);
 FX.decal = function (pos, normal) {
-  const d = FX.decals[FX.decalIdx++ % FX.decals.length];
-  d.m.position.copy(pos).addScaledVector(normal, 0.012);
-  d.m.lookAt(pos.x + normal.x, pos.y + normal.y, pos.z + normal.z);
-  d.m.scale.setScalar(0.7 + Math.random() * 0.6);
-  d.m.material.opacity = 0.85;
-  d.m.visible = true; d.life = 14;
+  if (FX.decals.length >= FX.MAXD) FX.decals.shift();
+  const p = pos.clone().addScaledVector(normal, 0.012);
+  const q = new THREE.Quaternion().setFromUnitVectors(_dz, normal);
+  FX.decals.push({ p: p, q: q, s: 0.7 + Math.random() * 0.6, life: 14 });
+  FX.decalDirty = true;
 };
 
 // impacto conforme a superfície
@@ -348,18 +349,8 @@ FX.shock = function (pos, size) {
 const _fxUpd = FX.update;
 FX.update = function (dt, camera, W) {
   _fxUpd(dt, camera, W);
-  for (const p of FX.glows) {
-    if (p.life <= 0) continue;
-    p.life -= dt;
-    if (p.life <= 0) { p.s.visible = false; continue; }
-    p.v.y -= p.g * dt;
-    p.s.position.addScaledVector(p.v, dt);
-    const k = p.life / p.max;
-    p.s.material.opacity = k;
-    const s = p.size * (0.6 + 0.4 * k);
-    p.s.scale.set(s, s, 1);
-  }
-  for (const f of FX.flashes) if (f.life > 0) { f.life -= dt; if (f.life <= 0) f.s.visible = false; }
+  FX.glowP.update(dt);
+  FX.flashP.update(dt);
   let n = 0;
   const m = FX._m, s = FX._s;
   for (let i = FX.cases.length - 1; i >= 0; i--) {
@@ -380,7 +371,12 @@ FX.update = function (dt, camera, W) {
     FX.caseMesh.setMatrixAt(n++, m);
   }
   FX.caseMesh.count = n; FX.caseMesh.instanceMatrix.needsUpdate = true;
-  for (const d of FX.decals) if (d.life > 0) { d.life -= dt; if (d.life < 2) d.m.material.opacity = 0.85 * d.life / 2; if (d.life <= 0) d.m.visible = false; }
+  let nd = 0, fading = false;
+  for (let i = FX.decals.length - 1; i >= 0; i--) { const d = FX.decals[i]; d.life -= dt; if (d.life <= 0) { FX.decals.splice(i, 1); FX.decalDirty = true; } else if (d.life < 2) fading = true; }
+  if (FX.decalDirty || fading) {
+    for (const d of FX.decals) { FX._m.compose(d.p, d.q, s.setScalar(d.s * Math.min(1, d.life / 2))); FX.decalMesh.setMatrixAt(nd++, FX._m); }
+    FX.decalMesh.count = nd; FX.decalMesh.instanceMatrix.needsUpdate = true; FX.decalDirty = false;
+  }
   for (const r of FX.rings) {
     if (r.life <= 0) continue;
     r.life -= dt;
@@ -395,5 +391,6 @@ const _fxReset = FX.reset;
 FX.reset = function () {
   _fxReset();
   if (FX.cases) FX.cases.length = 0;
-  if (FX.decals) for (const d of FX.decals) { d.life = 0; d.m.visible = false; }
+  if (FX.decals) { FX.decals.length = 0; FX.decalMesh.count = 0; }
+  if (FX.glowP) { FX.glowP.clear(); FX.flashP.clear(); }
 };

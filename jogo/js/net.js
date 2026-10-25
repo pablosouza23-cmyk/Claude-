@@ -138,7 +138,7 @@ NET.send = function (m) { if (NET.conn && NET.conn.open) NET.conn.send(m); };
 NET.bcast = function (m, except) { for (const c of NET.conns) if (c !== except && c.open) c.send(m); };
 NET.toPid = function (pid, m) { const p = NET.players.find(x => x.pid === pid); if (p && p.conn && p.conn.open) p.conn.send(m); };
 
-NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av]), bots: NET.bots, live: NET.live });
+NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av]), bots: NET.bots, live: NET.live, map: W.mapId });
 NET.bcastRoom = function () { if (NET.isHost()) NET.bcast(NET.roomMsg()); };
 
 NET.setAvatar = function (av) {
@@ -152,16 +152,15 @@ NET.setBots = function (on) { NET.bots = on; NET.bcastRoom(); renderRoom(); };
 NET.hostStart = function () {
   if (!NET.isHost() || NET.live) return;
   const seed = Math.floor(Math.random() * 1e9);
-  const msg = { t: 'go', seed, ps: NET.players.map(p => [p.pid, p.name, p.av]), bots: NET.bots, ang: Math.random() * Math.PI * 2, side: Math.random() - 0.5 };
+  const msg = { t: 'go', seed, ps: NET.players.map(p => [p.pid, p.name, p.av]), bots: NET.bots, ang: Math.random() * Math.PI * 2, side: Math.random() - 0.5, map: W.mapId };
   NET.bcast(msg);
   NET.begin(msg);
 };
 
 NET.begin = function (msg) {
-  NET.live = true;
-  NET.lootSeq = 0;
-  NET.match = msg;
-  beginMatch(msg);
+  const go = () => { NET.live = true; NET.lootSeq = 0; NET.match = msg; beginMatch(msg); };
+  // todos jogam no mapa do anfitrião
+  if (msg.map && msg.map !== W.mapId && W.MAPS[msg.map]) LOB.switchMap(msg.map, go); else go();
 };
 
 // monta os atores da partida multiplayer na mesma ordem em todos os aparelhos
@@ -357,6 +356,7 @@ NET.clientRecv = function (d) {
     case 'room':
       NET.players = d.ps.map(p => ({ pid: p[0], name: p[1], av: p[2] }));
       NET.bots = d.bots; NET.code = d.code;
+      if (d.map && d.map !== W.mapId && W.MAPS[d.map] && !NET.live && G.state !== 'play') LOB.switchMap(d.map, () => { if (UI.screen === 'roomScr') renderRoom(); });
       if (!NET.live && G.state !== 'play' && G.state !== 'end') { if (UI.screen !== 'roomScr') openRoom(); else renderRoom(); }
       break;
     case 'go': NET.begin(d); break;

@@ -6,7 +6,7 @@ const V3 = THREE.Vector3;
 
 const G = {
   state: 'menu', time: 0, built: false,
-  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null },
+  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'ilha' },
   actors: [], bots: [], walls: [], loot: [], nades: [], props: [],
 };
 
@@ -757,8 +757,8 @@ function renderLoot(px, pz) {
   if (nb) { LR.beam.instanceMatrix.needsUpdate = true; LR.beam.instanceColor.needsUpdate = true; }
 }
 
-function spawnLoot(type, x, z, extra, id) {
-  const y = W.groundAt(x, z, W.height(x, z) + 1.0);
+function spawnLoot(type, x, z, extra, id, yHint) {
+  const y = W.groundAt(x, z, (yHint === undefined ? W.height(x, z) : yHint) + 1.0);
   const it = { id: id !== undefined ? id : NET.lootSeq++, type: type, x: x, z: z, y: y, t: Math.random() * 6, extra: extra || null, isWeapon: type.indexOf('w:') === 0 };
   G.loot.push(it);
   if (!G.scattering && id === undefined) NET.onLootAdd(it);
@@ -771,7 +771,7 @@ function scatterLoot(rnd) {
   const table = ['W', 'W', 'W', 'W', 'W', 'W', 'W',
     'vest1', 'vest1', 'vest2', 'helm1', 'helm1', 'helm2', 'kit', 'kit', 'ammo', 'ammo', 'ammo', 'gel', 'gel', 'gren', 'gren'];
   const pick = () => { const t = table[Math.floor(rnd() * table.length)]; return t === 'W' ? 'w:' + WPN.roll(rnd) : t; };
-  for (const s of W.lootSpots) if (rnd() < 0.85) spawnLoot(pick(), s[0], s[1]);
+  for (const s of W.lootSpots) if (rnd() < 0.85) spawnLoot(pick(), s[0], s[1], null, undefined, s[2]);
   for (const a of W.areaDefs) {
     for (let i = 0; i < 12; i++) {
       const an = rnd() * 6.28, r = rnd() * a.r * 0.85;
@@ -779,8 +779,8 @@ function scatterLoot(rnd) {
     }
   }
   for (let i = 0; i < 70; i++) {
-    const an = rnd() * 6.28, r = Math.sqrt(rnd()) * (W.LAND_R - 14);
-    spawnLoot(i % 3 === 0 ? 'w:' + WPN.roll(rnd, true) : pick(), Math.cos(an) * r, Math.sin(an) * r);
+    const q = W.randLand(rnd, 14);
+    spawnLoot(i % 3 === 0 ? 'w:' + WPN.roll(rnd, true) : pick(), q[0], q[1]);
   }
   G.scattering = false;
 }
@@ -1161,8 +1161,8 @@ function updateAir(a, dt, c) {
   a.pos.x += Math.sin(a.face) * a.hs * dt;
   a.pos.z += Math.cos(a.face) * a.hs * dt;
   a.pos.y -= a.vdown * dt;
-  const r = Math.hypot(a.pos.x, a.pos.z);
-  if (r > W.LAND_R - 8) { a.pos.x *= (W.LAND_R - 8) / r; a.pos.z *= (W.LAND_R - 8) / r; }
+  const r = Math.hypot(a.pos.x, a.pos.z), lim = (W.LAND_R - 8) * W.shape(Math.atan2(a.pos.z, a.pos.x));
+  if (r > lim) { a.pos.x *= lim / r; a.pos.z *= lim / r; }
   const ground = W.groundAt(a.pos.x, a.pos.z, a.pos.y);
   if (a.pos.y - ground < 3) W.collide(a.pos, 0.34, a.pos.y, 1.7);
   if (a.pos.y <= ground) {
@@ -1192,8 +1192,8 @@ function moveActor(a, wantX, wantZ, maxSpeed, dt, jump) {
   a.vel.z = U.damp(a.vel.z, wantZ * maxSpeed, k, dt);
   a.pos.x += a.vel.x * dt; a.pos.z += a.vel.z * dt;
   W.collide(a.pos, 0.34, a.pos.y, a.crouch ? 1.1 : 1.7);
-  const r = Math.hypot(a.pos.x, a.pos.z);
-  if (r > W.PLAY_R) { a.pos.x *= W.PLAY_R / r; a.pos.z *= W.PLAY_R / r; }
+  const r = Math.hypot(a.pos.x, a.pos.z), lim = W.PLAY_R * W.shape(Math.atan2(a.pos.z, a.pos.x));
+  if (r > lim) { a.pos.x *= lim / r; a.pos.z *= lim / r; }
   const ground = W.groundAt(a.pos.x, a.pos.z, a.pos.y);
   if (jump && a.onGround) { a.vy = 6.4; a.onGround = false; a.crouch = false; }
   a.vy -= 19 * dt;
@@ -1446,7 +1446,7 @@ function spawnBots(count, rnd) {
       const a = W.areaDefs[Math.floor(rnd() * W.areaDefs.length)];
       const an = rnd() * 6.28, r = rnd() * a.r * 0.8;
       tx = a.x + Math.cos(an) * r; tz = a.z + Math.sin(an) * r;
-    } else { const an = rnd() * 6.28, r = Math.sqrt(rnd()) * (W.LAND_R - 22); tx = Math.cos(an) * r; tz = Math.sin(an) * r; }
+    } else { const q = W.randLand(rnd, 22); tx = q[0]; tz = q[1]; }
     b.ai = { think: rnd() * 0.3, target: null, react: 0, wp: null, strafe: rnd() < 0.5 ? 1 : -1, strafeT: 0, stuckT: 0, last: new V3(), burst: 3, pause: 0, skill: 0.75 + rnd() * 0.5, land: { x: tx, z: tz }, jumpAt: 99, nadeCd: 10 + rnd() * 20 };
     G.bots.push(b); G.actors.push(b);
   }

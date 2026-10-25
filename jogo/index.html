@@ -16,6 +16,10 @@
 <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <linearGradient id="gmG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9f6ff"/><stop offset=".5" stop-color="#4fc3ff"/><stop offset="1" stop-color="#7a3cff"/></linearGradient>
+  <radialGradient id="cnG" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff3b0"/><stop offset=".45" stop-color="#ffc21a"/><stop offset="1" stop-color="#b86a00"/></radialGradient>
+</defs></svg>
 <canvas id="c"></canvas>
 
 <!-- ===================== HUD ===================== -->
@@ -95,16 +99,76 @@
 </div>
 
 <!-- ===================== TELAS ===================== -->
-<div id="menuScr" class="screen clear hidden">
-  <div class="logo"><b>BATTLE</b><span>ISLAND</span></div>
-  <div class="welcome"><span>BEM-VINDO!</span><b id="welcomeName">Jogador</b><i data-icon="user"></i></div>
-  <nav class="mainNav">
-    <button id="mPlay" class="mBtn primary" data-icon="play">JOGAR</button>
-    <button id="mInv" class="mBtn" data-icon="bag">INVENTÁRIO</button>
-    <button id="mSet" class="mBtn" data-icon="gear">CONFIGURAÇÕES</button>
-    <button id="mExit" class="mBtn" data-icon="exit">SAIR</button>
+<div id="authScr" class="screen auth hidden">
+  <div class="authBox">
+    <div class="logo"><b>BATTLE</b><span>ISLAND</span></div>
+    <div id="authTabs" class="tabs"><button data-a="login">ENTRAR</button><button data-a="new">CRIAR CONTA</button><button data-a="code">CÓDIGO</button></div>
+    <form id="authForm" autocomplete="on" novalidate>
+      <label class="fld" id="fNick"><span>Apelido no jogo</span><input id="aNick" maxlength="14" autocomplete="nickname" placeholder="Como os outros vão te ver"></label>
+      <label class="fld" id="fUser"><span>Usuário</span><input id="aUser" maxlength="16" autocapitalize="none" autocomplete="username" spellcheck="false" placeholder="ex.: pablo_23"></label>
+      <label class="fld" id="fPass"><span>Senha</span><input id="aPass" type="password" maxlength="40" autocomplete="current-password" placeholder="mínimo 4 caracteres"></label>
+      <label class="fld hidden" id="fCode"><span>Código de transferência</span><textarea id="aCode" rows="3" spellcheck="false" placeholder="Cole aqui o código BI1-… gerado no outro aparelho"></textarea></label>
+      <p id="authErr" class="authErr" role="alert"></p>
+      <button id="aGo" class="mBtn primary" type="submit">ENTRAR</button>
+    </form>
+    <button id="aGuest" class="mBtn ghost">JOGAR COMO CONVIDADO</button>
+    <p class="authNote">Sua conta fica salva neste aparelho. Para jogar em outro celular, gere o código de transferência no perfil.</p>
+  </div>
+</div>
+
+<div id="menuScr" class="screen lobby hidden">
+  <header class="lbTop">
+    <button id="lbProfile" class="lbProf" aria-label="Perfil"><i id="lbAvatar" class="avatar"></i><div class="lbId"><b id="lbName">Jogador</b><div class="lbLv"><span>NV <em id="lbLvl">1</em></span><div class="xpBar"><div id="lbXp"></div></div></div></div></button>
+    <div class="lbRightTop"><div class="curSlot"></div><button id="lbSet" class="xBtn" data-icon="gear" aria-label="Configurações"></button></div>
+  </header>
+  <nav id="lbNav" class="lbNav">
+    <button data-go="shop" data-icon="bag"><span>LOJA</span></button>
+    <button data-go="chars" data-icon="person"><span>PERSONAGEM</span></button>
+    <button data-go="emotes" data-icon="smile"><span>EMOTES</span></button>
+    <button data-go="recharge" class="hot" data-icon="crown"><span>RECARGA</span></button>
+    <button data-go="arsenal" data-icon="bullet"><span>ARSENAL</span></button>
+    <button data-go="profile" data-icon="user"><span>PERFIL</span></button>
   </nav>
-  <div class="ver">v2.2</div>
+  <div class="lbSide">
+    <button id="lbNews" class="news"></button>
+    <button id="lbMap" class="mapCard"><canvas id="lbMapCv" width="96" height="96"></canvas><div><small>MAPA</small><b id="lbMapName">ILHA</b><span>TROCAR ›</span></div></button>
+    <button id="mPlay" class="playBtn"><b>JOGAR</b><small>SOLO · SALA COM AMIGOS</small></button>
+  </div>
+  <div class="dragHint">arraste para girar o personagem</div>
+  <div class="ver">v2.3</div>
+</div>
+
+<div id="shopScr" class="screen shop hidden">
+  <header class="shHead">
+    <button id="shBack" class="xBtn" data-icon="left" aria-label="Voltar"></button><b id="shTitle">LOJA</b>
+    <div id="shTabs" class="tabs"><button data-t="skins">PERSONAGENS</button><button data-t="emotes">EMOTES</button></div>
+    <div class="curSlot"></div>
+  </header>
+  <div id="shGrid" class="shGrid"></div>
+  <div id="shDetail" class="shDetail"></div>
+</div>
+
+<div id="rechargeScr" class="screen dim hidden">
+  <div class="panel rcPanel">
+    <div class="panelHead"><b>RECARGA DE GEMAS</b><div class="curSlot"></div><button id="rcClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <div id="rcMode" class="rcMode"></div>
+    <div id="rcGrid" class="rcGrid"></div>
+    <div class="rcFoot"><button id="rcEx" class="chip"></button><button id="rcHist" class="chip">HISTÓRICO</button><small>Gemas compram personagens e emotes lendários. Valores em reais (BRL).</small></div>
+  </div>
+</div>
+
+<div id="profileScr" class="screen dim hidden">
+  <div class="panel pfPanel">
+    <div class="panelHead"><b>PERFIL</b><button id="pfClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <div id="pfBody" class="pfBody"></div>
+  </div>
+</div>
+
+<div id="mapPickScr" class="screen dim hidden">
+  <div class="panel mpPanel">
+    <div class="panelHead"><b>ESCOLHA O MAPA</b><button id="mpClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <div id="mpList" class="mpList"></div>
+  </div>
 </div>
 
 <div id="modeScr" class="screen clear hidden">
@@ -141,6 +205,7 @@
     <div class="roomCode"><small>CÓDIGO DA SALA</small><b id="roomCode">-----</b>
       <div class="roomShare"><button id="roomCopy" class="chip" data-icon="copy">COPIAR</button><button id="roomShareBtn" class="chip" data-icon="share">CONVIDAR</button></div>
     </div>
+    <button id="roomMap" class="chip roomMap">MAPA: <b id="roomMapName">ILHA</b></button>
     <p id="roomStatus" class="netStatus"></p>
     <ul id="roomList"></ul>
     <label id="roomBotsRow" class="roomBots"><input type="checkbox" id="roomBots" checked><span>Completar com bots (25 na ilha)</span></label>
@@ -154,7 +219,7 @@
   <div class="logo small"><b>BATTLE</b><span>ISLAND</span></div>
   <div class="lobbyTop">Jogadores: <b id="lobbyPlayers">25/25</b></div>
   <div class="lobbyPanel">
-    <div class="lpRow"><div><small>MAPA</small><b>ILHA</b></div><div><small>MODO</small><b>SOLO</b></div></div>
+    <div class="lpRow"><div><small>MAPA</small><b id="lpMap">ILHA</b></div><div><small>MODO</small><b>SOLO</b></div></div>
     <div class="lpTime"><small>A PARTIDA COMEÇA EM</small><b id="lobbyTime">00:15</b></div>
     <button id="lReady" class="mBtn primary">PRONTO</button>
     <button id="lBack" class="mBtn ghost">VOLTAR</button>
@@ -212,6 +277,7 @@
   <div id="resultCard" class="resCard">
     <h1 id="resTitle">VITÓRIA</h1>
     <div id="resPlace">#1</div>
+    <div id="resReward" class="resReward"></div>
     <p id="resNote" class="resNote"></p>
     <table><tr><td>ABATES</td><td id="resKills">0</td></tr><tr><td>DANO</td><td id="resDmg">0</td></tr><tr><td>TEMPO</td><td id="resTime">00:00</td></tr></table>
     <button id="rLobby" class="mBtn primary">VOLTAR AO LOBBY</button>
@@ -231,9 +297,57 @@
 </div>
 
 <div id="loadScr">
-  <div class="logo"><b>BATTLE</b><span>ISLAND</span></div>
-  <div class="loadBox"><div class="loadTrack"><div id="loadBar"></div></div><div id="loadStep">Carregando…</div><div id="loadTip"></div></div>
+  <svg class="ldArt" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="ldSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1a3a"/><stop offset=".45" stop-color="#3a3f7a"/><stop offset=".72" stop-color="#e2765a"/><stop offset="1" stop-color="#ffc46b"/></linearGradient>
+      <linearGradient id="ldSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e98d5c"/><stop offset=".12" stop-color="#2f5b86"/><stop offset="1" stop-color="#081a33"/></linearGradient>
+      <radialGradient id="ldSun" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff7d6"/><stop offset=".35" stop-color="#ffd27a"/><stop offset="1" stop-color="#ff9a4a" stop-opacity="0"/></radialGradient>
+      <linearGradient id="ldFade" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#050a14" stop-opacity="0"/><stop offset="1" stop-color="#050a14" stop-opacity=".92"/></linearGradient>
+    </defs>
+    <rect width="1600" height="900" fill="url(#ldSky)"/>
+    <g class="stars" fill="#fff">
+      <circle cx="120" cy="80" r="1.6"/><circle cx="340" cy="140" r="1.2"/><circle cx="520" cy="60" r="1.8"/><circle cx="760" cy="120" r="1.1"/><circle cx="980" cy="50" r="1.5"/><circle cx="1210" cy="110" r="1.3"/><circle cx="1430" cy="70" r="1.7"/><circle cx="1520" cy="170" r="1.1"/><circle cx="60" cy="210" r="1.1"/><circle cx="880" cy="200" r="1"/>
+    </g>
+    <circle cx="1080" cy="560" r="260" fill="url(#ldSun)"/>
+    <circle cx="1080" cy="560" r="70" fill="#fff1c4"/>
+    <g class="clouds" fill="#ffb98a" opacity=".55">
+      <ellipse cx="300" cy="420" rx="210" ry="22"/><ellipse cx="420" cy="400" rx="130" ry="18"/><ellipse cx="1350" cy="380" rx="230" ry="20"/><ellipse cx="900" cy="330" rx="160" ry="14"/>
+    </g>
+    <rect y="600" width="1600" height="300" fill="url(#ldSea)"/>
+    <g class="shine" fill="#ffe3a8" opacity=".6"><rect x="1000" y="612" width="160" height="3" rx="1.5"/><rect x="1030" y="630" width="110" height="3" rx="1.5"/><rect x="980" y="652" width="200" height="3" rx="1.5"/><rect x="1050" y="680" width="70" height="3" rx="1.5"/></g>
+    <!-- ilha com torre do relógio, coqueiros e farol -->
+    <g fill="#0d1424">
+      <path d="M180 610c80-40 160-70 260-78 70-6 120-40 190-46 90-8 150 30 220 52 80 26 170 30 250 72H180z"/>
+      <rect x="560" y="372" width="34" height="168"/><path d="M552 372h50l-25-44z"/><rect x="556" y="404" width="42" height="6"/>
+      <circle cx="577" cy="432" r="11" fill="#ffcf7a"/>
+      <rect x="470" y="470" width="70" height="70"/><rect x="610" y="455" width="80" height="85"/><rect x="700" y="490" width="56" height="52"/>
+      <path d="M330 532c6-40 2-80-6-110l8-2c8 30 12 72 6 112z"/><path d="M328 424c-30-6-60 4-80 22 26-10 52-12 76-6-26 6-46 22-58 40 24-18 48-28 70-30 0 0-16 18-20 40 14-20 30-34 44-40 10 14 14 30 16 46 4-22 0-40-8-54 24 2 46 14 62 32-10-22-30-38-52-46 22-4 44 2 62 12-16-16-40-26-64-24 16-12 36-18 56-18-24-6-50-2-70 12z"/>
+      <path d="M860 548c4-34 0-66-6-92l7-2c7 26 10 60 6 94z"/><path d="M858 456c-24-5-50 4-66 18 22-8 42-10 62-5-22 5-38 18-48 34 20-15 40-23 58-25 0 0-13 15-16 33 11-17 25-28 36-33 8 12 12 25 13 38 3-18 0-33-7-45 20 2 38 12 51 26-8-18-25-31-43-38 18-3 36 2 51 10-13-13-33-21-53-20 13-10 30-15 46-15-20-5-41-2-58 10z"/>
+      <rect x="1290" y="470" width="18" height="120"/><path d="M1286 470h26l-13-22z"/>
+    </g>
+    <g class="beam"><path d="M1299 458 1600 400v70z" fill="#ffe7a0" opacity=".18"/></g>
+    <!-- avião com rastro e paraquedas -->
+    <g class="plane">
+      <path d="M-400 214 C -100 210, 200 200, 420 196" stroke="#fff" stroke-opacity=".45" stroke-width="3" fill="none" stroke-dasharray="2 10"/>
+      <g transform="translate(430 192)" fill="#0d1424"><path d="M0 0l70-6 14 4-14 4-70-2z"/><path d="M30-2l-18-24h10l26 22z"/><path d="M30 2l-18 22h10l26-20z"/><path d="M-4-1l-8-14h7l9 12z"/></g>
+    </g>
+    <g class="chutes" fill="#0d1424">
+      <g transform="translate(700 270)"><path d="M-22 0a22 14 0 0 1 44 0z"/><path d="M-20 0 0 30 20 0" stroke="#0d1424" stroke-width="1.4" fill="none"/><circle cy="34" r="4"/></g>
+      <g transform="translate(820 330) scale(.8)"><path d="M-22 0a22 14 0 0 1 44 0z"/><path d="M-20 0 0 30 20 0" stroke="#0d1424" stroke-width="1.4" fill="none"/><circle cy="34" r="4"/></g>
+      <g transform="translate(610 350) scale(.65)"><path d="M-22 0a22 14 0 0 1 44 0z"/><path d="M-20 0 0 30 20 0" stroke="#0d1424" stroke-width="1.4" fill="none"/><circle cy="34" r="4"/></g>
+    </g>
+    <rect width="1600" height="900" fill="url(#ldFade)"/>
+  </svg>
+  <div class="ldLogo logo"><b>BATTLE</b><span>ISLAND</span></div>
+  <div id="loadMap" class="ldMap"></div>
+  <div class="loadBox">
+    <div class="ldRow"><span id="loadStep">Carregando…</span><b id="loadPct">0%</b></div>
+    <div class="loadTrack"><div id="loadBar"></div></div>
+    <div id="loadTip" class="ldTip"></div>
+  </div>
+  <div class="ldFoot">v2.3 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
+<div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
 <div id="errorBox" class="hidden"></div>
 
@@ -241,6 +355,7 @@
 <script src="js/util.js"></script>
 <script src="js/textures.js"></script>
 <script src="js/world.js"></script>
+<script src="js/maps.js"></script>
 <script src="js/weapons.js"></script>
 <script src="js/character.js"></script>
 <script src="js/effects.js"></script>
@@ -248,6 +363,8 @@
 <script src="js/peerjs.min.js"></script>
 <script src="js/net.js"></script>
 <script src="js/post.js"></script>
+<script src="js/account.js"></script>
+<script src="js/lobby.js"></script>
 <script src="js/ui.js"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function () {});

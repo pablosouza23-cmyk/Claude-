@@ -59,7 +59,7 @@ function playEmote(a, k) {
 function openEmoteWheel() {
   const w = $('emoteWheel');
   if (!w.classList.contains('hidden')) { w.classList.add('hidden'); return; }
-  const list = EMOTES.slice(0, 8);
+  const list = EMOTES.filter(e => !ACC.p || ACC.owns('emotes', e[0])).slice(0, 8);
   w.innerHTML = list.map((e, i) => { const a = i / list.length * Math.PI * 2 - Math.PI / 2; return '<button data-k="' + e[0] + '" style="left:' + (150 + Math.cos(a) * 110) + 'px;top:' + (150 + Math.sin(a) * 110) + 'px"><span>' + e[2] + '</span>' + e[1] + '</button>'; }).join('') +
     '<button class="ewClose" aria-label="Fechar">' + icon('close') + '</button>';
   w.querySelectorAll('button').forEach(b => b.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); ev.preventDefault(); if (b.dataset.k) playEmote(G.player, b.dataset.k); w.classList.add('hidden'); }));
@@ -68,9 +68,8 @@ function openEmoteWheel() {
 // emote do personagem na vitrine (menu, lobby e sala)
 function showEmote(k) { G.showEmote = { k: k, t: emoteLen(k) }; if (G.show) { const a = G.show.ch.acts[k]; if (a) a.time = 0; } }
 function renderRoomEmotes() {
-  const el = $('roomEmotes'); if (!el || el.dataset.ok) return;
-  el.dataset.ok = 1;
-  el.innerHTML = EMOTES.map(e => '<button data-k="' + e[0] + '"><span>' + e[2] + '</span>' + e[1] + '</button>').join('');
+  const el = $('roomEmotes'); if (!el) return;
+  el.innerHTML = EMOTES.filter(e => !ACC.p || ACC.owns('emotes', e[0])).map(e => '<button data-k="' + e[0] + '"><span>' + e[2] + '</span>' + e[1] + '</button>').join('');
   el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { showEmote(b.dataset.k); SND.play('ui'); if (NET.on()) NET.lobbyEmote && NET.lobbyEmote(b.dataset.k); }));
 }
 const icon = (n, cls) => '<svg class="ico ' + (cls || '') + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICON[n] || '') + '</svg>';
@@ -135,6 +134,7 @@ function updateCamera(dt) {
   const p = G.player;
   if (G.camOverride) { G.camOverride(camera, p); return; }
   if (G.state === 'menu' || G.state === 'lobby') { menuCamera(dt); return; }
+  if (camera.view && camera.view.enabled) camera.clearViewOffset();
   if (!p.alive) {
     G.deathOrbit = (G.deathOrbit || 0) + dt * 0.35;
     const c = p.pos;
@@ -273,10 +273,9 @@ function updateSpeedLines(dt, on) {
 // o personagem no mirante do farol olhando a ilha; o avião passa ao fundo
 function setupShowcase() {
   if (G.show) return;
-  const a = W.A.FAROL;
-  const sp = { x: a.x - 6, z: a.z + 9 };
-  const s = makeActor(G.settings.name, G.settings.avatar || CH.PLAYER_PAL, true);
-  s.pos.set(sp.x, W.groundAt(sp.x, sp.z, 80), sp.z);
+  const s = makeActor(G.settings.name, LOB.preview || G.settings.avatar || CH.PLAYER_PAL, true);
+  if (!LOB.stage) LOB.buildStage();
+  s.pos.copy(LOB.podium);
   s.ch.root.position.copy(s.pos);
   s.ch.root.visible = true;
   s.phase = 'ground';
@@ -294,23 +293,29 @@ function swapShowcase() {
 function menuCamera(dt) {
   const s = G.show;
   G.menuT = (G.menuT || 0) + dt;
-  const lobby = G.state === 'lobby';
-  // de costas olhando a ilha (menu) ou de frente (lobby)
-  const look = Math.atan2(-s.pos.x, -s.pos.z);
-  s.face = lobby ? look + Math.PI + 0.5 : look;
+  // de frente no pódio, de costas para a ilha (que aparece ao fundo); arrastar gira o personagem
+  const out = LOB.outYaw;
+  if (!LOB.drag) LOB.yaw *= Math.max(0, 1 - dt * 0.25);
+  s.face = out + LOB.yaw + Math.sin(G.menuT * 0.4) * 0.08;
   s.ch.body.rotation.y = s.face;
+  s.pos.copy(LOB.podium); s.ch.root.position.copy(s.pos);
   const se = G.showEmote;
   if (se && se.t > 0) se.t -= dt;
   const em = se && se.t > 0 ? se.k : null;
-  CH.animate(s.ch, dt, { mode: 'ground', speed: 0, aim: 0, pitch: 0, armed: !em, emote: em });
-  const f = s.face, fx = Math.sin(f), fz = Math.cos(f);
-  const dist = lobby ? 3.0 : 3.1, side = lobby ? 0.4 : -2.3;
-  camera.position.set(s.pos.x - fx * dist * (lobby ? -1 : 1) + fz * side, s.pos.y + (lobby ? 1.5 : 2.6), s.pos.z - fz * dist * (lobby ? -1 : 1) - fx * side);
-  if (lobby) camera.lookAt(s.pos.x - fz * 0.6, s.pos.y + 1.2, s.pos.z + fx * 0.6);
-  else camera.lookAt(s.pos.x + fx * 30 + fz * 16, s.pos.y - 4, s.pos.z + fz * 30 - fx * 16);
+  CH.animate(s.ch, dt, { mode: 'ground', speed: 0, aim: 0, pitch: 0, armed: false, emote: em });
+  LOB.stage.visible = true;
+  LOB.animStage(dt, G.menuT);
   const portrait = camera.aspect < 1;
-  const fov = portrait ? 72 : 55;
+  const fx = Math.sin(out), fz = Math.cos(out), dist = portrait ? 6.4 : 4.6, sway = Math.sin(G.menuT * 0.25) * 0.25;
+  camera.position.set(s.pos.x + fx * dist + fz * sway, s.pos.y + (portrait ? 1.4 : 1.2), s.pos.z + fz * dist - fx * sway);
+  camera.lookAt(s.pos.x, s.pos.y + 0.98, s.pos.z);
+  const fov = portrait ? 52 : 36;
   if (Math.abs(camera.fov - fov) > 0.1) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  // desloca a imagem para o personagem ficar no espaço livre entre os painéis
+  LOB.shiftCur += (LOB.shift - LOB.shiftCur) * Math.min(1, dt * 6);
+  const w = window.innerWidth, h = window.innerHeight;
+  if (Math.abs(LOB.shiftCur) > 0.002 && !portrait) camera.setViewOffset(w, h, -LOB.shiftCur * w, 0, w, h);
+  else if (camera.view && camera.view.enabled) camera.clearViewOffset();
   sun.position.copy(s.pos).addScaledVector(G.sunDir, 70); sun.target.position.copy(s.pos);
   scene.fog.near = 200; scene.fog.far = 1100;
   // avião sobrevoando a ilha
@@ -581,7 +586,7 @@ function killFeed(killer, victim, weapon) {
 // ------------------------------------------------------------------ telas
 const UI = { screen: null };
 function showScreen(id) {
-  ['menuScr', 'modeScr', 'joinScr', 'roomScr', 'lobbyScr', 'invScr', 'mapScr', 'settingsScr', 'pauseScr', 'resultScr', 'exitScr'].forEach(s => $(s).classList.toggle('hidden', s !== id));
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('hidden', s.id !== id));
   UI.screen = id === 'invScr' ? 'inv' : id === 'mapScr' ? 'map' : id;
 }
 
@@ -591,8 +596,10 @@ function goMenu() {
   H.hud.classList.add('hidden'); H.touch.classList.add('hidden');
   setupShowcase();
   G.show.ch.root.visible = true;
+  LOB.preview = null; LOB.shift = -0.07;
+  if (!ACC.p) { LOB.showAuth(); return; }
   showScreen('menuScr');
-  $('welcomeName').textContent = G.settings.name;
+  LOB.renderTop(); LOB.renderNews();
   SND.music(true);
 }
 
@@ -603,6 +610,8 @@ function goLobby() {
   showEmote(Math.random() < 0.5 ? 'wave' : 'cheer2');
   lobbyT = 15;
   $('lobbyPlayers').textContent = TOTAL + '/' + TOTAL;
+  $('lpMap').textContent = W.MAP.name.toUpperCase();
+  LOB.shift = 0;
   clearInterval(lobbyIv);
   const tickL = () => {
     $('lobbyTime').textContent = U.fmtTime(lobbyT);
@@ -631,6 +640,9 @@ function beginMatch(msg) {
 
 function startMatch(msg) {
   clearMatch();
+  G.matchId = (G.matchId || 0) + 1;
+  if (camera.view && camera.view.enabled) camera.clearViewOffset();
+  if (LOB.stage) LOB.stage.visible = false;
   H.cache = {};
   G.botDmgScale = 0.55;
   G.time = 0; G.vignette = 0; G.endT = -1; G.area = null; G.deathOrbit = 0; G.mouseFire = false; G.prevFire = false; G.zoneWarned = -1; G.camDist = undefined;
@@ -696,6 +708,7 @@ function endMatch() {
   $('rLobby').textContent = NET.on() ? 'VOLTAR PARA A SALA' : 'VOLTAR AO LOBBY';
   $('resNote').textContent = NET.isHost() && others ? 'Seus amigos ainda estão jogando. Voltar encerra a partida para todos.' : NET.isClient() && NET.live ? 'A partida continua para os outros.' : '';
   H.hud.classList.add('hidden'); H.touch.classList.add('hidden');
+  LOB.matchEnd();
   showScreen('resultScr');
 }
 
@@ -713,13 +726,18 @@ function renderRoom() {
   $('roomStart').classList.toggle('hidden', !host);
   $('roomWait').classList.toggle('hidden', host);
   $('skinName').textContent = skinName(G.settings.avatar || 'heroi');
+  $('roomMapName').textContent = W.MAP.name.toUpperCase();
+  $('roomMap').disabled = !host && NET.on();
 }
 function escapeHTML(t) { return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
-function openRoom() { G.state = 'lobby'; showScreen('roomScr'); renderRoom(); renderRoomEmotes(); showEmote('wave'); }
+function openRoom() { G.state = 'lobby'; LOB.shift = -0.16; showScreen('roomScr'); renderRoom(); renderRoomEmotes(); showEmote('wave'); }
 function cycleSkin(d) {
-  const i = SKINS.findIndex(x => x[0] === (G.settings.avatar || 'heroi'));
-  const k = SKINS[(i + d + SKINS.length) % SKINS.length][0];
-  if (NET.on()) NET.setAvatar(k); else { G.settings.avatar = k; G.saveSettings(); }
+  const own = SKINS.filter(x => !ACC.p || ACC.owns('skins', x[0]));
+  const i = Math.max(0, own.findIndex(x => x[0] === (G.settings.avatar || 'heroi')));
+  const k = own[(i + d + own.length) % own.length][0];
+  if (ACC.p) { ACC.p.skin = k; ACC.emit(); }
+  G.settings.avatar = k; G.saveSettings();
+  if (NET.on()) NET.setAvatar(k);
   swapShowcase();
   renderRoom();
 }
@@ -735,7 +753,7 @@ function openInventory(tab) {
   renderInventory(true);
 }
 function closeInventory() {
-  if (G.state === 'play') showScreen(null); else showScreen('menuScr');
+  if (G.state === 'play') showScreen(null); else goMenu();
 }
 
 function renderInventory(force) {
@@ -851,7 +869,7 @@ const SETTINGS_UI = {
 };
 let setTab = 'geral', settingsFrom = 'menu';
 function openSettings(from) { settingsFrom = from; showScreen('settingsScr'); renderSettings(); }
-function closeSettings() { if (settingsFrom === 'pause') showScreen('pauseScr'); else showScreen('menuScr'); }
+function closeSettings() { if (settingsFrom === 'pause') showScreen('pauseScr'); else goMenu(); }
 function renderSettings() {
   document.querySelectorAll('#setTabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === setTab));
   const S = G.settings;
@@ -875,7 +893,10 @@ function renderSettings() {
       if (o.reload) location.reload();
       else { applySettings(); renderSettings(); }
     }));
-    else el.addEventListener('change', () => { S[o.k] = el.value.trim().slice(0, 14) || 'Jogador'; G.saveSettings(); $('welcomeName').textContent = S[o.k]; });
+    else {
+      el.addEventListener('keydown', e => e.stopPropagation());
+      el.addEventListener('change', () => { S[o.k] = el.value.trim().slice(0, 14) || 'Jogador'; G.saveSettings(); LOB.setName(S[o.k]); });
+    }
   }
 }
 // ---------- editor de HUD: arrastar e redimensionar os botões; salva em G.settings.hud ----------
@@ -1098,7 +1119,7 @@ function initScreens() {
   click('mdSolo', () => goLobby());
   click('mdCreate', () => { NET.createRoom(); openRoom(); });
   click('mdJoin', () => { showScreen('joinScr'); NET.setStatus(''); setTimeout(() => $('joinCode').focus(), 50); });
-  click('mdBack', () => showScreen('menuScr'));
+  click('mdBack', () => goMenu());
   click('joinGo', () => { NET.joinRoom($('joinCode').value); });
   $('joinCode').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') NET.joinRoom($('joinCode').value); });
   $('joinCode').addEventListener('input', () => { $('joinCode').value = $('joinCode').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
@@ -1117,12 +1138,10 @@ function initScreens() {
     if (navigator.share) navigator.share(data).catch(() => {});
     else { try { navigator.clipboard.writeText(data.text + ' ' + data.url); notify('ok', 'Convite copiado'); } catch (e) { notify('info', data.text); } }
   });
-  click('mInv', () => openInventory('arsenal'));
-  click('mSet', () => openSettings('menu'));
-  click('mExit', () => { showScreen('exitScr'); try { window.close(); } catch (e) { /* navegador pode bloquear */ } });
-  click('exitBack', () => showScreen('menuScr'));
+  click('exitBack', () => goMenu());
+  click('roomMap', () => LOB.openMaps());
   click('lReady', () => beginMatch());
-  click('lBack', () => { clearInterval(lobbyIv); G.state = 'menu'; showScreen('menuScr'); });
+  click('lBack', () => { clearInterval(lobbyIv); G.state = 'menu'; goMenu(); });
   click('invClose', () => closeInventory());
   document.querySelectorAll('#invTabs button').forEach(b => b.addEventListener('click', () => { invTab = b.dataset.tab; renderInventory(true); SND.play('ui'); }));
   click('mapClose', () => showScreen(null));
@@ -1235,35 +1254,21 @@ function boot() {
   window.__game = {
     G: G, W: W, FX: FX, input: input, keys: keys, startMatch: startMatch, beginMatch: beginMatch, goMenu: goMenu, deployWall: deployWall, damageActor: damageActor, openAirdrop: openAirdrop,
     tick: tick, giveWeapon: giveWeapon, jumpOut: jumpOut, throwNade: throwNade, openInventory: openInventory, openMap: openMap, openSettings: openSettings,
-    camera: function () { return camera; }, renderer: function () { return renderer; },
+    camera: function () { return camera; }, renderer: function () { return renderer; }, scene: function () { return scene; },
   };
-  $('loadTip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
-  const steps = W.buildSteps(scene, G.settings.quality);
+  LOB.init();
+  const steps = W.buildSteps(scene, G.settings.quality, G.settings.map);
   steps.unshift(['Personagens', () => CH.load()], ['Armas', () => WPN.load()], ['Itens', () => WPN.loadProps()]);
   steps.push(['Efeitos', () => FX.init(scene)]);
-  steps.push(['Personagem', () => { setupShowcase(); G.player = G.show; }]);
-  let i = 0;
-  const next = () => {
-    if (i >= steps.length) {
-      G.built = true;
-      $('loadBar').style.width = '100%';
-      setTimeout(() => {
-        $('loadScr').classList.add('hidden'); goMenu();
-        const code = new URLSearchParams(location.search).get('sala');
-        if (code) { showScreen('joinScr'); $('joinCode').value = code.toUpperCase().slice(0, 5); NET.joinRoom(code); }
-      }, 150);
-      return;
-    }
-    const s = steps[i++];
-    $('loadStep').textContent = s[0] + '…';
-    $('loadBar').style.width = Math.round(i / steps.length * 100) + '%';
-    setTimeout(() => {
-      const r = s[1]();
-      if (r && r.then) r.then(next, e => { $('errorBox').textContent = 'Erro ao carregar: ' + e.message; $('errorBox').classList.remove('hidden'); });
-      else next();
-    }, 16);
-  };
-  next();
+  steps.push(['Lobby', () => { LOB.buildStage(); setupShowcase(); G.player = G.show; }]);
+  LOB.runSteps(steps, () => {
+    G.built = true;
+    G.state = 'menu';
+    const code = new URLSearchParams(location.search).get('sala');
+    if (!ACC.restore()) { LOB.pendingRoom = code; LOB.showAuth(); return; }
+    LOB.enter();
+    if (code) LOB.joinLink(code);
+  });
 }
 
 window.addEventListener('error', (e) => {

@@ -20,7 +20,7 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 ## O que tem no jogo
 - **Telas (como na referência):**
   - carregamento com barra;
-  - menu principal (JOGAR, INVENTÁRIO, CONFIGURAÇÕES, SAIR) com o personagem em 3D na frente da ilha;
+  - login (conta ou convidado) e lobby com perfil, moedas, loja, recarga, mapa e o personagem em 3D num pódio (veja a v2.3);
   - lobby (jogadores, mapa, modo, contagem, PRONTO);
   - inventário (itens da partida) e arsenal (as 10 armas com raridade, descrição, munição e atributos);
   - mapa completo com legenda;
@@ -82,6 +82,56 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v2.3
+- **Mapa novo: Ilha Triângulo** (inspirado nos mapas clássicos de battle royale de celular, com nomes e construções próprios). Tem:
+  - cidade da **Torre do Relógio** com prédios de 2 e 3 andares, escadas e terraço;
+  - **Pico** com observatório e antenas;
+  - **Fábrica** com chaminés, tanques e canos;
+  - **Hangar** com pista de pouso, avião e torre de controle;
+  - **Usina** com torres de resfriamento e linha de energia;
+  - **Estaleiro** com navio e pórtico;
+  - **Vila do Moinho** (as pás giram), **Arrozais** com palafitas e **Povoado**.
+
+  Escolha o mapa no lobby (cartão **MAPA**). Na sala multiplayer quem escolhe é o anfitrião, e o mapa vai junto para os amigos.
+- **Contas:**
+  - criar conta com usuário e senha, ou jogar como convidado;
+  - o progresso fica salvo: nível, XP, ouro, gemas, itens e estatísticas;
+  - a senha é guardada com hash (SHA-256 com sal), nunca em texto;
+  - o **código de transferência** (Perfil) leva a conta para outro celular.
+- **Moedas:**
+  - **Ouro** se ganha jogando (abates, colocação, tempo vivo), subindo de nível e no prêmio diário;
+  - **Gemas** vêm da **Recarga**, com 6 pacotes:
+
+    | Preço | Gemas |
+    |---|---|
+    | R$ 2 | 20 |
+    | R$ 5 | 50 + 5 |
+    | R$ 10 | 100 + 15 |
+    | R$ 20 | 200 + 40 |
+    | R$ 50 | 500 + 120 |
+    | R$ 100 | 1.000 + 300 |
+
+    Dá para trocar 10 gemas por 800 de ouro.
+- **Loja:** os 8 personagens e os 10 emotes têm preço em ouro ou gemas e raridade (comum, raro, épico, lendário). Ao tocar num item, o personagem do pódio veste ou dança na hora. Só os itens comprados aparecem na partida e na sala.
+- **Lobby novo:**
+  - o personagem fica num pódio iluminado sobre uma plataforma no mar, com a ilha ao fundo, e dá para arrastar para girar;
+  - em cima: perfil, nível e moedas com o botão **+** de recarga;
+  - à esquerda: Loja, Personagem, Emotes, Recarga, Arsenal e Perfil;
+  - à direita: banner de novidades, mapa e o botão JOGAR.
+- **Carregamento novo:** ilha ao pôr do sol com avião e paraquedas animados, logo dourado, porcentagem e dicas.
+- **Fim de partida:** mostra o ouro e o XP ganhos e avisa quando você sobe de nível.
+
+### Sobre as contas e os pagamentos (leia antes de publicar)
+- **Onde a conta fica:** neste aparelho (armazenamento do navegador/app). Isso não é uma conta na nuvem. Se o app for desinstalado sem gerar o código de transferência, o progresso se perde.
+- **Conta na nuvem:** para entrar de qualquer celular é preciso um servidor, por exemplo Firebase Authentication + Firestore (tem plano grátis). O código já separa isso no módulo `ACC` (`js/account.js`), então a troca é localizada.
+- **Pagamento de verdade:** a recarga usa o **Google Play Billing** quando o jogo roda como app da Play Store (TWA com a Digital Goods API). Fora disso entra o **modo de teste**: aparece um aviso amarelo, nenhuma cobrança é feita e as gemas são só para testar a loja.
+- Passos para ativar a cobrança real:
+  1. No Play Console, crie produtos **consumíveis** com estes IDs: `gemas_20`, `gemas_55`, `gemas_115`, `gemas_240`, `gemas_620` e `gemas_1300`.
+  2. Gere o app com o Bubblewrap (ou PWABuilder) com o recurso **Play Billing** ligado.
+  3. Em `js/account.js`, troque `PAY.TEST_MODE = true` por `false`.
+  4. **Importante:** antes de creditar as gemas, confirme o `purchaseToken` num servidor seu pela Google Play Developer API. Sem isso alguém pode forjar compras, e também dá para editar ouro e gemas no próprio aparelho.
+- A Play Store exige a política de privacidade atualizada dizendo que há compras no app e conta com apelido.
+
 ## Novidades da v2.2
 - **Modo Bodycam** (Configurações → Gráficos → Estilo da imagem: Bodycam). A imagem passa por um filtro de câmera corporal: lente olho-de-peixe, aberração de cor nas bordas, brilho estourado, cor fria, vinheta, granulado e o letreiro REC com data e hora.
 - **Câmera de peito** (Configurações → Controles → Câmera: 1ª pessoa). Você vê os próprios braços segurando a arma no canto da tela, e a câmera balança com o corpo. Combina com o filtro Bodycam.
@@ -113,11 +163,8 @@ O jogo já vem com o que o Android pede de um app web instalável: `manifest.web
    Contas pessoais novas precisam fazer um **teste fechado com testadores** (atualmente 12 pessoas por 14 dias) antes de liberar para o público.
 
 ### Ganhar dinheiro com o jogo
-Hoje o jogo **não tem anúncios nem compras dentro do app**. Para monetizar, há dois caminhos:
-- **Anúncios:** em TWA não dá para usar o AdMob direto. A opção é empacotar com **Capacitor** e usar um plugin do AdMob.
-- **Compras (skins de armas, passe):** na TWA, use o **Google Play Billing** pela Digital Goods API.
-
-As raridades e o arsenal já servem de base para vender skins.
+- **Compras no app:** a loja e a recarga de gemas (R$ 2 a R$ 100) já estão prontas e ligadas ao Google Play Billing. Siga os passos de "Sobre as contas e os pagamentos" acima. O Google fica com 15% da receita até US$ 1 milhão por ano.
+- **Anúncios (opcional):** em TWA não dá para usar o AdMob direto. A opção é empacotar com **Capacitor** e usar um plugin do AdMob.
 
 ### Créditos e licenças (todas permitem uso comercial)
 | O quê | Autor | Licença |
@@ -143,13 +190,16 @@ A licença MIT pede que o aviso de copyright vá junto com o jogo. Deixe esta ta
 | `js/three.min.js` | Three.js r160 (MIT, licença em `js/THREE_LICENSE.txt`) |
 | `js/util.js` | Ruído, materiais toon, contornos, mescla de geometrias, UV projetada |
 | `js/textures.js` | Texturas desenhadas por código (chão, reboco, telha, madeira, pedra, metal, folhas, tecido, desgaste de arma) |
-| `js/world.js` | Ilha, vilas, construções, vegetação, mar, céu, colisões e raios |
+| `js/world.js` | Relevo, construções da Ilha Tropical, vegetação, mar, céu, colisões e raios |
 | `js/weapons.js` | As 10 armas: atributos, raridade, mira e modelos |
 | `js/character.js` | Carrega os personagens, mistura as animações e faz o IK de braços e pernas |
 | `js/effects.js` | Efeitos visuais e sons |
 | `js/game.js` | Regras: jogador, armas, granada, gel, loot, zona, suprimento, avião, bots |
 | `js/net.js` | Multiplayer: salas, sincronização de bonecos, tiros, dano, loot e zona |
 | `js/post.js` | Filtro Bodycam (pós-processamento) |
+| `js/maps.js` | Mapas (Ilha Tropical e Ilha Triângulo): áreas, estradas, prédios, hangar, usina, estaleiro, moinho |
+| `js/account.js` | Contas (login, senha com hash, código de transferência), ouro, gemas, catálogo da loja e pagamento (Play Billing) |
+| `js/lobby.js` | Lobby, loja, recarga, perfil, escolha de mapa, palco 3D, diálogos e tela de carregamento |
 | `assets/props.bin` | Granada, mochila, kit, munição, colete, capacete, gel e caixa (modelados no Blender) |
 | `assets/chars/` | Personagens (malha + texturas) e animações, em formato binário compacto |
 | `assets/guns.bin` | Os 10 modelos de arma e o bipé |

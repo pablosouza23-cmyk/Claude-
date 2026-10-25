@@ -13,37 +13,43 @@ const W = {
   _stamp: 0,
 };
 
-// ---------- áreas e estradas ----------
-W.areaDefs = [
-  { name: 'VILA CENTRAL', x: 0, z: 0, r: 30, flat: true },
-  { name: 'BAIRRO TROPICAL', x: -45, z: -110, r: 36, flat: true },
-  { name: 'RUÍNAS', x: 95, z: -60, r: 30, flat: true },
-  { name: 'FAZENDA', x: 75, z: 95, r: 34, flat: true },
-  { name: 'PORTO', x: -135, z: 45, r: 30, flat: true },
-  { name: 'VILA PESQUEIRA', x: 146, z: 2, r: 24, flat: true },
-  { name: 'FAROL', x: 22, z: -158, r: 16, flat: true, lift: 6 },
-  { name: 'FLORESTA', x: -95, z: -30, r: 40 },
-  { name: 'LAGOA', x: -30, z: 75, r: 20 },
-  { name: 'CAMPO', x: -85, z: 122, r: 30 },
-];
-W.A = {};
-for (const a of W.areaDefs) W.A[a.name] = a;
-
-W.paths = [
-  [[0, 0], [-15, -45], [-45, -110]],
-  [[0, 0], [45, -25], [95, -60]],
-  [[0, 0], [35, 50], [75, 95]],
-  [[0, 0], [-60, 15], [-135, 45]],
-  [[0, 0], [-12, 45], [-30, 75], [-60, 100], [-85, 122]],
-  [[95, -60], [125, -30], [146, 2]],
-  [[95, -60], [60, -120], [22, -158]],
-  [[-45, -110], [-10, -140], [22, -158]],
-  [[75, 95], [120, 55], [146, 2]],
-  [[-135, 45], [-115, 95], [-85, 122]],
-  [[-135, 45], [-120, -20], [-95, -30], [-45, -110]],
-];
-W.segs = [];
-for (const p of W.paths) for (let i = 0; i < p.length - 1; i++) W.segs.push([p[i][0], p[i][1], p[i + 1][0], p[i + 1][1]]);
+// ---------- mapas ----------
+// Cada mapa define as áreas (com marcadores: flat, lake, forest, hills, peak, sandy, ruins, fields, rice, runway, palms),
+// as estradas, o formato da ilha (tri = quanto ela vira um triângulo) e a lista de construções (maps.js).
+W.MAPS = {};
+W.mapId = null;
+W.shape = () => 1;
+W.setMap = function (id) {
+  const m = W.MAPS[id] || W.MAPS.ilha;
+  W.mapId = W.MAPS[id] ? id : 'ilha';
+  W.MAP = m;
+  W.LAND_R = m.landR; W.PLAY_R = m.playR;
+  const tri = m.tri || 0, rot = m.triRot || 0;
+  W.shape = tri ? (ang) => 1 + tri * Math.cos(3 * (ang - rot)) : () => 1;
+  W.areaDefs = m.areas.map(a => Object.assign({}, a));
+  W.A = {};
+  for (const a of W.areaDefs) W.A[a.name] = a;
+  W.lakes = W.areaDefs.filter(a => a.lake);
+  W.flats = W.areaDefs.filter(a => a.flat);
+  W.paths = m.paths;
+  W.segs = [];
+  for (const p of W.paths) for (let i = 0; i < p.length - 1; i++) W.segs.push([p[i][0], p[i][1], p[i + 1][0], p[i + 1][1]]);
+  for (const a of W.areaDefs) a.h = W.baseH(a.x, a.z) + (a.lift || 0);
+  for (const a of W.lakes) a.h = -2.2;
+};
+// distância "normalizada" até o centro: 1 = linha da praia (leva em conta o formato da ilha)
+W.coastK = function (x, z) {
+  return (Math.hypot(x, z) + (U.noise(x * 0.02 + 9, z * 0.02) - 0.5) * 14) / W.shape(Math.atan2(z, x));
+};
+// ponto aleatório em terra firme
+W.randLand = function (rnd, margin) {
+  for (let i = 0; i < 40; i++) {
+    const an = rnd() * 6.28, r = Math.sqrt(rnd()) * (W.LAND_R * 1.2);
+    const x = Math.cos(an) * r, z = Math.sin(an) * r;
+    if (W.coastK(x, z) < W.LAND_R - (margin || 14) && W.height(x, z) > 0.3) return [x, z];
+  }
+  return [0, 0];
+};
 
 W.pathDist = function (x, z) {
   let best = 1e9;
@@ -63,28 +69,31 @@ W.pathDist = function (x, z) {
 // ---------- relevo ----------
 W.baseH = function (x, z) {
   let h = 1.6 + (U.fbm(x * 0.008 + 3.1, z * 0.008 - 7.3) - 0.5) * 8 + (U.noise(x * 0.05, z * 0.05) - 0.5) * 0.6;
-  // colinas no campo e perto do farol
-  const c = W.A.CAMPO;
-  h += U.smooth(55, 0, Math.hypot(x - c.x, z - c.z)) * (U.fbm(x * 0.03, z * 0.03) * 7);
+  for (const c of W.areaDefs) {
+    // colinas
+    if (c.hills) h += U.smooth(55, 0, Math.hypot(x - c.x, z - c.z)) * (U.fbm(x * 0.03, z * 0.03) * c.hills);
+    // montanha com encostas quebradas
+    if (c.peak) { const d = Math.hypot(x - c.x, z - c.z), k = U.smooth(c.r + 75, c.r * 0.6, d); h += Math.pow(k, 1.6) * c.peak * (0.85 + U.fbm(x * 0.04 + 2, z * 0.04) * 0.3); }
+  }
   return h;
 };
-for (const a of W.areaDefs) a.h = W.baseH(a.x, a.z) + (a.lift || 0);
-W.A.LAGOA.h = -2.2;
 
 W.height = function (x, z) {
   let h = W.baseH(x, z);
-  for (const a of W.areaDefs) {
-    if (!a.flat) continue;
+  for (const a of W.flats) {
     const d = Math.hypot(x - a.x, z - a.z);
     if (d < a.r + 14) h = U.lerp(h, a.h, U.smooth(a.r + 14, a.r - 4, d));
   }
-  // lagoa
-  const l = W.A.LAGOA, dl = Math.hypot(x - l.x, z - l.z);
-  if (dl < l.r + 10) h = U.lerp(h, -2.2, U.smooth(l.r + 10, l.r - 6, dl + (U.noise(x * 0.15, z * 0.15) - 0.5) * 5));
+  // sem poças de mar no meio da ilha: o chão interno não desce abaixo da água (só nos lagos)
+  const k0 = W.coastK(x, z);
+  if (h < 0.25 && k0 < W.LAND_R - 10) h = U.lerp(h, 0.25 - (0.25 - h) * 0.12, U.smooth(W.LAND_R - 10, W.LAND_R - 26, k0));
+  for (const l of W.lakes) {
+    const dl = Math.hypot(x - l.x, z - l.z);
+    if (dl < l.r + 10) h = U.lerp(h, -2.2, U.smooth(l.r + 10, l.r - 6, dl + (U.noise(x * 0.15, z * 0.15) - 0.5) * 5));
+  }
   const pd = W.pathDist(x, z);
   if (pd < 6) h -= (1 - pd / 6) * 0.12;
-  const r = Math.hypot(x, z) + (U.noise(x * 0.02 + 9, z * 0.02) - 0.5) * 14;
-  if (r > W.LAND_R - 6) h = U.lerp(h, -3, U.smooth(W.LAND_R - 6, W.LAND_R + 26, r));
+  if (k0 > W.LAND_R - 6) h = U.lerp(h, -3, U.smooth(W.LAND_R - 6, W.LAND_R + 26, k0));
   return h;
 };
 
@@ -94,31 +103,47 @@ W.sand = function (x, z) {
   let s = U.smooth(3.6, 2.6, pd);
   const patch = U.fbm(x * 0.035 + 11, z * 0.035 - 4);
   s = Math.max(s, U.smooth(0.68, 0.74, patch));
-  const r = Math.hypot(x, z) + (U.noise(x * 0.02 + 9, z * 0.02) - 0.5) * 14;
+  const r = W.coastK(x, z);
   s = Math.max(s, U.smooth(W.LAND_R - 12, W.LAND_R - 4, r + (U.noise(x * 0.1, z * 0.1) - 0.5) * 4));
-  for (const k of ['RUÍNAS', 'PORTO', 'VILA PESQUEIRA']) {
-    const a = W.A[k], d = Math.hypot(x - a.x, z - a.z);
-    if (d < a.r) s = Math.max(s, (k === 'RUÍNAS' ? U.smooth(0.55, 0.62, U.noise(x * 0.12 + 5, z * 0.12)) : 0.85) * U.smooth(a.r, a.r - 10, d));
+  for (const a of W.areaDefs) {
+    if (!a.sandy && !a.ruins) continue;
+    const d = Math.hypot(x - a.x, z - a.z);
+    if (d < a.r) s = Math.max(s, (a.ruins ? U.smooth(0.55, 0.62, U.noise(x * 0.12 + 5, z * 0.12)) : a.sandy) * U.smooth(a.r, a.r - 10, d));
   }
-  const l = W.A.LAGOA;
-  s = Math.max(s, U.smooth(l.r + 4, l.r - 2, Math.hypot(x - l.x, z - l.z)) * 0.8);
+  for (const l of W.lakes) s = Math.max(s, U.smooth(l.r + 4, l.r - 2, Math.hypot(x - l.x, z - l.z)) * 0.8);
   return s;
 };
 
 // cor do chão num ponto (usada pelo terreno e pela grama)
 const _gc = { g1: new THREE.Color(0x4f7a26), g2: new THREE.Color(0x7a943a), g3: new THREE.Color(0x355f1f), s1: new THREE.Color(0xdcc89e), s2: new THREE.Color(0xc9ae80),
-  wet: new THREE.Color(0xa38c66), rock: new THREE.Color(0x7d7b72), field: new THREE.Color(0x8c9b3c), dirt: new THREE.Color(0x86684a), c: new THREE.Color(), cs: new THREE.Color() };
+  wet: new THREE.Color(0xa38c66), rock: new THREE.Color(0x7d7b72), field: new THREE.Color(0x8c9b3c), dirt: new THREE.Color(0x86684a), c: new THREE.Color(), cs: new THREE.Color(),
+  rice: new THREE.Color(0x86c23c), paddy: new THREE.Color(0x5d8079), asphalt: new THREE.Color(0x3c3f42), paint: new THREE.Color(0xe8e6dc) };
 W.groundColor = function (x, z, y, out) {
   const v = U.fbm(x * 0.05, z * 0.05);
   const c = out || _gc.c;
   c.copy(_gc.g1).lerp(_gc.g2, U.smooth(0.45, 0.78, v)).lerp(_gc.g3, U.smooth(0.42, 0.18, v) * 0.75);
   // manchas de terra batida
   c.lerp(_gc.dirt, U.smooth(0.62, 0.8, U.fbm(x * 0.11 + 40, z * 0.11)) * 0.55);
-  // plantação em faixas na fazenda
-  const f = W.A.FAZENDA, df = Math.hypot(x - f.x - 10, z - f.z - 8);
-  if (df < 22) {
-    const stripe = Math.sin((x - f.x) * 0.9) > 0.2;
-    c.lerp(stripe ? _gc.field : _gc.dirt, U.smooth(22, 16, df) * 0.85);
+  for (const f of W.areaDefs) {
+    // plantação em faixas (fazenda) e arrozais (verde vivo com água entre os canteiros)
+    if (f.fields) {
+      const df = Math.hypot(x - f.x - f.fields[0], z - f.z - f.fields[1]);
+      if (df < f.fields[2]) { const stripe = Math.sin((x - f.x) * 0.9) > 0.2; c.lerp(stripe ? _gc.field : _gc.dirt, U.smooth(f.fields[2], f.fields[2] - 6, df) * 0.85); }
+    }
+    if (f.rice) {
+      const df = Math.hypot(x - f.x, z - f.z);
+      if (df < f.r) { const k = Math.sin((x - f.x) * 0.55 + Math.sin((z - f.z) * 0.08) * 2) > -0.35; c.lerp(k ? _gc.rice : _gc.paddy, U.smooth(f.r, f.r - 8, df) * 0.9); }
+    }
+    // pista de pouso: asfalto com faixas brancas
+    if (f.runway) {
+      const rw = f.runway, ca = Math.cos(rw[0]), sa = Math.sin(rw[0]);
+      const rx = x - f.x - (rw[3] || 0), rz = z - f.z - (rw[4] || 0), lx = rx * ca + rz * sa, lz = -rx * sa + rz * ca;
+      if (Math.abs(lx) < rw[1] && Math.abs(lz) < rw[2]) {
+        const line = (Math.abs(lz) < 0.35 && (Math.floor(lx / 4) % 2 === 0)) || Math.abs(Math.abs(lz) - rw[2] + 1) < 0.3;
+        c.copy(line ? _gc.paint : _gc.asphalt);
+        return c;
+      }
+    }
   }
   // encostas íngremes viram pedra
   const sl = Math.abs(W.baseH(x + 1, z) - W.baseH(x - 1, z)) + Math.abs(W.baseH(x, z + 1) - W.baseH(x, z - 1));
@@ -328,7 +353,7 @@ W.hitNormal = function (hit, p, out) {
 
 W.areaAt = function (x, z) {
   for (const a of W.areaDefs) if (Math.hypot(x - a.x, z - a.z) < a.r) return a.name;
-  if (Math.hypot(x, z) > W.LAND_R - 8) return 'PRAIA';
+  if (W.coastK(x, z) > W.LAND_R - 8) return 'PRAIA';
   return null;
 };
 
@@ -339,21 +364,27 @@ W.isFree = function (x, z, rad, list) {
 
 // ---------- construção da cena ----------
 // construção em etapas (a tela de carregamento mostra o progresso)
-W.buildSteps = function (scene, quality) {
+W.buildSteps = function (scene, quality, mapId) {
   W.scene = scene;
   W.quality = quality;
+  W.setMap(mapId || W.mapId || 'ilha');
   const rnd = U.rng(1234);
   const P = [];
-  return [
-    ['Céu e nuvens', () => { W.buildSky(scene); W.buildClouds(scene, rnd); if (typeof renderer !== 'undefined') W.buildEnv(renderer, scene); }],
-    ['Terreno', () => W.buildTerrain(scene)],
-    ['Mar', () => W.buildSea(scene)],
-    ['Vilas', () => { W.occupied = []; W.buildVillages(P); W.buildCentral(P); W.buildFishing(P); }],
-    ['Porto e fazenda', () => { W.buildPort(P, rnd); W.buildFarm(P); W.buildLighthouse(P); W.buildRuins(P); }],
-    ['Pedras e caixas', () => { W.buildRocks(P, rnd); W.buildCrates(P, rnd); W.solidMesh(scene, P, 0.04); }],
-    ['Árvores', () => W.buildTrees(scene, rnd)],
-    ['Grama', () => W.buildGrass(scene, quality)],
-  ];
+  // tudo que é do mapa fica em W.root (para trocar de mapa sem recarregar a página)
+  if (W.root) { scene.remove(W.root); W.root.traverse(o => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); }); }
+  W.root = new THREE.Group(); scene.add(W.root);
+  const R = W.root;
+  W.statics = []; W.grid = new Map(); W.dynamic = []; W.houses = []; W.lootSpots = []; W.olSets = []; W.occupied = []; W.spinners = [];
+  W.grassCenter = { x: 1e9, z: 1e9 };
+  const steps = [];
+  if (!W.sky) steps.push(['Céu e nuvens', () => { W.buildSky(scene); W.buildClouds(scene, rnd); if (typeof renderer !== 'undefined') W.buildEnv(renderer, scene); }]);
+  steps.push(['Terreno', () => W.buildTerrain(R)]);
+  if (!W.seaMat) steps.push(['Mar', () => W.buildSea(scene)]); else steps.push(['Mar', () => W.updateSeaDepth()]);
+  W.MAP.build.forEach((b, i) => steps.push([b[0], () => b[1](P, rnd)]));
+  steps.push(['Pedras e caixas', () => { W.buildRocks(P, rnd); W.buildCrates(P, rnd); W.solidMesh(R, P, 0.04); }]);
+  steps.push(['Árvores', () => W.buildTrees(R, rnd)]);
+  steps.push(['Grama', () => W.buildGrass(R, quality)]);
+  return steps;
 };
 W.build = function (scene, quality) { for (const s of W.buildSteps(scene, quality)) s[1](); };
 
@@ -466,14 +497,18 @@ W.grid2 = function (arr, x, z, stride, off) {
 };
 
 // mar em desenho: raso turquesa perto da areia, espuma batendo na praia e brilho das ondas
-W.buildSea = function (scene) {
-  const N = 192, EXT = 760, data = new Uint8Array(N * N * 4);
+W.fillSeaDepth = function (data, N, EXT) {
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
     const x = (i / (N - 1) - 0.5) * EXT, z = (j / (N - 1) - 0.5) * EXT;
     const depth = U.clamp((W.SEA_Y - W.height(x, z)) / 3.2, 0, 1);
     const k = (j * N + i) * 4;
     data[k] = Math.round(depth * 255); data[k + 1] = data[k + 2] = 0; data[k + 3] = 255;
   }
+};
+W.updateSeaDepth = function () { const t = W.seaMat.uniforms.uDepth.value; W.fillSeaDepth(t.image.data, t.image.width, W.seaMat.uniforms.uExt.value); t.needsUpdate = true; };
+W.buildSea = function (scene) {
+  const N = 192, EXT = 760, data = new Uint8Array(N * N * 4);
+  W.fillSeaDepth(data, N, EXT);
   const dt = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
   dt.magFilter = THREE.LinearFilter; dt.minFilter = THREE.LinearFilter; dt.needsUpdate = true;
   const mat = new THREE.ShaderMaterial({
@@ -708,19 +743,20 @@ W.keepOutAreas = function (x, z, extra) {
 W.buildTrees = function (scene, rnd) {
   const variants = [W.treeGeo(11), W.treeGeo(29), W.treeGeo(57)], vm = [[], [], []];
   const pines = W.pineGeo(5), pm0 = [];
-  const F = W.A.FLORESTA, Lg = W.A.LAGOA, Cp = W.A.CAMPO;
+  const forests = W.areaDefs.filter(a => a.forest), hills = W.areaDefs.filter(a => a.hills || a.peak);
+  const near = (list, x, z, extra) => list.some(a => Math.hypot(x - a.x, z - a.z) < a.r + extra);
   let placed = 0, tries = 0;
-  while (placed < 240 && tries < 16000) {
+  const N = W.MAP.trees || 240;
+  while (placed < N && tries < 16000) {
     tries++;
-    const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * (W.LAND_R - 10);
-    const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    const inForest = Math.hypot(x - F.x, z - F.z) < F.r + 8;
-    const nearLake = Math.abs(Math.hypot(x - Lg.x, z - Lg.z) - Lg.r - 6) < 7;
+    const [x, z] = W.randLand(rnd, 10);
+    const inForest = near(forests, x, z, 8);
+    const nearLake = W.lakes.some(l => Math.abs(Math.hypot(x - l.x, z - l.z) - l.r - 6) < 7);
     if (!inForest && !nearLake && rnd() > 0.28) continue;
     if (W.sand(x, z) > 0.2 || W.pathDist(x, z) < 5 || W.height(x, z) < 0.2) continue;
     if (W.keepOutAreas(x, z, 5) || !W.isFree(x, z, inForest ? 3.6 : 4.5, W.occupied)) continue;
     const s = 0.85 + rnd() * 0.55, y = W.height(x, z);
-    const pine = inForest ? rnd() < 0.4 : Math.hypot(x - Cp.x, z - Cp.z) < Cp.r + 20 && rnd() < 0.6;
+    const pine = inForest ? rnd() < 0.4 : near(hills, x, z, 30) && rnd() < 0.65;
     (pine ? pm0 : vm[placed % 3]).push(U.mat4(x, y - 0.1, z, 0, rnd() * Math.PI * 2, 0, s, s, s));
     W.occupied.push([x, z, 2.6]);
     W.addCollider({ type: 'c', x: x, z: z, r: (pine ? 0.3 : 0.38) * s, y0: y - 1, y1: y + 3.4 * s });
@@ -739,13 +775,12 @@ W.buildTrees = function (scene, rnd) {
     W.addCollider({ type: 'c', x: x, z: z, r: 0.22 * s, y0: y - 1, y1: y + 5 * s });
   };
   for (let i = 0; i < 130; i++) {
-    const a = rnd() * Math.PI * 2, r = W.LAND_R - 16 + rnd() * 18;
-    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const a = rnd() * Math.PI * 2, k = (W.LAND_R - 16 + rnd() * 18) * W.shape(a);
+    const x = Math.cos(a) * k, z = Math.sin(a) * k;
     if (!W.isFree(x, z, 3, W.occupied) || W.keepOutAreas(x, z, 0)) continue;
     addPalm(x, z, i, 0.9 + rnd() * 0.45);
   }
-  for (const k of ['BAIRRO TROPICAL', 'VILA PESQUEIRA', 'VILA CENTRAL']) {
-    const v = W.A[k];
+  for (const v of W.areaDefs.filter(a => a.palms)) {
     for (let i = 0; i < 26; i++) {
       const a = rnd() * Math.PI * 2, r = 5 + rnd() * (v.r - 2);
       const x = v.x + Math.cos(a) * r, z = v.z + Math.sin(a) * r;
@@ -757,8 +792,7 @@ W.buildTrees = function (scene, rnd) {
 
   const bm = [];
   for (let i = 0; i < 200; i++) {
-    const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * (W.LAND_R - 8);
-    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const [x, z] = W.randLand(rnd, 8);
     if (W.sand(x, z) > 0.3 || !W.isFree(x, z, 1.5, W.occupied) || W.height(x, z) < 0) continue;
     const s = 0.6 + rnd() * 0.7;
     bm.push(U.mat4(x, W.height(x, z) - 0.15, z, 0, rnd() * 6, 0, s, s, s));
@@ -1093,8 +1127,7 @@ W.buildRocks = function (P, rnd) {
   let n = 0, tries = 0;
   while (n < 60 && tries < 3000) {
     tries++;
-    const an = rnd() * 6.28, r = Math.sqrt(rnd()) * (W.LAND_R - 4);
-    const x = Math.cos(an) * r, z = Math.sin(an) * r;
+    const [x, z] = W.randLand(rnd, 4);
     if (W.keepOutAreas(x, z, 2) || W.pathDist(x, z) < 4 || !W.isFree(x, z, 3, W.occupied)) continue;
     const s = 0.8 + rnd() * 1.8, y = W.height(x, z);
     P.push(U.part(new THREE.IcosahedronGeometry(1, 0), 0x9a9b90, U.mat4(x, y + s * 0.3, z, rnd(), rnd() * 6, rnd(), s * 1.3, s * 0.8, s), 'radial', 'stone'));
@@ -1108,8 +1141,7 @@ W.buildCrates = function (P, rnd) {
   let n = 0, tries = 0;
   while (n < 50 && tries < 3000) {
     tries++;
-    const a = rnd() * Math.PI * 2, r = 12 + Math.sqrt(rnd()) * (W.LAND_R - 22);
-    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const [x, z] = W.randLand(rnd, 22);
     if (!W.isFree(x, z, 2.5, W.occupied) || W.height(x, z) < 0.2) continue;
     const s = 1.1 + rnd() * 0.4, rot = rnd() * 3;
     W.box(P, x, z, s, s, s, rot, n % 2 ? 0xb47c45 : 0xa86f3c, W.height(x, z) - 0.05, null, 'wood');
@@ -1230,4 +1262,5 @@ W.update = function (dt, px, pz, py) {
     W.updateOutlines(px, pz);
   }
   if (W.clouds) W.clouds.rotation.y += dt * 0.002;
+  if (W.spinners) for (const s of W.spinners) s.o.rotation.z += dt * s.v;
 };

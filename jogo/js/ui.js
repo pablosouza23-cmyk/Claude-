@@ -168,6 +168,9 @@ function updateCamera(dt) {
     camera.position.set(p.pos.x, p.pos.y + (p.crouch ? 1.08 : 1.56), p.pos.z).addScaledVector(_f, 0.1);
     camera.rotation.set(G.pitch, G.yaw, 0);
     fov = fov / w.zoom;
+  } else if (G.settings.look === 'fp') {
+    bodycamView(p, dt);
+    fov = portrait ? 92 : 84;
   } else {
     const k = p.aim;
     const inside = W.inHouse(p.pos.x, p.pos.z);
@@ -198,6 +201,9 @@ function updateCamera(dt) {
       CH.setOpacity(p.ch, close ? 0.35 : 1);
     }
   }
+  // a cabeça do próprio boneco some só na câmera de peito
+  const hideHead = G.settings.look === 'fp' && p.phase === 'ground' && p.alive && !ads;
+  if (p.ch && p.ch._headHidden !== hideHead) { p.ch._headHidden = hideHead; p.ch.B.Bip01_Head.scale.setScalar(hideHead ? 0.001 : 1); for (const m of p.ch.mats) if (m.alphaTest > 0) m.visible = !hideHead; if (hideHead) CH.setOpacity(p.ch, 1); p.ch._close = false; }
   if (G.shake > 0) {
     G.shake -= dt;
     camera.rotation.x += (Math.random() - 0.5) * 0.012; camera.rotation.y += (Math.random() - 0.5) * 0.012;
@@ -218,10 +224,28 @@ function updateCamera(dt) {
     const kick = p.ch.recoil || 0;
     const bob = Math.sin(G.time * 9) * 0.004 * U.clamp(p.speed / 4, 0, 1);
     const eye = w.sight === 'scope' ? 0.12 : WEAPONS[id].secondary ? 0.32 : w.sight === 'iron' ? 0.3 : 0.34;
-    fpGun.position.set(0, -fpGun.userData.sightY + bob, -eye + fpGun.userData.sightZ + kick * 0.04);
-    fpGun.rotation.x = kick * 0.05;
+    const dk = U.smooth(0, 0.35, Math.max(0, p.ch.drawT || 0));
+    fpGun.position.set(0, -fpGun.userData.sightY + bob - dk * 0.2, -eye + fpGun.userData.sightZ + kick * 0.04);
+    fpGun.rotation.x = kick * 0.05 - dk * 0.8;
     fpGun.visible = w.sight !== 'scope';
   }
+}
+
+// câmera presa no peito (estilo bodycam): balança com o corpo, vê os braços e a arma
+const _bcP = new THREE.Vector3(), _bcF = new THREE.Vector3();
+function bodycamView(p, dt) {
+  p.ch.B.Bip01_Spine2.getWorldPosition(_bcP);
+  const f = p.face;
+  _bcF.set(Math.sin(f), 0, Math.cos(f));
+  _bcP.addScaledVector(_bcF, 0.2).y += 0.1;
+  if (!G.bcPos) G.bcPos = _bcP.clone();
+  G.bcPos.lerp(_bcP, 1 - Math.exp(-28 * dt));
+  camera.position.copy(G.bcPos);
+  const sp = U.clamp(p.speed / 6, 0, 1), t = G.time;
+  G.bcBob = (G.bcBob || 0) + dt * (6 + p.speed * 1.6) * (sp > 0.05 ? 1 : 0.2);
+  const roll = Math.sin(G.bcBob) * 0.022 * sp + Math.sin(t * 0.7) * 0.004;
+  const bobP = Math.abs(Math.cos(G.bcBob)) * 0.02 * sp + Math.sin(t * 1.3) * 0.003;
+  camera.rotation.set(G.pitch - bobP, G.yaw + Math.sin(G.bcBob * 0.5) * 0.008 * sp, roll);
 }
 
 // riscos brancos de velocidade durante a queda
@@ -421,6 +445,9 @@ function updateHUD(dt) {
   }
   G.mmT = (G.mmT || 0) - dt;
   if (G.mmT <= 0) { G.mmT = 0.1; drawMinimap(); }
+  const bc = G.settings.fx === 'bodycam';
+  setClass(H.bcOSD || (H.bcOSD = $('bcOSD')), 'bc', 'hidden', !bc);
+  if (bc) { const d = new Date(); const z = n => String(n).padStart(2, '0'); setText($('bcTime'), 'bct', d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()) + ':' + z(d.getSeconds())); }
   if (UI.screen === 'inv') renderInventory(false);
 }
 
@@ -804,10 +831,12 @@ const SETTINGS_UI = {
   ],
   graficos: [
     { k: 'quality', label: 'Qualidade gráfica', type: 'seg', opts: [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta']], reload: true },
+    { k: 'fx', label: 'Estilo da imagem', type: 'seg', opts: [['normal', 'Normal'], ['bodycam', 'Bodycam']] },
     { k: 'dynRes', label: 'Resolução automática (evita travar)', type: 'toggle' },
     { k: 'fps', label: 'Mostrar FPS', type: 'toggle' },
   ],
   controles: [
+    { k: 'look', label: 'Câmera', type: 'seg', opts: [['tp', '3ª pessoa'], ['fp', '1ª pessoa (bodycam)']] },
     { k: 'hudEdit', label: 'Layout dos botões (HUD)', type: 'action', text: 'EDITAR HUD', run: () => openHudEditor() },
     { k: 'aimAssist', label: 'Assistência de mira', type: 'toggle' },
     { k: 'btnSize', label: 'Tamanho dos botões', type: 'range', min: 0.75, max: 1.35, step: 0.05, show: v => Math.round(v * 100) + '%' },
@@ -1178,6 +1207,8 @@ function frame(now) {
   }
   updateCamera(G.state === 'pause' ? 0 : dt);
   if (G.state === 'play') updateHUD(dt);
+  const bodycam = G.settings.fx === 'bodycam';
+  if (bodycam) POST.begin(renderer);
   renderer.render(scene, camera);
   if (G.ads && fpScene && fpGun.visible && G.state !== 'end') {
     renderer.autoClear = false;
@@ -1186,6 +1217,7 @@ function frame(now) {
     renderer.render(fpScene, fpCam);
     renderer.autoClear = true;
   }
+  if (bodycam) POST.end(renderer, performance.now() / 1000);
 }
 
 // ------------------------------------------------------------------ carregamento
@@ -1207,7 +1239,7 @@ function boot() {
   };
   $('loadTip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
   const steps = W.buildSteps(scene, G.settings.quality);
-  steps.unshift(['Personagens', () => CH.load()], ['Armas', () => WPN.load()]);
+  steps.unshift(['Personagens', () => CH.load()], ['Armas', () => WPN.load()], ['Itens', () => WPN.loadProps()]);
   steps.push(['Efeitos', () => FX.init(scene)]);
   steps.push(['Personagem', () => { setupShowcase(); G.player = G.show; }]);
   let i = 0;

@@ -58,6 +58,7 @@
   <div id="hurtArrow"></div>
   <div id="handHint"></div>
   <div id="emoteWheel" class="hidden"></div>
+  <div id="bcOSD" class="hidden"><span class="rec">REC</span><b id="bcTime"></b><small>BODYCAM 07 · 1080p · AUTO</small></div>
   <div id="killfeed"></div>
   <div id="dmgLayer"></div>
   <div id="vignette"></div>
@@ -103,7 +104,7 @@
     <button id="mSet" class="mBtn" data-icon="gear">CONFIGURAÇÕES</button>
     <button id="mExit" class="mBtn" data-icon="exit">SAIR</button>
   </nav>
-  <div class="ver">v2.1</div>
+  <div class="ver">v2.2</div>
 </div>
 
 <div id="modeScr" class="screen clear hidden">
@@ -246,6 +247,7 @@
 <script src="js/game.js"></script>
 <script src="js/peerjs.min.js"></script>
 <script src="js/net.js"></script>
+<script src="js/post.js"></script>
 <script src="js/ui.js"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function () {});

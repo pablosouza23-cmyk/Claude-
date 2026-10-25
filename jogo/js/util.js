@@ -251,6 +251,58 @@ U.Billboards.prototype.end = function () {
   this.mesh.visible = this.n > 0;
 };
 
+// fumaça: bolota com ruído (bordas irregulares, miolo mais denso)
+U.smokeTex = (function () {
+  let tex = null;
+  return function () {
+    if (tex) return tex;
+    tex = U.canvasTex(128, 128, (g) => {
+      const r = U.rng(41);
+      for (let i = 0; i < 38; i++) {
+        const a = r() * 6.28, d = Math.pow(r(), 0.7) * 34, x = 64 + Math.cos(a) * d, y = 64 + Math.sin(a) * d, rad = 14 + r() * 22;
+        const gr = g.createRadialGradient(x, y, 0, x, y, rad);
+        const v = Math.floor(200 + r() * 55);
+        gr.addColorStop(0, 'rgba(' + v + ',' + v + ',' + v + ',0.32)'); gr.addColorStop(1, 'rgba(' + v + ',' + v + ',' + v + ',0)');
+        g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+      }
+    });
+    return tex;
+  };
+})();
+// fogo: chama com miolo claro e bordas recortadas
+U.fireTex = (function () {
+  let tex = null;
+  return function () {
+    if (tex) return tex;
+    tex = U.canvasTex(128, 128, (g) => {
+      const r = U.rng(77);
+      for (let i = 0; i < 30; i++) {
+        const a = r() * 6.28, d = Math.pow(r(), 0.8) * 30, x = 64 + Math.cos(a) * d, y = 64 + Math.sin(a) * d * 0.9, rad = 10 + r() * 20;
+        const gr = g.createRadialGradient(x, y, 0, x, y, rad);
+        gr.addColorStop(0, 'rgba(255,240,200,0.55)'); gr.addColorStop(0.45, 'rgba(255,160,50,0.35)'); gr.addColorStop(1, 'rgba(200,40,0,0)');
+        g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+      }
+    });
+    return tex;
+  };
+})();
+// feixe vertical (luz de raridade do loot): forte embaixo, some no alto
+U.beamTex = (function () {
+  let tex = null;
+  return function () {
+    if (tex) return tex;
+    tex = U.canvasTex(32, 128, (g) => {
+      const gr = g.createLinearGradient(0, 128, 0, 0);
+      gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 32, 128);
+      const h = g.createLinearGradient(0, 0, 32, 0);
+      h.addColorStop(0, 'rgba(0,0,0,1)'); h.addColorStop(0.5, 'rgba(0,0,0,0)'); h.addColorStop(1, 'rgba(0,0,0,1)');
+      g.globalCompositeOperation = 'destination-out'; g.fillStyle = h; g.fillRect(0, 0, 32, 128);
+    });
+    return tex;
+  };
+})();
+
 U.softDot = (function () {
   let tex = null;
   return function () {

@@ -158,6 +158,7 @@ function giveWeapon(a, id, mag, reserve) {
   const old = a.slots[idx];
   a.slots[idx] = entry;
   a.cur = idx; a.nadeHand = false; a.reloadT = 0;
+  a.ch.drawT = 0.38;
   refreshGuns(a);
   return old;
 }
@@ -166,6 +167,8 @@ function selectSlot(a, i) {
   if (a.phase !== 'ground') return;
   if (i !== 3 && !a.slots[i]) { if (a.isPlayer) toast('Slot ' + (i + 1) + ' vazio'); return; }
   a.cur = i; a.nadeHand = false; a.reloadT = 0; a.fireCd = Math.max(a.fireCd, 0.25);
+  a.ch.drawT = 0.32;
+  if (a.isPlayer) SND.play('reload', 0.5);
   refreshGuns(a);
 }
 
@@ -342,6 +345,14 @@ function dropBag(a) {
 
 let bagPair = null;
 function bagMesh() {
+  const pg = WPN.prop('bag', 1.15);
+  if (pg) {
+    // mochila caída de costas no chão
+    const g = new THREE.Group(), m = new THREE.Mesh(pg, WPN.propMat());
+    m.rotation.x = -Math.PI / 2 + 0.12; m.position.y = 0.12; m.castShadow = true;
+    g.add(m);
+    return g;
+  }
   if (!bagPair) bagPair = U.build([
     U.part(new THREE.SphereGeometry(0.42, 12, 8), 0x2d3f78, U.mat4(0, 0.25, 0, 0, 0, 0, 1, 0.62, 0.8), 'radial'),
     U.part(new THREE.BoxGeometry(0.5, 0.08, 0.3), 0x1e2a50, U.mat4(0, 0.42, 0.05), 'radial'),
@@ -524,6 +535,8 @@ function updateWalls(dt) {
 // ------------------------------------------------------------------ granadas
 let nadePair = null;
 function nadeMesh() {
+  const pg = WPN.prop('nade', 2.0);
+  if (pg) { const g = new THREE.Group(); const m = new THREE.Mesh(pg, WPN.propMat()); m.position.y = -0.08; m.castShadow = true; g.add(m); return g; }
   if (!nadePair) nadePair = U.build([
     U.part(new THREE.SphereGeometry(0.11, 10, 8), 0x3f6b2c, U.mat4(0, 0, 0, 0, 0, 0, 1, 1.15, 1), 'radial'),
     U.part(new THREE.BoxGeometry(0.06, 0.06, 0.06), 0xd0d0d0, U.mat4(0, 0.13, 0), 'radial'),
@@ -577,6 +590,8 @@ function updateNades(dt) {
     const n = G.nades[i];
     n.t -= dt;
     stepNade(n.p, n.v, dt);
+    n.tr = (n.tr || 0) - dt;
+    if (n.tr <= 0 && n.v.lengthSq() > 4) { n.tr = 0.035; FX.trail(n.p); }
     n.m.position.copy(n.p);
     n.m.rotation.x += dt * 8;
     if (n.t <= 0) { explode(n); scene.remove(n.m); G.nades.splice(i, 1); }
@@ -637,8 +652,16 @@ const LOOT = {
   kit: { label: 'Kit Médico', ring: 0x4cd964 }, ammo: { label: 'Munição', ring: 0xffcc33 }, gel: { label: 'Gel', ring: 0x7fd6ff }, gren: { label: 'Granada', ring: 0x8fd14f },
 };
 const lootGeos = {};
+// níveis: cinza, azul, roxo
+const LVL_TINT = [0, 0xffffff, 0x7fb4ff, 0xc39bff];
 function lootPair(type) {
   if (lootGeos[type]) return lootGeos[type];
+  if (WPN.props) {
+    const lvl = +type.slice(-1);
+    const pg = type.indexOf('vest') === 0 ? WPN.prop('vest', 1.1, LVL_TINT[lvl]) : type.indexOf('helm') === 0 ? WPN.prop('helm', 1.4, LVL_TINT[lvl]) :
+      type === 'kit' ? WPN.prop('kit', 1.1) : type === 'ammo' ? WPN.prop('ammo', 1.2) : type === 'gel' ? WPN.prop('gel', 1.4) : type === 'gren' ? WPN.prop('nade', 2.6) : null;
+    if (pg) return (lootGeos[type] = { g: pg, o: pg, prop: true });
+  }
   const parts = [];
   if (type.indexOf('vest') === 0) {
     const col = [0, 0x8b9aa8, 0x2f6fb5, 0x6b3fa8][+type.slice(-1)];
@@ -678,19 +701,27 @@ function lootIM(type) {
     const p = WPN.build(type.slice(2), true);
     mk(p.g, WPN.gunMat());
     if (p.glow) mk(p.glow, WPN.glowMat());
-  } else mk(lootPair(type).g, lootMat);
+  } else { const lp = lootPair(type); mk(lp.g, lp.prop ? WPN.propMat() : lootMat); }
   return e;
 }
 const _lm = new THREE.Matrix4(), _lq = new THREE.Quaternion(), _lq2 = new THREE.Quaternion().setFromAxisAngle(new V3(0, 0, 1), Math.PI / 2), _lp = new V3(), _ls = new V3(), _lc = new THREE.Color();
 const _ly = new V3(0, 1, 0);
 function renderLoot(px, pz) {
+  if (!LR.beam) {
+    // dois planos cruzados com gradiente aditivo: a "coluna de luz" das armas raras para cima
+    const bg = new THREE.PlaneGeometry(0.5, 3.2).translate(0, 1.6, 0);
+    const b2 = bg.clone().rotateY(Math.PI / 2);
+    const beamGeo = U.merge([bg.toNonIndexed(), b2.toNonIndexed()].map(g => { g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 3).fill(1), 3)); return g; }));
+    LR.beam = new THREE.InstancedMesh(beamGeo, new THREE.MeshBasicMaterial({ map: U.beamTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false }), 120);
+    LR.beam.frustumCulled = false; LR.beam.setColorAt(0, _lc.setHex(0xffffff)); scene.add(LR.beam);
+  }
   if (!LR.ring) {
     LR.ring = new THREE.InstancedMesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false }), 260);
     LR.ring.frustumCulled = false; scene.add(LR.ring);
     LR.ring.setColorAt(0, _lc.setHex(0xffffff)); // cria a cor por instância antes do primeiro desenho
   }
   for (const k in LR.types) LR.types[k].n = 0;
-  let nr = 0;
+  let nr = 0, nb = 0;
   const R = G.player && G.player.phase === 'ground' ? 70 : 0;
   for (const it of G.loot) {
     const dx = it.x - px, dz = it.z - pz;
@@ -707,13 +738,23 @@ function renderLoot(px, pz) {
     if (nr < 260) {
       _lm.makeTranslation(it.x, it.y + 0.04, it.z);
       LR.ring.setMatrixAt(nr, _lm);
-      LR.ring.setColorAt(nr, _lc.setHex(it.isWeapon ? WPN.RARITY[WEAPONS[it.type.slice(2)].rarity].hex : LOOT[it.type].ring));
+      const rc = it.isWeapon ? WPN.RARITY[WEAPONS[it.type.slice(2)].rarity].hex : LOOT[it.type].ring;
+      LR.ring.setColorAt(nr, _lc.setHex(rc));
       nr++;
+      if (it.isWeapon && nb < 120) {
+        const rar = WEAPONS[it.type.slice(2)].rarity;
+        const pulse = 0.75 + Math.sin(it.t * 3) * 0.25;
+        _lm.makeScale(1, rar === 'comum' ? 0.45 : rar === 'raro' ? 0.8 : 1.15, 1).setPosition(it.x, it.y, it.z);
+        LR.beam.setMatrixAt(nb, _lm); LR.beam.setColorAt(nb, _lc.setHex(rc).multiplyScalar(pulse * (rar === 'comum' ? 0.35 : 0.8)));
+        nb++;
+      }
     }
   }
   for (const k in LR.types) { const e = LR.types[k]; for (const m of e.list) { m.count = e.n; if (e.n) m.instanceMatrix.needsUpdate = true; } }
   LR.ring.count = nr;
   if (nr) { LR.ring.instanceMatrix.needsUpdate = true; LR.ring.instanceColor.needsUpdate = true; }
+  LR.beam.count = nb;
+  if (nb) { LR.beam.instanceMatrix.needsUpdate = true; LR.beam.instanceColor.needsUpdate = true; }
 }
 
 function spawnLoot(type, x, z, extra, id) {
@@ -790,7 +831,9 @@ function takeLoot(a, it) {
   return true;
 }
 
+function lootColor(it) { return it.isWeapon ? WPN.RARITY[WEAPONS[it.type.slice(2)].rarity].hex : LOOT[it.type].ring; }
 function removeLoot(it) {
+  if (G.player && Math.abs(it.x - G.player.pos.x) < 30 && Math.abs(it.z - G.player.pos.z) < 30) FX.pickup(new V3(it.x, it.y + 0.3, it.z), lootColor(it));
   const i = G.loot.indexOf(it); if (i >= 0) G.loot.splice(i, 1);
   NET.onLootRemove(it);
 }
@@ -912,15 +955,16 @@ function updateZone(dt) {
 // ------------------------------------------------------------------ suprimento aéreo
 function buildAirdropMesh() {
   const grp = new THREE.Group();
-  const pair = U.build([
+  const cg = WPN.prop('crate', 1);
+  const pair = cg ? { g: cg, o: null } : U.build([
     U.part(new THREE.BoxGeometry(1.4, 1.1, 1.4), 0x3e5f8a, U.mat4(0, 0.55, 0), 'radial'),
     U.part(new THREE.BoxGeometry(1.44, 0.18, 1.44), 0xf2a81d, U.mat4(0, 0.85, 0), 'radial'),
     U.part(new THREE.BoxGeometry(1.44, 0.18, 1.44), 0xf2a81d, U.mat4(0, 0.25, 0), 'radial'),
     U.part(new THREE.BoxGeometry(0.2, 1.12, 1.45), 0x2b3f5c, U.mat4(0, 0.55, 0), 'radial'),
   ]);
-  const crate = new THREE.Mesh(pair.g, U.toon({ vertexColors: true }));
+  const crate = new THREE.Mesh(pair.g, cg ? WPN.propMat() : U.toon({ vertexColors: true }));
   crate.castShadow = true;
-  grp.add(crate); grp.add(new THREE.Mesh(pair.o, U.outlineMat(0.035)));
+  grp.add(crate);
   const chute = new THREE.Group();
   const canopy = new THREE.Mesh(CH.chuteGeo(), U.toon({ vertexColors: true, side: THREE.DoubleSide }));
   canopy.position.y = 3.2;
@@ -960,7 +1004,7 @@ function updateAirdrop(dt) {
     ad.y -= dt * 6;
     if (ad.y <= ad.gy) {
       ad.y = ad.gy; ad.state = 'landed'; ad.smokeT = 0;
-      ad.col = W.addCollider({ type: 'b', x: ad.x, z: ad.z, hx: 0.7, hz: 0.7, rot: 0, y0: ad.gy, y1: ad.gy + 1.1, walkable: true });
+      ad.col = W.addCollider({ type: 'b', x: ad.x, z: ad.z, hx: 0.7, hz: 0.7, rot: 0, y0: ad.gy, y1: ad.gy + 1.45, walkable: true });
       for (const b of G.bots) if (b.alive && b.phase === 'ground' && Math.random() < 0.4) b.ai.wp = { x: ad.x, z: ad.z };
     }
     ad.mesh.position.y = ad.y;
@@ -1289,13 +1333,13 @@ function updatePlayer(dt) {
   if (p.emote) { p.emoteT -= dt; if (p.emoteT <= 0 || p.speed > 0.6 || firing || !p.onGround || p.aimOn) p.emote = null; }
   const combat = p.aimOn || G.time - p.lastFire < 0.7 || p.nadeHand;
   let target = p.face;
-  if (combat) target = G.yaw + Math.PI;
+  if (combat || G.settings.look === 'fp') target = G.yaw + Math.PI;
   else if (p.speed > 0.5) target = Math.atan2(p.vel.x, p.vel.z);
   p.face = U.dampAngle(p.face, target, combat ? 26 : 16, dt);
   p.ch.body.rotation.y = p.face;
   p.ch.root.position.copy(p.pos);
   p.ch.root.visible = !isScoped(p);
-  CH.animate(p.ch, dt, { mode: 'ground', speed: p.speed, vx: p.vel.x, vz: p.vel.z, aim: combat && curSlot(p) ? Math.max(p.aim, 0.85) : p.aim, air: !p.onGround, pitch: combat ? G.pitch : 0, crouch: p.crouch, armed: !!curSlot(p) && !p.nadeHand && !p.emote, reload: reloadK(p), emote: p.emote });
+  CH.animate(p.ch, dt, { mode: 'ground', speed: p.speed, vx: p.vel.x, vz: p.vel.z, aim: combat && curSlot(p) ? Math.max(p.aim, 0.85) : p.aim, air: !p.onGround, pitch: combat || G.settings.look === 'fp' ? G.pitch : 0, crouch: p.crouch, armed: !!curSlot(p) && !p.nadeHand && !p.emote, reload: reloadK(p), emote: p.emote, gunAt: fpGunAt(p) });
 
   // passos: poeirinha e som
   if (p.onGround && p.speed > 2.2) {
@@ -1304,6 +1348,21 @@ function updatePlayer(dt) {
   }
   const area = W.areaAt(p.pos.x, p.pos.z);
   if (area !== G.area) { G.area = area; if (area) areaBanner(area); }
+}
+
+// posição da arma na câmera de peito: baixa e à direita, apontando para o centro da tela
+const _ga = { p: new V3(), q: new THREE.Quaternion() }, _gaE = new THREE.Euler(0, 0, 0, 'YXZ'), _gaV = new V3();
+function fpGunAt(p) {
+  if (G.settings.look !== 'fp' || !G.bcPos || !curSlot(p)) return null;
+  const w = curW(p), pistol = w && w.secondary;
+  _gaE.set(G.pitch, G.yaw + Math.PI, 0);
+  _ga.q.setFromEuler(_gaE);
+  // eixos da arma: +Z para onde a câmera olha
+  _ga.p.copy(G.bcPos).add(_gaV.set(pistol ? -0.1 : -0.15, pistol ? -0.13 : -0.17, pistol ? 0.42 : 0.38).applyQuaternion(_ga.q));
+  // pequeno balanço ao andar
+  const sp = U.clamp(p.speed / 6, 0, 1);
+  _ga.p.y += Math.sin((G.bcBob || 0) * 2) * 0.012 * sp;
+  return _ga;
 }
 
 // sensibilidade de cada tipo de mira (como nos jogos de celular): 1x, 2x e luneta

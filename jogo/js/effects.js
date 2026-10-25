@@ -12,7 +12,9 @@ FX.init = function (scene) {
   scene.add(FX.tracerMesh);
   FX.tracers = [];
   // partículas (fumaça, poeira, sangue): um desenho para todas
-  FX.smokeP = new FX.Particles(scene, 320, U.softDot(), false, 'sprite');
+  FX.smokeP = new FX.Particles(scene, 320, U.smokeTex(), false, 'sprite');
+  FX.dotP = new FX.Particles(scene, 160, U.softDot(), false, 'sprite');
+  FX.fireP = new FX.Particles(scene, 90, U.fireTex(), true, 'sprite');
   // cubos de gelo (estilhaços)
   FX.MAXS = 320;
   const cg = U.part(new THREE.BoxGeometry(1, 1, 1), 0xffffff, null, 'radial');
@@ -31,7 +33,7 @@ FX.init = function (scene) {
 
 FX.reset = function () {
   FX.tracers.length = 0; FX.tracerMesh.count = 0;
-  FX.smokeP.clear();
+  FX.smokeP.clear(); FX.dotP.clear(); FX.fireP.clear();
   FX.shards.length = 0;
   for (const n of FX.nums) n.el.remove();
   FX.nums.length = 0;
@@ -97,17 +99,28 @@ FX.flash = function (pos) {
 };
 
 // explosão de granada em estilo desenho: bolas amarelas/laranja + fumaça escura + lascas
+// explosão: clarão, bola de fogo, fumaça grossa que sobe, poeira no chão, fagulhas e marca queimada
 FX.explosion = function (pos) {
-  const v = (s, up) => ({ x: (Math.random() - 0.5) * s, y: up + Math.random() * s * 0.5, z: (Math.random() - 0.5) * s });
-  for (let i = 0; i < 7; i++) FX.sprite(new THREE.Vector3(pos.x + (Math.random() - 0.5) * 1.2, pos.y + 0.6 + Math.random(), pos.z + (Math.random() - 0.5) * 1.2), i < 4 ? 0xffd93a : 0xff9a1f, 2.2 + Math.random() * 1.2, 0.55, v(4, 2), 1.3, 1);
-  for (let i = 0; i < 9; i++) FX.sprite(new THREE.Vector3(pos.x + (Math.random() - 0.5) * 2, pos.y + 1, pos.z + (Math.random() - 0.5) * 2), i % 2 ? 0x3a3a3a : 0x55504a, 1.6 + Math.random(), 2.4, v(3, 2.5), 1.6, 0.85);
-  for (let i = 0; i < 8; i++) FX.sprite(new THREE.Vector3(pos.x, pos.y + 0.3, pos.z), 0xd9c69a, 1.2, 1.2, v(9, 0.5), 1.2, 0.7);
-  FX.sprite(new THREE.Vector3(pos.x, pos.y + 1, pos.z), 0xffffff, 5, 0.12, null, 0.5, 0.9);
+  const R = Math.random, x = pos.x, y = pos.y, z = pos.z;
+  FX.flashP.add(x, y + 0.8, z, 0xfff2c8, 7, 0.09, 0, 0, 0, 0, 1, 0, R() * 3);
+  for (let i = 0; i < 12; i++) FX.fireP.add(x + (R() - 0.5) * 1.4, y + 0.4 + R() * 1.2, z + (R() - 0.5) * 1.4, i < 5 ? 0xfff0b0 : 0xff8a2a, 1.6 + R() * 1.6, 0.35 + R() * 0.35, (R() - 0.5) * 5, 1.5 + R() * 3, (R() - 0.5) * 5, 1.4, 1, 0, R() * 6);
+  for (let i = 0; i < 14; i++) FX.smokeP.add(x + (R() - 0.5) * 2, y + 0.6 + R() * 1.5, z + (R() - 0.5) * 2, i % 3 ? 0x3c3a36 : 0x5a564e, 1.8 + R() * 1.4, 2.6 + R() * 1.6, (R() - 0.5) * 2.4, 1.6 + R() * 2.2, (R() - 0.5) * 2.4, 1.8, 0.8, -0.3, R() * 6);
+  for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28; FX.smokeP.add(x, y + 0.2, z, 0xb8a888, 1.0, 1.4, Math.cos(a) * 6, 0.4, Math.sin(a) * 6, 2.2, 0.6, 0, R() * 6); }
+  for (let i = 0; i < 26; i++) FX.glow(new THREE.Vector3(x, y + 0.5, z), i % 2 ? 0xffd27a : 0xff7a2a, 0.08 + R() * 0.08, 0.6 + R() * 0.6, { x: (R() - 0.5) * 16, y: 4 + R() * 9, z: (R() - 0.5) * 16 }, 14);
+  // marca queimada no chão
+  if (FX.decalMesh) { if (FX.decals.length >= FX.MAXD) FX.decals.shift(); FX.decals.push({ p: new THREE.Vector3(x, y + 0.03, z), q: new THREE.Quaternion().setFromUnitVectors(_dz, new THREE.Vector3(0, 1, 0)), s: 26 + R() * 8, life: 20 }); FX.decalDirty = true; }
+};
+// fumacinha atrás da granada no ar
+FX.trail = function (pos) { FX.smokeP.add(pos.x, pos.y, pos.z, 0xd8d4cc, 0.22, 0.6, 0, 0.3, 0, 2.2, 0.45, 0, Math.random() * 6); };
+// brilho ao pegar um item (cor da raridade)
+FX.pickup = function (pos, color) {
+  for (let i = 0; i < 14; i++) { const a = i / 14 * 6.28; FX.glow(pos, color, 0.12, 0.5, { x: Math.cos(a) * 2.2, y: 1.5 + Math.random() * 2, z: Math.sin(a) * 2.2 }, 4); }
+  FX.glowP.add(pos.x, pos.y + 0.3, pos.z, color, 1.6, 0.25, 0, 0, 0, 0, 1, 0, 0);
 };
 
 FX.dust = function (pos, color) {
   for (let i = 0; i < 2; i++)
-    FX.sprite(pos, color || 0xd9c69a, 0.35, 0.5, { x: (Math.random() - 0.5) * 0.8, y: 0.6 + Math.random() * 0.5, z: (Math.random() - 0.5) * 0.8 }, 1.4, 0.8);
+    FX.smokeP.add(pos.x, pos.y, pos.z, color || 0xd9c69a, 0.4, 0.6, (Math.random() - 0.5) * 0.8, 0.6 + Math.random() * 0.5, (Math.random() - 0.5) * 0.8, 1.6, 0.85, 0, Math.random() * 6);
 };
 
 FX.smoke = function (pos, color) {
@@ -147,7 +160,7 @@ FX.update = function (dt, camera, W) {
   }
   FX.tracerMesh.count = nt;
   if (nt) FX.tracerMesh.instanceMatrix.needsUpdate = true;
-  FX.smokeP.update(dt);
+  FX.smokeP.update(dt); FX.dotP.update(dt); FX.fireP.update(dt);
   // estilhaços com gravidade e quique no chão
   let n = 0;
   const m = FX._m, q = FX._dq, s = FX._s;
@@ -327,7 +340,8 @@ FX.decal = function (pos, normal) {
 FX.impact = function (pos, normal, kind, color) {
   if (kind === 'actor') {
     for (let i = 0; i < 5; i++) FX.glow(pos, i % 2 ? 0xff5a3a : 0xffc04a, 0.12 + Math.random() * 0.1, 0.25, { x: (Math.random() - 0.5) * 3 + normal.x * 2, y: Math.random() * 2.5, z: (Math.random() - 0.5) * 3 + normal.z * 2 }, 9);
-    FX.sprite(pos, 0xff3a2a, 0.35, 0.18, null, 1.5, 0.85);
+    FX.dotP.add(pos.x, pos.y, pos.z, 0x9a1a14, 0.32, 0.22, normal.x * 0.6, 0.2, normal.z * 0.6, 1.6, 0.9, 0, 0);
+    FX.smokeP.add(pos.x, pos.y, pos.z, 0x7a1a14, 0.4, 0.35, normal.x * 1.2, 0.4, normal.z * 1.2, 1.8, 0.55, 0, Math.random() * 6);
     return;
   }
   for (let i = 0; i < (kind === 'terrain' ? 2 : 6); i++)

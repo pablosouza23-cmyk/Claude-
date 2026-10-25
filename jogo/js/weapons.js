@@ -114,7 +114,7 @@ WPN.buildModel = function (id, lod) {
     const c = body.attributes.color;
     for (let i = 0; i < c.count; i++) c.setXYZ(i, Math.min(1, c.getX(i) * cfg.tint[0]), Math.min(1, c.getY(i) * cfg.tint[1]), Math.min(1, c.getZ(i) * cfg.tint[2]));
   }
-  U.projectUV(body, TX.SCALE.gun);
+  U.projectUV(body, 3.2);
   const P = [body], GL = [];
   const K = 0x2c2e33, K2 = 0x45484f;
   const add = (geo, c, mm, glow) => { const pp = U.part(geo, c, mm, 'radial', 'gun'); (glow ? GL : P).push(pp.g); };
@@ -158,7 +158,7 @@ WPN.buildModel = function (id, lod) {
   if (cfg.bipod && lib['Accessories/Bipod']) {
     const bp = lib['Accessories/Bipod'].toNonIndexed(), q = pt(cfg.bipod), k = s * 0.7;
     bp.applyMatrix4(new THREE.Matrix4().makeTranslation(q.x, q.y, q.z).multiply(new THREE.Matrix4().makeScale(k * 0.55, k, k)).multiply(new THREE.Matrix4().makeRotationX(-0.5)));
-    U.projectUV(bp, TX.SCALE.gun);
+    U.projectUV(bp, 3.2);
     P.push(bp);
   }
   const front = pt([1, cfg.muzzle]);
@@ -170,6 +170,72 @@ WPN.buildModel = function (id, lod) {
   WPN.cache[id + (lod ? '|lod' : '')] = pair;
   return pair;
 };
+// ---------- itens modelados no Blender (granada, mochila, kit, munição, colete, capacete, gel, caixa) ----------
+// cada vértice traz a classe do material: 0 plástico, 1 metal, 2 tecido, 3 madeira, 4 brilho
+WPN.props = null;
+WPN.loadProps = async function () {
+  try {
+    const r = await fetch(CH.url('assets/props.bin'));
+    if (!r.ok) throw new Error('sem itens');
+    const buf = await r.arrayBuffer(), dv = new DataView(buf), hl = dv.getUint32(4, true);
+    const H = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 8, hl)).replace(/[\0 ]+$/, '')), base = 8 + hl;
+    const out = {}, col = new THREE.Color();
+    for (const k in H.models) {
+      const e = H.models[k];
+      const p = new Float32Array(buf, base + e.pos, e.v * 3), n = new Int16Array(buf, base + e.nor, e.v * 3), c = new Uint8Array(buf, base + e.col, e.v * 4), ix = new Uint16Array(buf, base + e.idx, e.i);
+      const P = new Float32Array(e.v * 3), N = new Float32Array(e.v * 3), C = new Float32Array(e.v * 3), K = new Float32Array(e.v);
+      // Blender (z para cima) -> jogo (y para cima): (x, y, z) -> (x, z, -y)
+      for (let i = 0; i < e.v; i++) {
+        P[i * 3] = p[i * 3]; P[i * 3 + 1] = p[i * 3 + 2]; P[i * 3 + 2] = -p[i * 3 + 1];
+        N[i * 3] = n[i * 3] / 32767; N[i * 3 + 1] = n[i * 3 + 2] / 32767; N[i * 3 + 2] = -n[i * 3 + 1] / 32767;
+        col.setRGB(c[i * 4] / 255, c[i * 4 + 1] / 255, c[i * 4 + 2] / 255, THREE.SRGBColorSpace); C[i * 3] = col.r; C[i * 3 + 1] = col.g; C[i * 3 + 2] = col.b; K[i] = c[i * 4 + 3];
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.BufferAttribute(N, 3));
+      g.setAttribute('color', new THREE.BufferAttribute(C, 3)); g.setAttribute('cls', new THREE.BufferAttribute(K, 1));
+      g.setIndex(new THREE.BufferAttribute(ix, 1));
+      const ng = g.toNonIndexed();
+      U.projectUV(ng, 7);
+      ng.computeBoundingSphere();
+      out[k] = ng;
+    }
+    WPN.props = out;
+  } catch (e) { console.warn('itens 3D indisponíveis', e); }
+};
+// cópia do item com escala e cor multiplicada (níveis de colete/capacete)
+WPN.prop = function (name, scale, tint) {
+  if (!WPN.props || !WPN.props[name]) return null;
+  const key = name + '|' + scale + '|' + (tint || '');
+  WPN._pc = WPN._pc || {};
+  if (WPN._pc[key]) return WPN._pc[key];
+  const g = WPN.props[name].clone();
+  if (scale !== 1) g.scale(scale, scale, scale);
+  if (tint) { const t = new THREE.Color(tint), c = g.attributes.color; for (let i = 0; i < c.count; i++) c.setXYZ(i, c.getX(i) * t.r, c.getY(i) * t.g, c.getZ(i) * t.b); }
+  g.computeBoundingSphere();
+  return (WPN._pc[key] = g);
+};
+WPN.propMat = function () {
+  if (WPN._pm) return WPN._pm;
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true, map: TX.tex('gunMetal'), bumpMap: TX.tex('weave'), bumpScale: 0.8, roughness: 0.7, metalness: 0.3 });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.weaveMap = { value: TX.tex('weave') }; sh.uniforms.woodMap = { value: TX.tex('gunWood') };
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float cls; varying float vCls;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvCls = cls;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D weaveMap; uniform sampler2D woodMap; varying float vCls;')
+      .replace('#include <map_fragment>', [
+        'float kMet = 1.0 - step(0.5, abs(vCls - 1.0)), kFab = 1.0 - step(0.5, abs(vCls - 2.0)), kWod = 1.0 - step(0.5, abs(vCls - 3.0)), kGlw = step(3.5, vCls);',
+        'vec4 tMet = texture2D(map, vMapUv), tFab = texture2D(weaveMap, vMapUv * 2.5), tWod = texture2D(woodMap, vMapUv * vec2(0.5, 1.6));',
+        'vec3 det = vec3(0.92) + (tMet.rgb - 0.7) * 0.25;',
+        'det = mix(det, tMet.rgb * 1.6, kMet); det = mix(det, tFab.rgb * 1.15, kFab); det = mix(det, tWod.rgb * 1.15, kWod); det = mix(det, vec3(1.0), kGlw);',
+        'diffuseColor.rgb *= det;',
+      ].join('\n'))
+      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = mix(mix(mix(0.45, clamp(1.05 - tMet.r, 0.25, 0.7), kMet), 0.92, kFab), 0.7, kWod);')
+      .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = 0.75 * kMet;')
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * kGlw * 0.9;');
+  };
+  m.customProgramCacheKey = () => 'propPBR';
+  return (WPN._pm = m);
+};
+
 WPN.halfW = (g, s) => (g.boundingBox.max.x - g.boundingBox.min.x) / 2 * s;
 
 // lod = versão leve (loot no chão, armas dos outros personagens)
@@ -312,9 +378,31 @@ WPN.build = function (id, lod) {
 };
 
 // material das armas: cores por vértice + textura de desgaste, com brilho metálico
+// O shader escolhe o material de cada parte pela cor do modelo: marrom = madeira (veios, fosca),
+// escuro = metal (escovado, arranhões brilhando), claro = polímero/pintura.
 WPN.gunMat = function () {
-  if (!WPN._gun) WPN._gun = new THREE.MeshStandardMaterial({ vertexColors: true, map: TX.tex('gun'), roughness: 0.48, metalness: 0.3, envMapIntensity: 0.9 });
-  return WPN._gun;
+  if (WPN._gun) return WPN._gun;
+  const metal = TX.tex('gunMetal'), wood = TX.tex('gunWood');
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true, map: metal, bumpMap: metal, bumpScale: 1.2, roughness: 0.45, metalness: 0.55, envMapIntensity: 1.3 });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.woodMap = { value: wood };
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D woodMap;')
+      .replace('#include <map_fragment>', [
+        'float woodK = 0.0, bright = 0.5;',
+        '#ifdef USE_COLOR',
+        ' woodK = smoothstep(0.035, 0.13, vColor.r - vColor.b) * step(0.07, vColor.r);',
+        ' bright = max(vColor.r, max(vColor.g, vColor.b));',
+        '#endif',
+        'vec4 mt = texture2D(map, vMapUv);',
+        'vec4 wd = texture2D(woodMap, vMapUv * vec2(0.35, 1.4));',
+        'diffuseColor.rgb *= mix(mix(mt.rgb * 1.75, vec3(0.95 + mt.r * 0.1), smoothstep(0.35, 0.6, bright)), wd.rgb * 1.15, woodK);',
+      ].join('\n'))
+      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = mix(mix(clamp(1.05 - mt.r * 0.95, 0.2, 0.7), 0.58, smoothstep(0.35, 0.6, bright)), 0.66, woodK);')
+      .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = metalness * (1.0 - woodK) * (1.0 - smoothstep(0.3, 0.55, bright));');
+  };
+  m.customProgramCacheKey = () => 'gunPBR';
+  WPN._gun = m;
+  return m;
 };
 
 WPN.glowMat = function () {

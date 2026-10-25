@@ -251,6 +251,45 @@ TX.drawers = {
     g.strokeStyle = 'rgb(80,60,40)'; g.lineWidth = 3;
     g.beginPath(); g.moveTo(0, mid); g.lineTo(S, mid); g.stroke();
   },
+  // tecido tático (cordura): trama cruzada com fiapos
+  weave(g, S, r) {
+    g.fillStyle = gray(200); g.fillRect(0, 0, S, S);
+    const st = 4;
+    for (let y = 0; y < S; y += st) for (let x = 0; x < S; x += st) {
+      const v = ((x / st + y / st) % 2) ? 222 : 178;
+      g.fillStyle = gray(v + Math.floor((r() - 0.5) * 18)); g.fillRect(x, y, st, st - 1);
+    }
+    for (let i = 0; i < 1200; i++) { g.fillStyle = gray(r() < 0.5 ? 150 : 240, 0.35); g.fillRect(r() * S, r() * S, 1 + r() * 3, 1); }
+    for (let i = 0; i < 14; i++) { const x = r() * S, y = r() * S, rad = 15 + r() * 40; TX.wrap(S, x, y, rad, (px, py) => { const gr = g.createRadialGradient(px, py, 0, px, py, rad); gr.addColorStop(0, 'rgba(90,80,60,0.25)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(px - rad, py - rad, rad * 2, rad * 2); }); }
+  },
+  // metal de arma: escovado, arranhões claros, desgaste e sujeira (cinza; a cor vem do modelo)
+  gunMetal(g, S, r) {
+    g.fillStyle = gray(178); g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 900; i++) { const y = r() * S, v = 150 + Math.floor(r() * 70); g.fillStyle = gray(v, 0.18 + r() * 0.2); g.fillRect(0, y, S, 1 + r() * 1.5); }
+    for (let i = 0; i < 26; i++) {
+      const x = r() * S, y = r() * S, rad = 20 + r() * 70, dark = r() < 0.55;
+      TX.wrap(S, x, y, rad, (px, py) => { const gr = g.createRadialGradient(px, py, 0, px, py, rad); gr.addColorStop(0, dark ? 'rgba(90,85,80,0.35)' : 'rgba(225,225,225,0.25)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(px - rad, py - rad, rad * 2, rad * 2); });
+    }
+    g.lineCap = 'round';
+    for (let i = 0; i < 160; i++) {
+      const x = r() * S, y = r() * S, a = r() * Math.PI, l = 4 + r() * 38;
+      g.strokeStyle = gray(225 + Math.floor(r() * 30), 0.55 + r() * 0.4); g.lineWidth = 0.6 + r() * 1.2;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+    }
+    for (let i = 0; i < 2600; i++) { g.fillStyle = gray(r() < 0.5 ? 120 : 230, 0.25); g.fillRect(r() * S, r() * S, 1, 1); }
+  },
+  // madeira: veios ondulados e poros (cinza claro, a cor marrom vem do modelo)
+  gunWood(g, S, r) {
+    g.fillStyle = gray(210); g.fillRect(0, 0, S, S);
+    for (let k = 0; k < 70; k++) {
+      const y0 = r() * S, amp = 2 + r() * 7, f = 0.008 + r() * 0.02, ph = r() * 6, v = 120 + Math.floor(r() * 70);
+      g.strokeStyle = gray(v, 0.35 + r() * 0.35); g.lineWidth = 0.8 + r() * 2.2;
+      g.beginPath();
+      for (let x = 0; x <= S; x += 6) { const y = y0 + Math.sin(x * f + ph) * amp + Math.sin(x * f * 3.1 + ph) * amp * 0.3; if (x === 0) g.moveTo(x, y); else g.lineTo(x, y); }
+      g.stroke();
+    }
+    for (let i = 0; i < 900; i++) { g.fillStyle = gray(110, 0.4); g.fillRect(r() * S, r() * S, 1 + r() * 2, 1); }
+  },
   glass(g, S) {
     const gr = g.createLinearGradient(0, 0, S, S);
     gr.addColorStop(0, gray(255)); gr.addColorStop(0.5, gray(200)); gr.addColorStop(1, gray(235));
@@ -259,7 +298,7 @@ TX.drawers = {
   },
 };
 
-TX.SIZE = { foliage: 256, frond: 256, needle: 256, ground: 512, leaf: 256, roof: 256, wood: 256, stone: 256, plaster: 256, metal: 128, bark: 128, fabric: 64, gun: 128, plain: 256, glass: 64 };
+TX.SIZE = { weave: 256, gunMetal: 512, gunWood: 512, foliage: 256, frond: 256, needle: 256, ground: 512, leaf: 256, roof: 256, wood: 256, stone: 256, plaster: 256, metal: 128, bark: 128, fabric: 64, gun: 128, plain: 256, glass: 64 };
 
 TX.tex = function (key) {
   const d = TX.drawers[key] || TX.drawers.plain;

@@ -692,11 +692,22 @@ CH.animate = function (ch, dt, s) {
     const rc = ch.recoil; ch.recoil = Math.max(0, ch.recoil - dt * 9);
     const T = pistol ? CH.TUNE.pistol : CH.TUNE.rifle;
     const sx = U.lerp(T[0], T[3], aim), sy = U.lerp(T[1], T[4], aim), sz = U.lerp(T[2], T[5], aim);
-    _gunE.set(pitch * 0.98 - rc * 0.1, face, 0);
-    _gunQ.setFromEuler(_gunE);
-    _gunPos.copy(chest).addScaledVector(_bodyR, sx).addScaledVector(UP, sy - 0.12);
-    _tmp.set(0, -0.02, sz - rc * 0.05).applyQuaternion(_gunQ);
-    _gunPos.add(_tmp);
+    // sacando a arma: vem de baixo, inclinada, e sobe até a posição
+    let dk = 0;
+    if (ch.drawT > 0) { ch.drawT -= dt; dk = U.smooth(0, 0.35, Math.max(0, ch.drawT)); }
+    if (s.gunAt) {
+      // câmera de peito: a arma fica num ponto fixo da tela (canto inferior direito)
+      _gunQ.copy(s.gunAt.q);
+      if (dk || rc) { _gunE.set(-rc * 0.1 - dk * 1.1, 0, dk * 0.6); _q1.setFromEuler(_gunE); _gunQ.multiply(_q1); }
+      _gunPos.copy(s.gunAt.p).addScaledVector(UP, -dk * 0.25);
+      _tmp.set(0, 0, -rc * 0.05).applyQuaternion(_gunQ); _gunPos.add(_tmp);
+    } else {
+      _gunE.set(pitch * 0.98 - rc * 0.1 - dk * 1.1, face, dk * 0.6);
+      _gunQ.setFromEuler(_gunE);
+      _gunPos.copy(chest).addScaledVector(_bodyR, sx).addScaledVector(UP, sy - 0.12 - dk * 0.28);
+      _tmp.set(0, -0.02, sz - rc * 0.05).applyQuaternion(_gunQ);
+      _gunPos.add(_tmp);
+    }
     // o grupo da arma é filho do corpo: converte para o espaço local
     _m2.copy(ch.body.matrixWorld).invert();
     ch.gun.position.copy(_gunPos).applyMatrix4(_m2);

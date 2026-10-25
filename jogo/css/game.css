@@ -196,6 +196,13 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 #btnChute { right: calc(max(16px, env(safe-area-inset-right)) + 24px); bottom: 112px; }
 #btnBoard { right: calc(max(16px, env(safe-area-inset-right)) + 24px); bottom: 50px; }
 
+/* ---------- letreiro da bodycam ---------- */
+#bcOSD { position: absolute; left: 50%; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 62px); transform: translateX(-50%); display: flex; gap: 10px; align-items: center;
+  font: 600 12px/1 ui-monospace, Menlo, Consolas, monospace; color: rgba(255,255,255,.85); text-shadow: 0 1px 2px #000; letter-spacing: 1px; pointer-events: none; }
+#bcOSD .rec { color: #ff3b30; } #bcOSD .rec::before { content: '●'; margin-right: 4px; animation: recBlink 1s steps(2) infinite; }
+#bcOSD small { font-size: 10px; color: rgba(255,255,255,.6); }
+@keyframes recBlink { 50% { opacity: 0; } }
+
 /* ---------- editor de HUD ---------- */
 #hudEdit { position: fixed; inset: 0; z-index: 9; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 40px), repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 40px), rgba(4,8,16,.35); }
 .heBar { pointer-events: auto; position: absolute; left: 50%; top: max(8px, env(safe-area-inset-top)); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;

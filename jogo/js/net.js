@@ -452,7 +452,7 @@ NET.syncAirdrop = function (q) {
     ad.state = 'falling';
   }
   ad.y = q[2] / 10;
-  if (st !== 'falling' && ad.state === 'falling') { ad.state = 'landed'; ad.smokeT = 0; ad.col = W.addCollider({ type: 'b', x: ad.x, z: ad.z, hx: 0.7, hz: 0.7, rot: 0, y0: ad.gy, y1: ad.gy + 1.1, walkable: true }); }
+  if (st !== 'falling' && ad.state === 'falling') { ad.state = 'landed'; ad.smokeT = 0; ad.col = W.addCollider({ type: 'b', x: ad.x, z: ad.z, hx: 0.7, hz: 0.7, rot: 0, y0: ad.gy, y1: ad.gy + 1.45, walkable: true }); }
   if (st === 'opened') ad.state = 'opened';
 };
 

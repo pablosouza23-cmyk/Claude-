@@ -82,6 +82,22 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v2.2
+- **Modo Bodycam** (Configurações → Gráficos → Estilo da imagem: Bodycam). A imagem passa por um filtro de câmera corporal: lente olho-de-peixe, aberração de cor nas bordas, brilho estourado, cor fria, vinheta, granulado e o letreiro REC com data e hora.
+- **Câmera de peito** (Configurações → Controles → Câmera: 1ª pessoa). Você vê os próprios braços segurando a arma no canto da tela, e a câmera balança com o corpo. Combina com o filtro Bodycam.
+- **Editar HUD** (Configurações → Controles → EDITAR HUD). Arraste cada botão, o joystick, a barra de armas, o minimapa e a vida, e ajuste o tamanho de 50% a 180%. O botão PADRÃO volta ao original.
+- **Sensibilidade por mira** (aba Sensibilidade): geral, mira 1x, mira 2x e luneta 4x, de 10% a 300%.
+- **Emotes:** 10 animações de captura de movimento (danças, acenar, aplaudir, rir, comemorar, vitória). Na partida, use o botão de carinha ou a tecla B; na sala, os botões embaixo. O personagem acena ao entrar no lobby, os bots comemoram depois de abater alguém e no multiplayer os amigos veem o seu emote.
+- **Armas com textura de verdade:** metal escovado com arranhões que brilham, madeira com veios e polímero fosco, com relevo nos arranhões.
+- **Itens novos modelados no Blender:** granada, mochila, kit médico, caixa de munição, colete, capacete, gel e a caixa do suprimento, com tecido, metal e plástico de verdade.
+- **Efeitos:**
+  - feixe de luz da raridade nas armas do chão;
+  - brilho ao pegar um item;
+  - a arma sobe da cintura ao sacar ou trocar;
+  - rastro de fumaça da granada;
+  - explosão com bola de fogo, fumaça grossa, fagulhas e marca queimada.
+- **Mais fluido:** o personagem arranca, freia e vira mais rápido, e as animações trocam mais depressa.
+
 ## Publicar na Play Store
 O jogo já vem com o que o Android pede de um app web instalável: `manifest.webmanifest`, `sw.js` (funciona sem internet depois do primeiro acesso) e ícones em `icons/`. O caminho mais simples é empacotar como **TWA (Trusted Web Activity)**:
 
@@ -133,6 +149,8 @@ A licença MIT pede que o aviso de copyright vá junto com o jogo. Deixe esta ta
 | `js/effects.js` | Efeitos visuais e sons |
 | `js/game.js` | Regras: jogador, armas, granada, gel, loot, zona, suprimento, avião, bots |
 | `js/net.js` | Multiplayer: salas, sincronização de bonecos, tiros, dano, loot e zona |
+| `js/post.js` | Filtro Bodycam (pós-processamento) |
+| `assets/props.bin` | Granada, mochila, kit, munição, colete, capacete, gel e caixa (modelados no Blender) |
 | `assets/chars/` | Personagens (malha + texturas) e animações, em formato binário compacto |
 | `assets/guns.bin` | Os 10 modelos de arma e o bipé |
 | `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |

@@ -70,6 +70,18 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
   - mar animado com espuma na praia.
 - **Efeitos:** clarão no cano, cápsulas ejetadas, faíscas, marcas de tiro, poeira dos passos, explosão com onda de choque e sons sintetizados.
 
+## Desempenho (para não travar)
+- **Qualidade automática:** na primeira vez, o jogo olha a placa de vídeo e a memória do celular e escolhe Baixa, Média ou Alta. Dá pra trocar em Configurações → Gráficos.
+- **Resolução automática:** se o FPS cair abaixo de 40, a imagem fica um pouco menor até estabilizar e volta quando sobra fôlego. Pode desligar em Gráficos.
+- **Limite de 60 FPS,** pra celulares de tela 90/120 Hz não esquentarem nem gastarem bateria à toa.
+- **Desenho agrupado:** partículas, nuvens, tiros, marcas de bala, loot e árvores saem em poucos desenhos instanciados. Cada personagem usa um atlas de textura. Medido na vila cheia: de 421 para cerca de 100 chamadas de desenho, e de 1,4 milhão para cerca de 660 mil triângulos.
+- **Nível de detalhe:** quem está longe ou fora da tela anima com menos frequência e sem IK. As armas no chão e nas mãos dos outros usam um modelo leve (decimado no Blender), e só as árvores perto de você fazem sombra.
+- **Sem engasgos:** os shaders e modelos são preparados antes do salto. As partículas usam arrays fixos, sem criar objetos a cada tiro.
+
+## Jogabilidade
+- **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
+- **Recarga com animação:** a mão de apoio vai até o carregador.
+
 ## Publicar na Play Store
 O jogo já vem com o que o Android pede de um app web instalável: `manifest.webmanifest`, `sw.js` (funciona sem internet depois do primeiro acesso) e ícones em `icons/`. O caminho mais simples é empacotar como **TWA (Trusted Web Activity)**:
 

@@ -564,7 +564,8 @@ CH.animate = function (ch, dt, s) {
       if (Math.abs(rel) <= 1.75) yawT = U.clamp(rel, -1.1, 1.1);
       else { back = true; yawT = U.clamp(U.angDiff(Math.PI, rel), -1.0, 1.0); }
     }
-    ch.hipYaw = U.damp(ch.hipYaw, yawT, 9, dt);
+    ch.hipYaw = U.damp(ch.hipYaw, yawT, 12, dt);
+    if (s.emote !== ch.curEmote) { if (s.emote && ch.acts[s.emote]) ch.acts[s.emote].time = 0; ch.curEmote = s.emote; }
     if (s.emote && spd < 0.3) {
       W[s.emote] = 1;
     } else if (spd < 0.3) {
@@ -584,7 +585,7 @@ CH.animate = function (ch, dt, s) {
     }
     if (spd < 0.3) ch.cur = null;
   }
-  setWeights(ch, W, dt, mode === 'dead' ? 6 : 10);
+  setWeights(ch, W, dt, mode === 'dead' ? 6 : 14);
   ch.mixer.update(dt);
   if (armsIK) ch.root.updateMatrixWorld(true);
   else {

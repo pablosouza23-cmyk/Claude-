@@ -57,6 +57,7 @@
   <div id="hitmark"></div>
   <div id="hurtArrow"></div>
   <div id="handHint"></div>
+  <div id="emoteWheel" class="hidden"></div>
   <div id="killfeed"></div>
   <div id="dmgLayer"></div>
   <div id="vignette"></div>
@@ -86,6 +87,7 @@
   <button class="tbtn g" id="btnCrouch" data-icon="crouch" aria-label="Agachar"></button>
   <button class="tbtn g" id="btnReload" data-icon="reload" aria-label="Recarregar"></button>
   <button class="tbtn g" id="btnInv" data-icon="bag" aria-label="Inventário rápido"></button>
+  <button class="tbtn g" id="btnEmote" data-icon="smile" aria-label="Emotes"></button>
   <button class="tbtn pill big p" id="btnSaltar">SALTAR</button>
   <button class="tbtn pill big f" id="btnChute" data-icon="chute">PARAQUEDAS</button>
   <button class="tbtn pill f" id="btnBoard" data-icon="board">SOLTAR PRANCHA</button>
@@ -128,6 +130,7 @@
 
 <div id="roomScr" class="screen clear hidden">
   <div class="logo small"><b>BATTLE</b><span>ISLAND</span></div>
+  <div id="roomEmotes" class="emoteRow"></div>
   <div class="skinPick">
     <button id="skinPrev" class="xBtn" data-icon="left" aria-label="Personagem anterior"></button>
     <div><small>PERSONAGEM</small><b id="skinName">Cacheado</b></div>
@@ -185,6 +188,7 @@
     <div class="setWrap">
       <div id="setTabs" class="vtabs">
         <button data-tab="geral" data-icon="gear">GERAL</button>
+        <button data-tab="sensibilidade" data-icon="aim">SENSIBILIDADE</button>
         <button data-tab="graficos" data-icon="map">GRÁFICOS</button>
         <button data-tab="controles" data-icon="aim">CONTROLES</button>
         <button data-tab="audio" data-icon="bullet">ÁUDIO</button>
@@ -210,6 +214,14 @@
     <p id="resNote" class="resNote"></p>
     <table><tr><td>ABATES</td><td id="resKills">0</td></tr><tr><td>DANO</td><td id="resDmg">0</td></tr><tr><td>TEMPO</td><td id="resTime">00:00</td></tr></table>
     <button id="rLobby" class="mBtn primary">VOLTAR AO LOBBY</button>
+  </div>
+</div>
+
+<div id="hudEdit" class="hidden">
+  <div class="heBar">
+    <b>EDITAR HUD</b><small>Arraste os botões. Toque num botão para mudar o tamanho.</small>
+    <label class="heSize">Tamanho <input type="range" id="heSize" min="0.5" max="1.8" step="0.05" value="1"><output id="heSizeV">100%</output></label>
+    <button id="heReset" class="chip">PADRÃO</button><button id="heCancel" class="chip">CANCELAR</button><button id="heSave" class="chip hot">SALVAR</button>
   </div>
 </div>
 

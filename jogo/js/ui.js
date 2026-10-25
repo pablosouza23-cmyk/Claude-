@@ -41,10 +41,38 @@ const ICON = {
   left: '<path d="M15.4 4 7.4 12l8 8 1.4-1.4L10.2 12l6.6-6.6z"/>',
   right: '<path d="M8.6 4 7.2 5.4 13.8 12l-6.6 6.6L8.6 20l8-8z"/>',
   crown: '<path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5zm2 13h14v2H5z"/>',
+  smile: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zM8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM12 17.5c2.3 0 4.2-1.5 5-3.5H7c.8 2 2.7 3.5 5 3.5z"/>',
 };
 // nomes dos personagens que dá para escolher
 const SKINS = [['heroi', 'Cacheado'], ['swat', 'SWAT'], ['soldado', 'Soldado'], ['soldado2', 'Sargento'], ['bone', 'Boné'], ['camisa', 'Camiseta'], ['jeans', 'Jeans'], ['soldada', 'Soldada']];
 const skinName = k => (SKINS.find(x => x[0] === k) || SKINS[0])[1];
+// emotes (animações de captura de movimento): [clipe, nome, ícone, duração máx.]
+const EMOTES = [['dance', 'Dança', '🕺', 8], ['dance2', 'Dança louca', '🤪', 8], ['dance3', 'Passinho', '🔥', 8], ['dance4', 'Balanço', '🎶', 8],
+  ['wave', 'Acenar', '👋', 2.8], ['clap', 'Aplaudir', '👏', 4], ['cheer2', 'Comemorar', '🙌', 4.2], ['laugh', 'Rir', '😂', 4], ['shrug', 'E aí?', '🤷', 1.8], ['cheer3', 'Vitória', '🏆', 4.5]];
+const EMOTE_KEYS = EMOTES.map(e => e[0]);
+function emoteLen(k) { const e = EMOTES.find(x => x[0] === k); return e ? e[3] : 3; }
+function playEmote(a, k) {
+  if (!a || !a.alive || a.phase !== 'ground' || !CH.clips[k]) return;
+  a.emote = k; a.emoteT = emoteLen(k); a.aimOn = false;
+  if (a === G.player) SND.play('ui');
+}
+function openEmoteWheel() {
+  const w = $('emoteWheel');
+  if (!w.classList.contains('hidden')) { w.classList.add('hidden'); return; }
+  const list = EMOTES.slice(0, 8);
+  w.innerHTML = list.map((e, i) => { const a = i / list.length * Math.PI * 2 - Math.PI / 2; return '<button data-k="' + e[0] + '" style="left:' + (150 + Math.cos(a) * 110) + 'px;top:' + (150 + Math.sin(a) * 110) + 'px"><span>' + e[2] + '</span>' + e[1] + '</button>'; }).join('') +
+    '<button class="ewClose" aria-label="Fechar">' + icon('close') + '</button>';
+  w.querySelectorAll('button').forEach(b => b.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); ev.preventDefault(); if (b.dataset.k) playEmote(G.player, b.dataset.k); w.classList.add('hidden'); }));
+  w.classList.remove('hidden');
+}
+// emote do personagem na vitrine (menu, lobby e sala)
+function showEmote(k) { G.showEmote = { k: k, t: emoteLen(k) }; if (G.show) { const a = G.show.ch.acts[k]; if (a) a.time = 0; } }
+function renderRoomEmotes() {
+  const el = $('roomEmotes'); if (!el || el.dataset.ok) return;
+  el.dataset.ok = 1;
+  el.innerHTML = EMOTES.map(e => '<button data-k="' + e[0] + '"><span>' + e[2] + '</span>' + e[1] + '</button>').join('');
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { showEmote(b.dataset.k); SND.play('ui'); if (NET.on()) NET.lobbyEmote && NET.lobbyEmote(b.dataset.k); }));
+}
 const icon = (n, cls) => '<svg class="ico ' + (cls || '') + '" viewBox="0 0 24 24" aria-hidden="true">' + (ICON[n] || '') + '</svg>';
 
 // retículas de cada mira (ADS), como nas referências
@@ -247,7 +275,10 @@ function menuCamera(dt) {
   const look = Math.atan2(-s.pos.x, -s.pos.z);
   s.face = lobby ? look + Math.PI + 0.5 : look;
   s.ch.body.rotation.y = s.face;
-  CH.animate(s.ch, dt, { mode: 'ground', speed: 0, aim: 0, pitch: 0, armed: true });
+  const se = G.showEmote;
+  if (se && se.t > 0) se.t -= dt;
+  const em = se && se.t > 0 ? se.k : null;
+  CH.animate(s.ch, dt, { mode: 'ground', speed: 0, aim: 0, pitch: 0, armed: !em, emote: em });
   const f = s.face, fx = Math.sin(f), fz = Math.cos(f);
   const dist = lobby ? 3.0 : 3.1, side = lobby ? 0.4 : -2.3;
   camera.position.set(s.pos.x - fx * dist * (lobby ? -1 : 1) + fz * side, s.pos.y + (lobby ? 1.5 : 2.6), s.pos.z - fz * dist * (lobby ? -1 : 1) - fx * side);
@@ -542,6 +573,7 @@ let lobbyT = 0, lobbyIv = 0;
 function goLobby() {
   G.state = 'lobby';
   showScreen('lobbyScr');
+  showEmote(Math.random() < 0.5 ? 'wave' : 'cheer2');
   lobbyT = 15;
   $('lobbyPlayers').textContent = TOTAL + '/' + TOTAL;
   clearInterval(lobbyIv);
@@ -656,7 +688,7 @@ function renderRoom() {
   $('skinName').textContent = skinName(G.settings.avatar || 'heroi');
 }
 function escapeHTML(t) { return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
-function openRoom() { G.state = 'lobby'; showScreen('roomScr'); renderRoom(); }
+function openRoom() { G.state = 'lobby'; showScreen('roomScr'); renderRoom(); renderRoomEmotes(); showEmote('wave'); }
 function cycleSkin(d) {
   const i = SKINS.findIndex(x => x[0] === (G.settings.avatar || 'heroi'));
   const k = SKINS[(i + d + SKINS.length) % SKINS.length][0];
@@ -763,8 +795,12 @@ function drawFullMap() {
 const SETTINGS_UI = {
   geral: [
     { k: 'name', label: 'Nome', type: 'text' },
-    { k: 'sens', label: 'Sensibilidade da câmera', type: 'range', min: 0.3, max: 2, step: 0.05, show: v => Math.round(v * 50) },
-    { k: 'adsSens', label: 'Sensibilidade da mira', type: 'range', min: 0.3, max: 2, step: 0.05, show: v => Math.round(v * 50) },
+  ],
+  sensibilidade: [
+    { k: 'sens', label: 'Geral (câmera)', type: 'range', min: 0.1, max: 3, step: 0.05, show: v => Math.round(v * 100) + '%' },
+    { k: 'sensDot', label: 'Mira 1x (ponto vermelho / holográfica)', type: 'range', min: 0.1, max: 3, step: 0.05, show: v => Math.round(v * 100) + '%' },
+    { k: 'sens2x', label: 'Mira 2x (fuzis)', type: 'range', min: 0.1, max: 3, step: 0.05, show: v => Math.round(v * 100) + '%' },
+    { k: 'sens4x', label: 'Luneta 4x (precisão)', type: 'range', min: 0.1, max: 3, step: 0.05, show: v => Math.round(v * 100) + '%' },
   ],
   graficos: [
     { k: 'quality', label: 'Qualidade gráfica', type: 'seg', opts: [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta']], reload: true },
@@ -772,6 +808,7 @@ const SETTINGS_UI = {
     { k: 'fps', label: 'Mostrar FPS', type: 'toggle' },
   ],
   controles: [
+    { k: 'hudEdit', label: 'Layout dos botões (HUD)', type: 'action', text: 'EDITAR HUD', run: () => openHudEditor() },
     { k: 'aimAssist', label: 'Assistência de mira', type: 'toggle' },
     { k: 'btnSize', label: 'Tamanho dos botões', type: 'range', min: 0.75, max: 1.35, step: 0.05, show: v => Math.round(v * 100) + '%' },
     { k: 'btnAlpha', label: 'Opacidade dos botões', type: 'range', min: 0.35, max: 1, step: 0.05, show: v => Math.round(v * 100) + '%' },
@@ -793,22 +830,102 @@ function renderSettings() {
     let ctl = '';
     if (o.type === 'range') ctl = '<input type="range" id="set_' + o.k + '" min="' + o.min + '" max="' + o.max + '" step="' + o.step + '" value="' + S[o.k] + '"><output>' + o.show(S[o.k]) + '</output>';
     else if (o.type === 'toggle') ctl = '<button class="tog' + (S[o.k] ? ' on' : '') + '" id="set_' + o.k + '" aria-pressed="' + !!S[o.k] + '"><i></i></button>';
+    else if (o.type === 'action') ctl = '<button class="chip hot" id="set_' + o.k + '">' + o.text + '</button>';
     else if (o.type === 'seg') ctl = '<div class="seg" id="set_' + o.k + '">' + o.opts.map(op => '<button data-v="' + op[0] + '" class="' + (S[o.k] === op[0] ? 'on' : '') + '">' + op[1] + '</button>').join('') + '</div>';
     else ctl = '<input type="text" id="set_' + o.k + '" maxlength="14" value="' + String(S[o.k]).replace(/"/g, '') + '">';
     return '<div class="setRow"><span>' + o.label + '</span><div class="ctl">' + ctl + '</div></div>';
   }).join('') + (setTab === 'graficos' ? '<p class="hint">Se o jogo travar no celular, use Baixa.</p>' : '');
   for (const o of SETTINGS_UI[setTab]) {
     const el = $('set_' + o.k);
-    if (o.type === 'range') el.addEventListener('input', () => { S[o.k] = +el.value; el.nextSibling.textContent = o.show(S[o.k]); applySettings(); G.saveSettings(); });
+    if (o.type === 'action') el.addEventListener('click', () => { SND.play('ui'); o.run(); });
+    else if (o.type === 'range') el.addEventListener('input', () => { S[o.k] = +el.value; el.nextSibling.textContent = o.show(S[o.k]); applySettings(); G.saveSettings(); });
     else if (o.type === 'toggle') el.addEventListener('click', () => { S[o.k] = !S[o.k]; el.classList.toggle('on', S[o.k]); applySettings(); G.saveSettings(); SND.play('ui'); });
     else if (o.type === 'seg') el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
       if (S[o.k] === b.dataset.v) return;
       S[o.k] = b.dataset.v; G.saveSettings();
       if (o.reload) location.reload();
+      else { applySettings(); renderSettings(); }
     }));
     else el.addEventListener('change', () => { S[o.k] = el.value.trim().slice(0, 14) || 'Jogador'; G.saveSettings(); $('welcomeName').textContent = S[o.k]; });
   }
 }
+// ---------- editor de HUD: arrastar e redimensionar os botões; salva em G.settings.hud ----------
+const HUD_EDIT = ['btnFire', 'btnFireL', 'btnAim', 'btnJump', 'btnCrouch', 'btnReload', 'btnInv', 'btnEmote', 'joyBase', 'weaponBar', 'hudTR', 'hudTL'];
+let heWork = null, heSel = null, heFrom = null;
+function applyHudLayout() {
+  const L = G.settings.hud || {};
+  for (const id of HUD_EDIT) {
+    const el = $(id); if (!el) continue;
+    const c = L[id];
+    if (!c) { el.classList.remove('hpos'); el.style.left = el.style.top = ''; el.style.removeProperty('--hs'); continue; }
+    el.classList.add('hpos');
+    el.style.left = (c.x * window.innerWidth) + 'px'; el.style.top = (c.y * window.innerHeight) + 'px';
+    el.style.setProperty('--hs', c.s || 1);
+  }
+}
+function openHudEditor() {
+  heFrom = { screen: UI.screen, hud: H.hud.classList.contains('hidden'), touch: H.touch.classList.contains('hidden'), mode: H.touch.dataset.mode };
+  showScreen(null);
+  heWork = JSON.parse(JSON.stringify(G.settings.hud || {}));
+  H.hud.classList.remove('hidden'); H.touch.classList.remove('hidden'); H.touch.dataset.mode = 'ground'; H.hud.dataset.mode = 'ground';
+  document.body.classList.add('hud-editing');
+  $('hudEdit').classList.remove('hidden');
+  for (const id of HUD_EDIT) $(id).classList.add('hedit');
+  heSelect(null);
+}
+function closeHudEditor(save) {
+  if (save) { G.settings.hud = heWork; G.saveSettings(); }
+  document.body.classList.remove('hud-editing');
+  $('hudEdit').classList.add('hidden');
+  for (const id of HUD_EDIT) $(id).classList.remove('hedit', 'sel');
+  applyHudLayout();
+  H.touch.dataset.mode = heFrom.mode || 'ground';
+  H.hud.classList.toggle('hidden', heFrom.hud); H.touch.classList.toggle('hidden', heFrom.touch);
+  showScreen(heFrom.screen === 'settingsScr' || !heFrom.screen ? 'settingsScr' : heFrom.screen);
+}
+function heSelect(id) {
+  heSel = id;
+  for (const k of HUD_EDIT) $(k).classList.toggle('sel', k === id);
+  const v = id && heWork[id] ? heWork[id].s || 1 : 1;
+  $('heSize').value = v; $('heSizeV').textContent = Math.round(v * 100) + '%';
+  $('heSize').disabled = !id;
+}
+function heEnsure(id) {
+  if (heWork[id]) return heWork[id];
+  const r = $(id).getBoundingClientRect();
+  return (heWork[id] = { x: (r.left + r.width / 2) / window.innerWidth, y: (r.top + r.height / 2) / window.innerHeight, s: 1 });
+}
+function initHudEditor() {
+  for (const id of HUD_EDIT) {
+    const el = $(id);
+    let pid = null;
+    el.addEventListener('pointerdown', (e) => {
+      if (!document.body.classList.contains('hud-editing')) return;
+      e.stopPropagation(); e.preventDefault();
+      pid = e.pointerId; try { el.setPointerCapture(pid); } catch (er) { /* ok */ }
+      heEnsure(id); heSelect(id);
+    }, true);
+    el.addEventListener('pointermove', (e) => {
+      if (pid !== e.pointerId || !document.body.classList.contains('hud-editing')) return;
+      e.stopPropagation();
+      const c = heWork[id];
+      c.x = U.clamp(e.clientX / window.innerWidth, 0.03, 0.97); c.y = U.clamp(e.clientY / window.innerHeight, 0.05, 0.97);
+      const keep = G.settings.hud; G.settings.hud = heWork; applyHudLayout(); G.settings.hud = keep;
+    }, true);
+    const up = (e) => { if (pid === e.pointerId) pid = null; };
+    el.addEventListener('pointerup', up, true); el.addEventListener('pointercancel', up, true);
+  }
+  $('heSize').addEventListener('input', () => {
+    if (!heSel) return;
+    heEnsure(heSel).s = +$('heSize').value; $('heSizeV').textContent = Math.round(+$('heSize').value * 100) + '%';
+    const keep = G.settings.hud; G.settings.hud = heWork; applyHudLayout(); G.settings.hud = keep;
+  });
+  $('heReset').addEventListener('click', () => { heWork = {}; const keep = G.settings.hud; G.settings.hud = heWork; applyHudLayout(); G.settings.hud = keep; heSelect(null); SND.play('ui'); });
+  $('heCancel').addEventListener('click', () => { SND.play('ui'); closeHudEditor(false); });
+  $('heSave').addEventListener('click', () => { SND.play('ui'); closeHudEditor(true); notify('ok', 'Layout do HUD salvo'); });
+  window.addEventListener('resize', applyHudLayout);
+}
+
 function applySettings() {
   const S = G.settings;
   SND.on = S.sound; SND.vol = S.vol;
@@ -846,6 +963,7 @@ function initInput() {
     if (e.code === 'Escape') { if (G.state === 'play' && UI.screen) { showScreen(null); } else if (G.state === 'play') pauseGame(); else if (G.state === 'pause') resumeGame(); }
     if (e.code === 'Tab' && G.state === 'play') { e.preventDefault(); UI.screen === 'inv' ? closeInventory() : openInventory('inv'); }
     if (e.code === 'KeyM' && G.state === 'play') { UI.screen === 'map' ? showScreen(null) : openMap(); }
+    if (e.code === 'KeyB' && G.state === 'play') openEmoteWheel();
     if (e.code === 'Backquote' && document.exitPointerLock) document.exitPointerLock();
     if (G.state === 'play' && (e.code === 'Space' || e.code.indexOf('Arrow') === 0)) e.preventDefault();
   });
@@ -874,6 +992,7 @@ function initInput() {
   touch.addEventListener('pointerdown', (e) => {
     if (G.state !== 'play') return;
     SND.init();
+    if (document.body.classList.contains('hud-editing')) return;
     if (e.clientX < window.innerWidth * 0.42 && joyId === null) {
       joyId = e.pointerId; jx0 = e.clientX; jy0 = e.clientY;
       base.style.left = jx0 + 'px'; base.style.top = jy0 + 'px';
@@ -894,7 +1013,7 @@ function initInput() {
     }
   });
   const end = (e) => {
-    if (e.pointerId === joyId) { joyId = null; input.mx = 0; input.my = 0; base.classList.remove('active'); knob.style.transform = 'translate(-50%,-50%)'; }
+    if (e.pointerId === joyId) { joyId = null; input.mx = 0; input.my = 0; base.classList.remove('active'); knob.style.transform = 'translate(-50%,-50%)'; applyHudLayout(); }
     if (e.pointerId === lookId) lookId = null;
   };
   touch.addEventListener('pointerup', end);
@@ -927,6 +1046,7 @@ function initInput() {
   holdBtn($('btnCrouch'), () => { input.crouch = true; });
   holdBtn($('btnReload'), () => { input.reload = true; });
   holdBtn($('btnInv'), () => { UI.screen === 'inv' ? closeInventory() : openInventory('inv'); });
+  holdBtn($('btnEmote'), () => { openEmoteWheel(); });
   holdBtn($('useBtn'), () => { input.use = true; });
   holdBtn($('btnSaltar'), () => { input.jump = true; });
   holdBtn($('btnChute'), () => { input.chute = true; });
@@ -1076,6 +1196,8 @@ function boot() {
   initHUD();
   initInput();
   initScreens();
+  initHudEditor();
+  applyHudLayout();
   applySettings();
   frame();
   window.__game = {

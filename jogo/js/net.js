@@ -194,7 +194,7 @@ NET.packActor = function (a) {
   const aim = a.isPlayer ? (G.time - a.lastFire < 0.7 || a.aimOn ? 1 : 0) : (a.ai && a.ai.target && inHand ? 1 : 0);
   return [Math.round(a.pos.x * 100), Math.round(a.pos.y * 100), Math.round(a.pos.z * 100), Math.round(a.face * 1000), NET.PHASES.indexOf(a.phase), fl,
     Math.round(a.vel.x * 10), Math.round(a.vel.z * 10), Math.round((a.phase === 'ground' ? a.speed : a.hs) * 10), gunCode(inHand), gunCode(back),
-    Math.round(a.hp), a.armor, a.helmet, Math.round((a.isPlayer ? G.pitch : 0) * 100), aim];
+    Math.round(a.hp), a.armor, a.helmet, Math.round((a.isPlayer ? G.pitch : 0) * 100), aim, a.emote ? EMOTE_KEYS.indexOf(a.emote) + 1 : 0];
 };
 NET.repack = function (a) {
   const n = a.net.s.slice();
@@ -214,6 +214,7 @@ NET.applyState = function (a, s, own) {
     if (!a.netGun) a.netArmed = false; else a.netArmed = true;
     a.netPitch = s[14] / 100; a.netAim = s[15];
     a.netHeal = !!(s[5] & 64);
+    a.netEmote = s[16] ? EMOTE_KEYS[s[16] - 1] : null;
   }
   // vida, colete e capacete: o anfitrião manda
   if (NET.isClient()) {
@@ -247,7 +248,7 @@ function updatePuppet(a, dt) {
   CH.setGuns(a.ch, a.netGun, a.netBack);
   if (!a.ch.root.visible) return;
   if (a.phase !== 'ground') { CH.animate(a.ch, dt, { mode: a.phase, board: a.board }); return; }
-  CH.animate(a.ch, dt, { mode: 'ground', speed: a.speed, vx: a.vel.x, vz: a.vel.z, aim: a.netAim ? 1 : 0, air: !a.onGround, pitch: a.netAim ? a.netPitch : 0, crouch: a.crouch, armed: a.netArmed });
+  CH.animate(a.ch, dt, { mode: 'ground', speed: a.speed, vx: a.vel.x, vz: a.vel.z, aim: a.netAim ? 1 : 0, air: !a.onGround, pitch: a.netAim ? a.netPitch : 0, crouch: a.crouch, armed: a.netArmed && !a.netEmote, emote: a.netEmote });
 }
 
 // ------------------------------------------------------------------ laço de rede

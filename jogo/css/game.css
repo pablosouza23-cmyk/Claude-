@@ -182,9 +182,33 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 #btnReload { right: calc(max(16px, env(safe-area-inset-right)) + 190px * var(--btn)); bottom: calc(34px + 40px * var(--btn)); width: calc(46px * var(--btn)); height: calc(46px * var(--btn)); }
 #btnInv { right: calc(max(16px, env(safe-area-inset-right)) + 192px * var(--btn)); bottom: calc(34px + 104px * var(--btn)); width: calc(46px * var(--btn)); height: calc(46px * var(--btn)); }
 #btnFireL { left: calc(max(14px, env(safe-area-inset-left)) + 26px); top: 36vh; width: calc(58px * var(--btn)); height: calc(58px * var(--btn)); border-color: rgba(255,120,60,.9); }
+#btnEmote { left: calc(max(14px, env(safe-area-inset-left)) + 98px); top: calc(36vh + 6px); width: calc(46px * var(--btn)); height: calc(46px * var(--btn)); }
+#emoteWheel { position: fixed; left: 50%; top: 50%; width: 300px; height: 300px; margin: -150px 0 0 -150px; border-radius: 50%; z-index: 6; pointer-events: auto;
+  background: radial-gradient(circle, rgba(8,14,26,.25) 28%, rgba(8,14,26,.82) 30%, rgba(8,14,26,.82) 70%, rgba(8,14,26,0) 71%); }
+#emoteWheel button { position: absolute; width: 74px; height: 54px; margin: -27px 0 0 -37px; border-radius: 8px; background: rgba(22,34,56,.95); border: 1px solid var(--line); font-size: 12px; letter-spacing: .5px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #fff; }
+#emoteWheel button span { font-size: 20px; line-height: 1; }
+#emoteWheel button:active, #emoteWheel button.on { background: linear-gradient(#ffd23c, var(--yellow2)); color: #1d1300; }
+#emoteWheel .ewClose { left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; }
+.emoteRow { position: absolute; left: max(24px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; flex-wrap: wrap; gap: 6px; max-width: 32vw; }
+.emoteRow button { padding: 5px 10px; font-size: 13px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+.emoteRow button span { margin-right: 4px; }
 #btnSaltar { right: calc(max(16px, env(safe-area-inset-right)) + 24px); bottom: 90px; }
 #btnChute { right: calc(max(16px, env(safe-area-inset-right)) + 24px); bottom: 112px; }
 #btnBoard { right: calc(max(16px, env(safe-area-inset-right)) + 24px); bottom: 50px; }
+
+/* ---------- editor de HUD ---------- */
+#hudEdit { position: fixed; inset: 0; z-index: 9; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 40px), repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 40px), rgba(4,8,16,.35); }
+.heBar { pointer-events: auto; position: absolute; left: 50%; top: max(8px, env(safe-area-inset-top)); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; max-width: calc(100% - 24px); }
+.heBar b { letter-spacing: 1.5px; } .heBar small { color: var(--muted); font-size: 12px; }
+.heSize { display: flex; align-items: center; gap: 6px; font-size: 13px; } .heSize input { width: 110px; accent-color: var(--yellow); }
+.chip.hot { background: linear-gradient(#ffd23c, var(--yellow2)); color: #1d1300; border-color: #ffdf6a; }
+body.hud-editing #hud, body.hud-editing #touch { z-index: 8; }
+body.hud-editing .hedit { outline: 2px dashed rgba(255,194,26,.85); outline-offset: 3px; pointer-events: auto !important; cursor: move; display: flex !important; }
+body.hud-editing .hedit.sel { outline-style: solid; outline-color: #ffd23c; }
+body.hud-editing #joyBase { opacity: .9; }
+.hpos { right: auto !important; bottom: auto !important; margin: 0 !important; transform: translate(-50%, -50%) scale(var(--hs, 1)) !important; }
+.tbtn.hpos.down { filter: brightness(1.35); }
 
 /* ---------- telas ---------- */
 .screen { position: fixed; inset: 0; z-index: 10; overflow: auto; }

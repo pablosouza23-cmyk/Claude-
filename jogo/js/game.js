@@ -6,14 +6,18 @@ const V3 = THREE.Vector3;
 
 const G = {
   state: 'menu', time: 0, built: false,
-  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false },
+  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null },
   actors: [], bots: [], walls: [], loot: [], nades: [], props: [],
 };
 
 (function loadSettings() {
   try {
     const s = JSON.parse(localStorage.getItem('ilhaToonSettings') || 'null');
-    if (s) Object.assign(G.settings, s);
+    if (s) {
+      // versões antigas tinham uma só sensibilidade de mira
+      if (s.adsSens !== undefined && s.sensDot === undefined) s.sensDot = s.sens2x = s.sens4x = s.adsSens;
+      Object.assign(G.settings, s);
+    }
   } catch (e) { /* armazenamento indisponível */ }
 })();
 G.saveSettings = function () {
@@ -307,6 +311,7 @@ function damageActor(a, dmg, attacker, head, weapon) {
 function killActor(a, killer, weapon) {
   a.hp = 0; a.alive = false;
   a.vel.set(0, 0, 0);
+  if (killer && killer !== a && !killer.isPlayer && !killer.human && Math.random() < 0.45) { killer.emote = Math.random() < 0.5 ? 'cheer2' : 'laugh'; killer.emoteT = 2.2; }
   if (killer && killer !== a) { killer.kills++; killFeed(killer.name, a.name, weapon); if (killer.isPlayer) killBanner(killer.kills, a.name); }
   else killFeed(a.name, null, 'Zona');
   // mochila caída com o que a pessoa carregava (como no vídeo)
@@ -1137,8 +1142,10 @@ function camForward(out, yaw, pitch) {
 }
 
 function moveActor(a, wantX, wantZ, maxSpeed, dt, jump) {
-  a.vel.x = U.damp(a.vel.x, wantX * maxSpeed, 12, dt);
-  a.vel.z = U.damp(a.vel.z, wantZ * maxSpeed, 12, dt);
+  // arranca rápido e freia mais rápido ainda: resposta imediata no controle
+  const k = wantX || wantZ ? 17 : 24;
+  a.vel.x = U.damp(a.vel.x, wantX * maxSpeed, k, dt);
+  a.vel.z = U.damp(a.vel.z, wantZ * maxSpeed, k, dt);
   a.pos.x += a.vel.x * dt; a.pos.z += a.vel.z * dt;
   W.collide(a.pos, 0.34, a.pos.y, a.crouch ? 1.1 : 1.7);
   const r = Math.hypot(a.pos.x, a.pos.z);
@@ -1212,7 +1219,7 @@ function updatePlayer(dt) {
   const p = G.player;
   if (!p.alive) { CH.animate(p.ch, dt, { dead: true }); return; }
   const ads = isScoped(p);
-  const sensK = G.settings.sens * (ads ? G.settings.adsSens * 1.2 / curW(p).zoom : 1) * aimAssist(p, dt);
+  const sensK = G.settings.sens * (ads ? scopeSens(curW(p)) * 1.2 / curW(p).zoom : 1) * aimAssist(p, dt);
   G.yaw -= input.lookX * sensK; G.pitch -= input.lookY * sensK;
   input.lookX = 0; input.lookY = 0;
   const mv = readMove();
@@ -1279,15 +1286,16 @@ function updatePlayer(dt) {
   if (!curSlot(p) || p.nadeHand) p.aimOn = false;
   p.aim = U.damp(p.aim, p.aimOn ? 1 : 0, 12, dt);
 
+  if (p.emote) { p.emoteT -= dt; if (p.emoteT <= 0 || p.speed > 0.6 || firing || !p.onGround || p.aimOn) p.emote = null; }
   const combat = p.aimOn || G.time - p.lastFire < 0.7 || p.nadeHand;
   let target = p.face;
   if (combat) target = G.yaw + Math.PI;
   else if (p.speed > 0.5) target = Math.atan2(p.vel.x, p.vel.z);
-  p.face = U.dampAngle(p.face, target, combat ? 22 : 11, dt);
+  p.face = U.dampAngle(p.face, target, combat ? 26 : 16, dt);
   p.ch.body.rotation.y = p.face;
   p.ch.root.position.copy(p.pos);
   p.ch.root.visible = !isScoped(p);
-  CH.animate(p.ch, dt, { mode: 'ground', speed: p.speed, vx: p.vel.x, vz: p.vel.z, aim: combat && curSlot(p) ? Math.max(p.aim, 0.85) : p.aim, air: !p.onGround, pitch: combat ? G.pitch : 0, crouch: p.crouch, armed: !!curSlot(p) && !p.nadeHand, reload: reloadK(p) });
+  CH.animate(p.ch, dt, { mode: 'ground', speed: p.speed, vx: p.vel.x, vz: p.vel.z, aim: combat && curSlot(p) ? Math.max(p.aim, 0.85) : p.aim, air: !p.onGround, pitch: combat ? G.pitch : 0, crouch: p.crouch, armed: !!curSlot(p) && !p.nadeHand && !p.emote, reload: reloadK(p), emote: p.emote });
 
   // passos: poeirinha e som
   if (p.onGround && p.speed > 2.2) {
@@ -1297,6 +1305,10 @@ function updatePlayer(dt) {
   const area = W.areaAt(p.pos.x, p.pos.z);
   if (area !== G.area) { G.area = area; if (area) areaBanner(area); }
 }
+
+// sensibilidade de cada tipo de mira (como nos jogos de celular): 1x, 2x e luneta
+function scopeKind(w) { return w.zoom >= 3 ? '4x' : w.zoom >= 1.55 ? '2x' : 'dot'; }
+function scopeSens(w) { const k = scopeKind(w), S = G.settings; return k === '4x' ? S.sens4x : k === '2x' ? S.sens2x : S.sensDot; }
 
 // mirando (ADS): visão em primeira pessoa pela mira da arma
 function isScoped(p) {
@@ -1460,6 +1472,7 @@ function updateBot(b, dt) {
 
   let wx = 0, wz = 0, speed = 4.8, faceT = b.face;
   const t = ai.target, armed = hasGun(b);
+  if (b.emote) { b.emoteT -= dt; if (b.emoteT <= 0 || t || G.time - b.lastHurt < 0.5) b.emote = null; }
   if (armed && !curSlot(b)) { b.cur = b.slots[0] ? 0 : b.slots[1] ? 1 : 2; refreshGuns(b); }
   if (t) {
     const dx = t.pos.x - b.pos.x, dz = t.pos.z - b.pos.z, dist = Math.hypot(dx, dz) || 1;
@@ -1506,12 +1519,13 @@ function updateBot(b, dt) {
     if (Math.hypot(b.pos.x - ai.last.x, b.pos.z - ai.last.z) < 1.2 && (wx || wz)) { ai.wp = null; ai.strafe = -ai.strafe; ai.jump = true; }
     ai.last.copy(b.pos); ai.stuckT = 0;
   }
+  if (b.emote) { wx = 0; wz = 0; }
   moveActor(b, wx, wz, speed, dt, ai.jump);
   ai.jump = false;
   b.face = U.dampAngle(b.face, faceT, 10, dt);
   b.ch.body.rotation.y = b.face;
   b.ch.root.position.copy(b.pos);
-  if (near < 120) CH.animate(b.ch, dt, { mode: 'ground', speed: b.speed, vx: b.vel.x, vz: b.vel.z, aim: t && armed ? 1 : 0, air: !b.onGround, pitch: 0, armed: !!curSlot(b), reload: reloadK(b) });
+  if (near < 120) CH.animate(b.ch, dt, { mode: 'ground', speed: b.speed, vx: b.vel.x, vz: b.vel.z, aim: t && armed ? 1 : 0, air: !b.onGround, pitch: 0, armed: !!curSlot(b) && !b.emote, reload: reloadK(b), emote: b.emote });
 }
 
 function botShoot(b, t, dist) {

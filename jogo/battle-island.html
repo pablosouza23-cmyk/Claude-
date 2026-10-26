@@ -993,7 +993,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   </div>
   <div id="squadBar" class="squadBar"><small>SEU GRUPO</small><div id="squadSlots"></div></div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v3.6</div>
+  <div class="ver">v3.7</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1257,7 +1257,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v3.6 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v3.7 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -9318,7 +9318,7 @@ SRV.WHY = {
   rede: 'sem internet ou o site não respondeu. Tente de novo.',
   erro: 'o servidor das contas deu erro. Confira os registros (logs) da hospedagem.',
 };
-SRV.msg = (e) => SRV_ERR[e && e.code] || 'Sem conexão com o servidor do jogo. Tente de novo.';
+SRV.msg = (e) => e && e.localMsg ? e.localMsg : SRV_ERR[e && e.code] || 'Sem conexão com o servidor do jogo. Tente de novo.';
 SRV.call = async function (body, ms) {
   const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const to = setTimeout(() => { if (ctl) ctl.abort(); }, ms || 15000);
@@ -9726,10 +9726,35 @@ ACC.unlockOwner = function (code) {
   if (SHA.hex('battle-dono:' + String(code || '').trim().toUpperCase()) !== ACC.OWNER_HASH) return 'Código errado.';
   try { localStorage.setItem('battleIsland.own', String(code).trim().toUpperCase()); } catch (e) { /* ignora */ }
   const first = !ACC.p.owner;
+  // o dono ganha na hora o verificado dourado (o supremo, se já tiver, continua)
   ACC.p.owner = true; ACC.p.verified = true;
+  if (ACC.p.badge !== 'supremo') ACC.p.badge = 'dourado';
   if (first) ACC.p.mail.unshift(ACC.letter('Sistema', 'Pacote do dono', 'Painel do dono liberado nesta conta. Aqui estão todos os personagens, emotes e skins.', [{ k: 'allSkins' }, { k: 'allEmotes' }, { k: 'allGuns' }, { k: 'verified' }]));
   ACC.emit();
   return null;
+};
+// ---------- códigos que funcionam direto no jogo, sem servidor ----------
+// Aqui fica só o "hash" de cada código (o código em si não aparece no programa). Cada conta resgata cada código uma vez.
+ACC.LOCAL_CODES = {
+  '67cac02d78f1e0c90e5725ee79b2c7086cbbb624769f35831044b888999833a8': { item: { k: 'badge', tier: 'dourado' }, owner: true },
+  '4996f5906ad6cebfaf239e62f526389f9b12dd9ab32d06feb6668a55c27705c5': { item: { k: 'badge', tier: 'supremo' } },
+  'b3727d71720bc466fcc57290184505917e4e67b39d87ef79f7a3a6695bd0fada': { item: { k: 'skin', id: 'craque' } },
+};
+ACC.redeemLocal = function (code) {
+  const p = ACC.p;
+  if (!p) return { err: 'Entre numa conta primeiro.' };
+  const h = SHA.hex('battle-code:' + String(code || '').trim().toUpperCase().replace(/\s+/g, ''));
+  const d = ACC.LOCAL_CODES[h];
+  if (!d) return { err: 'Código inválido. Confira as letras e os números.' };
+  p.codes = p.codes || [];
+  if (p.codes.indexOf(h) >= 0) return { err: 'Você já resgatou esse código.' };
+  if (d.owner && !p.owner) return { err: 'Este código é exclusivo da conta do dono do jogo. Libere o painel do dono nesta conta primeiro.' };
+  const it = d.item;
+  if (it.k === 'badge') { if (['', 'dourado', 'supremo'].indexOf(it.tier) > ['', 'dourado', 'supremo'].indexOf(p.badge || '')) p.badge = it.tier; }
+  else if (it.k === 'skin') { if (p.owned.skins.indexOf(it.id) < 0) p.owned.skins.push(it.id); p.skin = it.id; }
+  p.codes.push(h);
+  ACC.emit();
+  return { item: it };
 };
 const sameDay = (t, d) => { const a = new Date(t); return a.getFullYear() === d.getFullYear() && a.getMonth() === d.getMonth() && a.getDate() === d.getDate(); };
 // contas guardadas neste aparelho; today = só as criadas hoje
@@ -10436,15 +10461,18 @@ LOB.setName = function (v) {
 };
 
 // ---------- resgatar código ----------
+// resgata pelo servidor quando ele existe; sem servidor, o código vale direto no jogo
+LOB.doRedeem = (code) => (SRV.on && SRV.user === ACC.user) ? SRV.redeem(code)
+  : new Promise((res, rej) => { const r = ACC.redeemLocal(code); if (r.err) rej({ localMsg: r.err }); else res(r); });
 LOB.redeem = function () {
-  if (!SRV.on || SRV.user !== ACC.user) {
-    LOB.dialog('RESGATAR CÓDIGO', SRV.on ? 'Entre com sua conta (usuário e senha) para resgatar códigos.' : 'O resgate de códigos funciona no site oficial do jogo, com o servidor das contas ligado.', [['OK', null, true]]);
+  if (SRV.on && SRV.user !== ACC.user) {
+    LOB.dialog('RESGATAR CÓDIGO', 'Entre com sua conta (usuário e senha) para resgatar códigos.', [['OK', null, true]]);
     return;
   }
   LOB.dialog('RESGATAR CÓDIGO', 'Digite o código que você recebeu:<input id="rdCode" class="codeIn" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="EX.: ABCD-1234">', [['RESGATAR', () => {
     const code = $('rdCode').value.trim();
     if (!code) return false;
-    SRV.redeem(code).then(j => {
+    LOB.doRedeem(code).then(j => {
       const it = j.item || {}, sk = it.k === 'skin' ? (SKINS.find(x => x[0] === it.id) || [])[1] || it.id : '';
       SND.play('pick');
       if (it.k === 'skin') { ACC.p.skin = it.id; ACC.emit(); LOB.applyProfile(); swapShowcase(); showEmote('cheer2'); }
@@ -10473,12 +10501,11 @@ LOB.vfRedeem = async function () {
   const code = $('vfCode').value.trim(), msg = $('vfMsg');
   const say = (ok, t) => { msg.className = 'vfMsg ' + (ok ? 'ok' : 'err'); msg.innerHTML = icon(ok ? 'check' : 'warn') + t; };
   if (!code) { say(false, 'Digite o código.'); return; }
-  if (!SRV.on) { say(false, 'O resgate precisa do servidor das contas ligado. ' + ((w) => w.charAt(0).toUpperCase() + w.slice(1))(SRV.WHY[SRV.why] || '')); return; }
-  if (SRV.user !== ACC.user) { say(false, 'Entre com sua conta (usuário e senha) para resgatar.'); return; }
+  if (SRV.on && SRV.user !== ACC.user) { say(false, 'Entre com sua conta (usuário e senha) para resgatar.'); return; }
   if (LOB.vfBusy) return;
   LOB.vfBusy = true; $('vfGo').disabled = true; $('vfSpin').classList.remove('hidden'); msg.textContent = '';
   try {
-    const j = await SRV.redeem(code), it = j.item || {};
+    const j = await LOB.doRedeem(code), it = j.item || {};
     if (it.k === 'badge') {
       const t = ACC.tier(ACC.p);
       say(true, 'Resgatado! Agora você tem o ' + LOB.vf(t) + '<b>' + BADGES[t].name + '</b>. Ele aparece junto do seu nome no perfil, no lobby, no ranking, nas salas e para os amigos.');

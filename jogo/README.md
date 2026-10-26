@@ -97,6 +97,16 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v3.7 (códigos sem servidor)
+- **Dono:** liberar o painel do dono com o código do dono dá na hora o **verificado dourado** (antes dava o azul).
+- **Códigos funcionando direto no jogo, sem hospedagem** (botões **VERIFICADO** e **CÓDIGO** do menu):
+  - código do verificado dourado: só funciona na conta do dono;
+  - código do verificado supremo: funciona em qualquer conta que tenha o código;
+  - código da skin Craque 10: funciona em qualquer conta que tenha o código.
+- Os códigos ficam só com o dono. No programa vai apenas o "hash" de cada um, por isso eles não aparecem aqui.
+- Cada conta resgata cada código uma vez, e o selo fica salvo na conta, no aparelho.
+- Sem servidor, o jogo não tem como contar quantas pessoas no mundo usaram um código, então o limite de 15 do Craque 10 não vale. Quando houver servidor das contas, o limite volta a valer, junto com os cargos e a auditoria.
+
 ## Novidades da v3.6
 - **Selo de verificado dentro da partida**, para azul, dourado e supremo:
   - no **feed de abates** (quem matou e quem morreu);
@@ -127,16 +137,16 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
     - Se o celular tentar se dar selo (dourado, supremo ou azul) ao salvar, o servidor desfaz.
     - O azul continua vindo do painel do dono (VERIFICADO), do presente pelo correio ou de um código azul.
   - **Multiplayer e amigos:** o selo que aparece para os outros na sala e na lista de amigos é o que o celular da pessoa manda (as salas são de celular para celular). O que é conferido pelo servidor é o selo no perfil, no ranking e no painel do dono.
-- **Códigos iniciais** (já cadastrados no servidor, válidos até 31/12/2027):
-  - `D0WN-GOLD-7X9K`: verificado **dourado**, 1 uso, só para a conta do **dono**.
-  - `SUPR-ADM-9Q2X`: verificado **supremo**, até 10 contas, só para **administradores**.
+- **Códigos iniciais** (já cadastrados, válidos até 31/12/2027; os códigos ficam só com o dono):
+  - verificado **dourado**: 1 uso, só para a conta do **dono**;
+  - verificado **supremo**: até 10 contas, só para **administradores**.
 - **Como cadastrar e testar** (precisa do servidor ligado, ou seja, do site publicado pelo GitHub):
   1. Entre no jogo com a **sua conta** (usuário e senha).
   2. Abra o **Painel do dono** (perfil, 5 toques no ID e o código do dono) e vá na aba **CÓDIGOS**.
   3. Em **CARGOS AUTORIZADOS**, escreva o seu usuário, escolha **Dono (dourado)** e toque em **AUTORIZAR**. Faça o mesmo com os administradores, em **Administrador (supremo)**.
      - Também dá para usar as opções `ownerUsers` / `adminUsers` do servidor (variáveis de ambiente da hospedagem), com usuários separados por vírgula.
-  4. Teste o **dourado**: em **VERIFICADO**, digite `D0WN-GOLD-7X9K` e toque em RESGATAR. Ele aparece no lobby, no perfil e no ranking. Saia e entre de novo: o selo continua.
-  5. Teste o **supremo**: entre numa conta autorizada como administrador e resgate `SUPR-ADM-9Q2X`.
+  4. Teste o **dourado**: em **VERIFICADO**, digite o código do dourado e toque em RESGATAR. Ele aparece no lobby, no perfil e no ranking. Saia e entre de novo: o selo continua.
+  5. Teste o **supremo**: entre numa conta autorizada como administrador e resgate o código do supremo.
   6. Teste a **segurança**: numa conta sem cargo, os dois códigos dão "Sua conta não tem permissão". Repetir o código dá "Você já resgatou".
   7. Teste o **azul**: na aba CÓDIGOS, crie um código com prêmio "Verificado azul", limite de pessoas e validade em dias, e resgate numa conta qualquer.
   8. Veja a **AUDITORIA DOS RESGATES** na mesma aba, com data, conta, código e resultado.

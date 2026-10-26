@@ -416,7 +416,7 @@ SRV.WHY = {
   rede: 'sem internet ou o site não respondeu. Tente de novo.',
   erro: 'o servidor das contas deu erro. Confira os registros (logs) da hospedagem.',
 };
-SRV.msg = (e) => SRV_ERR[e && e.code] || 'Sem conexão com o servidor do jogo. Tente de novo.';
+SRV.msg = (e) => e && e.localMsg ? e.localMsg : SRV_ERR[e && e.code] || 'Sem conexão com o servidor do jogo. Tente de novo.';
 SRV.call = async function (body, ms) {
   const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const to = setTimeout(() => { if (ctl) ctl.abort(); }, ms || 15000);
@@ -824,10 +824,35 @@ ACC.unlockOwner = function (code) {
   if (SHA.hex('battle-dono:' + String(code || '').trim().toUpperCase()) !== ACC.OWNER_HASH) return 'Código errado.';
   try { localStorage.setItem('battleIsland.own', String(code).trim().toUpperCase()); } catch (e) { /* ignora */ }
   const first = !ACC.p.owner;
+  // o dono ganha na hora o verificado dourado (o supremo, se já tiver, continua)
   ACC.p.owner = true; ACC.p.verified = true;
+  if (ACC.p.badge !== 'supremo') ACC.p.badge = 'dourado';
   if (first) ACC.p.mail.unshift(ACC.letter('Sistema', 'Pacote do dono', 'Painel do dono liberado nesta conta. Aqui estão todos os personagens, emotes e skins.', [{ k: 'allSkins' }, { k: 'allEmotes' }, { k: 'allGuns' }, { k: 'verified' }]));
   ACC.emit();
   return null;
+};
+// ---------- códigos que funcionam direto no jogo, sem servidor ----------
+// Aqui fica só o "hash" de cada código (o código em si não aparece no programa). Cada conta resgata cada código uma vez.
+ACC.LOCAL_CODES = {
+  '67cac02d78f1e0c90e5725ee79b2c7086cbbb624769f35831044b888999833a8': { item: { k: 'badge', tier: 'dourado' }, owner: true },
+  '4996f5906ad6cebfaf239e62f526389f9b12dd9ab32d06feb6668a55c27705c5': { item: { k: 'badge', tier: 'supremo' } },
+  'b3727d71720bc466fcc57290184505917e4e67b39d87ef79f7a3a6695bd0fada': { item: { k: 'skin', id: 'craque' } },
+};
+ACC.redeemLocal = function (code) {
+  const p = ACC.p;
+  if (!p) return { err: 'Entre numa conta primeiro.' };
+  const h = SHA.hex('battle-code:' + String(code || '').trim().toUpperCase().replace(/\s+/g, ''));
+  const d = ACC.LOCAL_CODES[h];
+  if (!d) return { err: 'Código inválido. Confira as letras e os números.' };
+  p.codes = p.codes || [];
+  if (p.codes.indexOf(h) >= 0) return { err: 'Você já resgatou esse código.' };
+  if (d.owner && !p.owner) return { err: 'Este código é exclusivo da conta do dono do jogo. Libere o painel do dono nesta conta primeiro.' };
+  const it = d.item;
+  if (it.k === 'badge') { if (['', 'dourado', 'supremo'].indexOf(it.tier) > ['', 'dourado', 'supremo'].indexOf(p.badge || '')) p.badge = it.tier; }
+  else if (it.k === 'skin') { if (p.owned.skins.indexOf(it.id) < 0) p.owned.skins.push(it.id); p.skin = it.id; }
+  p.codes.push(h);
+  ACC.emit();
+  return { item: it };
 };
 const sameDay = (t, d) => { const a = new Date(t); return a.getFullYear() === d.getFullYear() && a.getMonth() === d.getMonth() && a.getDate() === d.getDate(); };
 // contas guardadas neste aparelho; today = só as criadas hoje

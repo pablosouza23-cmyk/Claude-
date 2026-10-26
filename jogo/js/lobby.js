@@ -667,15 +667,18 @@ LOB.setName = function (v) {
 };
 
 // ---------- resgatar código ----------
+// resgata pelo servidor quando ele existe; sem servidor, o código vale direto no jogo
+LOB.doRedeem = (code) => (SRV.on && SRV.user === ACC.user) ? SRV.redeem(code)
+  : new Promise((res, rej) => { const r = ACC.redeemLocal(code); if (r.err) rej({ localMsg: r.err }); else res(r); });
 LOB.redeem = function () {
-  if (!SRV.on || SRV.user !== ACC.user) {
-    LOB.dialog('RESGATAR CÓDIGO', SRV.on ? 'Entre com sua conta (usuário e senha) para resgatar códigos.' : 'O resgate de códigos funciona no site oficial do jogo, com o servidor das contas ligado.', [['OK', null, true]]);
+  if (SRV.on && SRV.user !== ACC.user) {
+    LOB.dialog('RESGATAR CÓDIGO', 'Entre com sua conta (usuário e senha) para resgatar códigos.', [['OK', null, true]]);
     return;
   }
   LOB.dialog('RESGATAR CÓDIGO', 'Digite o código que você recebeu:<input id="rdCode" class="codeIn" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="EX.: ABCD-1234">', [['RESGATAR', () => {
     const code = $('rdCode').value.trim();
     if (!code) return false;
-    SRV.redeem(code).then(j => {
+    LOB.doRedeem(code).then(j => {
       const it = j.item || {}, sk = it.k === 'skin' ? (SKINS.find(x => x[0] === it.id) || [])[1] || it.id : '';
       SND.play('pick');
       if (it.k === 'skin') { ACC.p.skin = it.id; ACC.emit(); LOB.applyProfile(); swapShowcase(); showEmote('cheer2'); }
@@ -704,12 +707,11 @@ LOB.vfRedeem = async function () {
   const code = $('vfCode').value.trim(), msg = $('vfMsg');
   const say = (ok, t) => { msg.className = 'vfMsg ' + (ok ? 'ok' : 'err'); msg.innerHTML = icon(ok ? 'check' : 'warn') + t; };
   if (!code) { say(false, 'Digite o código.'); return; }
-  if (!SRV.on) { say(false, 'O resgate precisa do servidor das contas ligado. ' + ((w) => w.charAt(0).toUpperCase() + w.slice(1))(SRV.WHY[SRV.why] || '')); return; }
-  if (SRV.user !== ACC.user) { say(false, 'Entre com sua conta (usuário e senha) para resgatar.'); return; }
+  if (SRV.on && SRV.user !== ACC.user) { say(false, 'Entre com sua conta (usuário e senha) para resgatar.'); return; }
   if (LOB.vfBusy) return;
   LOB.vfBusy = true; $('vfGo').disabled = true; $('vfSpin').classList.remove('hidden'); msg.textContent = '';
   try {
-    const j = await SRV.redeem(code), it = j.item || {};
+    const j = await LOB.doRedeem(code), it = j.item || {};
     if (it.k === 'badge') {
       const t = ACC.tier(ACC.p);
       say(true, 'Resgatado! Agora você tem o ' + LOB.vf(t) + '<b>' + BADGES[t].name + '</b>. Ele aparece junto do seu nome no perfil, no lobby, no ranking, nas salas e para os amigos.');

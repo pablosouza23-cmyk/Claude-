@@ -341,6 +341,7 @@ function setHTML(el, key, v) { if (H.cache[key] === v) return; H.cache[key] = v;
 function setClass(el, key, cls, on) { if (H.cache[key] === on) return; H.cache[key] = on; el.classList.toggle(cls, on); }
 
 function initHUD() {
+  H.waitBox = $('waitBox'); H.waitT = $('waitT');
   document.querySelectorAll('[data-icon]').forEach(el => { el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)); });
   ['hud', 'touch', 'hpFill', 'hpNum', 'vestBadge', 'helmBadge', 'aliveNum', 'killNum', 'compassStrip', 'compassNum', 'notifs', 'areaBanner', 'areaName',
     'killBanner', 'kbCount', 'kbName', 'minimap', 'zoneTime', 'zoneText', 'topStatus', 'prep', 'prepNum', 'bigText', 'jumpHint', 'diveStats', 'diveHint', 'altMark',
@@ -398,6 +399,7 @@ function updateHUD(dt) {
   setText(H.topStatus, 'ts', nPlane + nAir > 0 ? 'no avião ' + nPlane + ' · no ar ' + nAir + ' · saltaram ' + (G.actors.length - nPlane) + '/' + G.actors.length : '');
   setClass(H.topStatus, 'tsh', 'hidden', nPlane + nAir === 0);
   if (G.mode === 'cs') CS.hud();
+  if (G.wait) setText(H.waitT, 'wt', 'O avião sai em ' + Math.max(0, Math.ceil(G.wait.t)) + 's');
   // barra de armas e itens
   for (let i = 0; i < 3; i++) {
     const s = p.slots[i], el = H['wb' + i];
@@ -617,7 +619,7 @@ function goLobby() {
   G.state = 'lobby';
   showScreen('lobbyScr');
   showEmote(Math.random() < 0.5 ? 'wave' : 'cheer2');
-  lobbyT = 15;
+  lobbyT = 5;
   const cs = G.settings.mode === 'cs', n = G.settings.csSize || 4;
   $('lobbyPlayers').textContent = cs ? n + ' x ' + n : TOTAL + '/' + TOTAL;
   $('lpMap').textContent = cs ? 'ARENA' : W.MAP.name.toUpperCase();
@@ -691,12 +693,14 @@ function startMatch(msg) {
   }
   G.airdrop = { state: 'none' };
   initZone();
-  if (msg) startDrop(msg.ang, msg.side); else startDrop();
-  G.yaw = Math.atan2(G.drop.dir.x, G.drop.dir.z) + Math.PI + 1.1; G.pitch = -0.25;
+  // sala de espera antes do avião
+  G.dropArgs = msg ? [msg.ang, msg.side] : [Math.random() * Math.PI * 2, Math.random() - 0.5];
+  startWaiting(msg ? U.rng(msg.seed + 11) : Math.random);
   G.state = 'play';
   H.hud.classList.remove('hidden');
   H.touch.classList.toggle('hidden', !isTouch);
-  H.prep.classList.remove('hidden');
+  H.prep.classList.add('hidden');
+  H.waitBox.classList.remove('hidden');
   H.jumpHint.classList.remove('show');
   onResize();
   warmup();
@@ -1209,6 +1213,8 @@ function initScreens() {
 
 // ------------------------------------------------------------------ partida
 function clearMatch() {
+  G.wait = null;
+  if (H.waitBox) H.waitBox.classList.add('hidden');
   if ($('csBuy')) $('csBuy').classList.add('hidden');
   if ($('csTags')) $('csTags').innerHTML = '';
   CS.tags = [];
@@ -1244,6 +1250,7 @@ function tick(dt) {
   updateNades(dt);
   updateLoot(dt);
   if (G.mode === 'cs') CS.update(dt);
+  else if (G.wait) updateWaiting(dt);
   else { updateZone(dt); updateAirdrop(dt); }
   if (G.endT > 0) { G.endT -= dt; if (G.endT <= 0) endMatch(); }
   NET.update(dt);

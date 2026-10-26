@@ -104,7 +104,8 @@ function initRenderer() {
   scene.add(sun); scene.add(sun.target);
   G.sunDir = new V3(-0.55, 1, 0.42).normalize();
 
-  TX.aniso = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+  TX.aniso = Math.min(q === 'baixa' ? 2 : 8, renderer.capabilities.getMaxAnisotropy());
+  if (q === 'alta') for (const k of ['ground', 'plaster', 'roof', 'wood', 'stone', 'metal', 'plain']) TX.SIZE[k] = Math.min(1024, (TX.SIZE[k] || 256) * 2);
   window.addEventListener('resize', onResize);
 }
 
@@ -292,6 +293,7 @@ function punch(a) {
 
 function damageActor(a, dmg, attacker, head, weapon) {
   if (!a.alive) return;
+  if (G.wait) return; // sala de espera: os tiros não machucam
   if (attacker && attacker !== a && CS.ally(attacker, a)) return; // sem fogo amigo no Contra Squad
   // no multiplayer o cliente só avisa o anfitrião dos acertos que ele mesmo fez
   if (NET.isClient()) {
@@ -901,6 +903,7 @@ function nearestWeaponLoot(a, maxD) {
 
 function playerPickup() {
   const p = G.player;
+  if (G.wait) { toast('Os itens valem depois do salto'); return; }
   const it = nearestWeaponLoot(p, 2.2);
   if (!it) return;
   if (NET.isClient()) { NET.requestTake(it); return; }
@@ -917,6 +920,7 @@ function updateLoot(dt) {
   for (let i = G.loot.length - 1; i >= 0; i--) {
     const it = G.loot[i];
     it.t += dt;
+    if (G.wait) continue; // na sala de espera ninguém pega os itens do mapa
     for (const a of G.actors) {
       if (!a.alive || a.phase !== 'ground' || a.remote) continue;
       const dx = a.pos.x - it.x, dz = a.pos.z - it.z;
@@ -1099,44 +1103,71 @@ function openAirdropGoods(a) {
 
 // ------------------------------------------------------------------ avião e salto
 let planeObj = null;
+// avião de transporte: fuselagem arredondada (torno), asa alta afinada, 4 turbo-hélices, cauda em T e rampa
 function buildPlane() {
+  const WHITE = 0xf2f3f0, GRAY = 0xb9bfc6, ORANGE = 0xf28a1e, NAVY = 0x22344f, GLASS = 0x1b2d42, DARK = 0x24272c;
   const P = [];
-  const B = (w, h, d, c, x, y, z, rx, ry, rz) => P.push(U.part(new THREE.BoxGeometry(w, h, d), c, U.mat4(x, y, z, rx, ry, rz), 'radial', 'plain'));
-  const S = (r, c, x, y, z, sx, sy, sz) => P.push(U.part(new THREE.SphereGeometry(r, 16, 12), c, U.mat4(x, y, z, 0, 0, 0, sx, sy, sz), 'radial', 'plain'));
-  const Cz = (r0, r1, l, c, x, y, z) => P.push(U.part(new THREE.CylinderGeometry(r1, r0, l, 16).rotateX(Math.PI / 2), c, U.mat4(x, y, z), null, 'plain'));
-  const WHITE = 0xf5f5f2, ORANGE = 0xf28a1e, TEAL = 0x2aa7b8, GLASS = 0x2b5d8a, DARK = 0x2a2d33;
-  Cz(1.55, 1.55, 7.5, WHITE, 0, 0, 0.3);           // fuselagem
-  S(1.55, WHITE, 0, 0, 4.05, 1, 1, 1.5);            // nariz
-  Cz(1.55, 0.45, 4.2, WHITE, 0, 0.35, -5.5);        // cone da cauda
-  Cz(1.57, 1.57, 7.3, ORANGE, 0, -0.62, 0.3);       // faixa laranja (embaixo)
-  B(3.15, 0.18, 7.3, TEAL, 0, -0.05, 0.3);          // faixa azul
-  for (const sx of [-1, 1]) {
-    for (let i = 0; i < 7; i++) B(0.08, 0.42, 0.5, GLASS, sx * 1.53, 0.5, 2.6 - i * 0.9);
-    B(0.9, 0.55, 0.08, GLASS, sx * 0.55, 0.65, 5.35, -0.5, sx * 0.35, 0);
-    // motor sob a asa
-    Cz(0.6, 0.5, 3.2, WHITE, sx * 3.7, 0.75, 1.2); Cz(0.62, 0.62, 0.4, ORANGE, sx * 3.7, 0.75, 2.0);
-    S(0.3, DARK, sx * 3.7, 0.75, 2.95, 1, 1, 1.4);
-    // trem de pouso
-    B(0.14, 1.3, 0.14, DARK, sx * 1.2, -1.75, 1.0); S(0.38, 0x151618, sx * 1.2, -2.35, 1.0, 0.5, 1, 1);
+  const add = (geo, mat) => P.push(U.part(geo, 0xffffff, null, null, mat || 'plain'));
+  // pinta por vértice conforme a posição (barriga cinza, faixa laranja, janelas escuras)
+  const paint = (geo, fn) => {
+    const pos = geo.attributes.position, n = pos.count, c = new Float32Array(n * 3), col = new THREE.Color();
+    for (let i = 0; i < n; i++) { col.set(fn(pos.getX(i), pos.getY(i), pos.getZ(i))); c[i * 3] = col.r; c[i * 3 + 1] = col.g; c[i * 3 + 2] = col.b; }
+    geo.setAttribute('color', new THREE.BufferAttribute(c, 3));
+    return geo;
+  };
+  const partC = (geo, mat) => { const g = geo.index ? geo.toNonIndexed() : geo; g.computeVertexNormals(); P.push({ g: g, o: null, mat: mat || 'plain' }); };
+  // fuselagem
+  const prof = [[0.05, -10.6], [0.4, -10.2], [0.8, -9.2], [1.25, -7.6], [1.7, -5.6], [1.95, -3.6], [2.0, -1], [2.0, 4.2], [1.92, 5.4], [1.7, 6.4], [1.3, 7.2], [0.8, 7.75], [0.3, 8.05], [0.02, 8.12]];
+  const fus = new THREE.LatheGeometry(prof.map(p => new THREE.Vector2(p[0], p[1])), 36).rotateX(Math.PI / 2);
+  { const p = fus.attributes.position; for (let i = 0; i < p.count; i++) { const z = p.getZ(i); p.setY(i, p.getY(i) * 1.08 + (z < -4 ? (-4 - z) * 0.2 : 0)); } }
+  partC(paint(fus, (x, y, z) => {
+    if (z > 5.6 && y > 0.45 && y < 1.35 && Math.abs(x) < 1.3) return GLASS;
+    if (z > -6 && z < 4.6 && y > 0.55 && y < 0.95 && Math.abs(x) > 1.6 && Math.floor((z + 6) / 1.1) % 2 === 0) return GLASS;
+    if (y < -0.75 + (z < -4 ? (-4 - z) * 0.2 : 0)) return GRAY;
+    if (Math.abs(y - (0.15 + (z < -4 ? (-4 - z) * 0.2 : 0))) < 0.18) return ORANGE;
+    if (Math.abs(y - (-0.12 + (z < -4 ? (-4 - z) * 0.2 : 0))) < 0.07) return NAVY;
+    return WHITE;
+  }), 'metal');
+  // carenagens do trem de pouso
+  for (const sx of [-1, 1]) partC(paint(new THREE.SphereGeometry(1, 20, 12).scale(0.75, 0.75, 3.4).translate(sx * 1.75, -1.25, 0.6), () => GRAY), 'metal');
+  // asa alta, afinando para as pontas, com diedro
+  const wing = new THREE.BoxGeometry(30, 0.42, 3.8, 30, 1, 2);
+  { const p = wing.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), k = Math.abs(x) / 15; p.setZ(i, p.getZ(i) * (1 - k * 0.45) - k * 0.6); p.setY(i, p.getY(i) * (1 - k * 0.5) + k * 0.55); } }
+  partC(paint(wing.translate(0, 1.9, 0.8), (x) => Math.abs(x) > 13.6 ? ORANGE : WHITE), 'metal');
+  // motores: nacele, entrada de ar, hélice de 4 pás com cubo (as pás giram em grupos separados)
+  const props = [];
+  for (const ex of [-8.4, -4.6, 4.6, 8.4]) {
+    const k = Math.abs(ex) / 15, ey = 1.9 + k * 0.55 - 0.35, ez = 0.8 - k * 0.6;
+    const nac = new THREE.LatheGeometry([[0.05, -2.6], [0.45, -2.2], [0.62, -1], [0.66, 1.2], [0.55, 2.2], [0.3, 2.6]].map(p => new THREE.Vector2(p[0], p[1])), 18).rotateX(Math.PI / 2);
+    partC(paint(nac.translate(ex, ey, ez + 1.2), (x, y, z) => z > ez + 2.9 ? DARK : WHITE), 'metal');
+    props.push([ex, ey, ez + 3.95]);
   }
-  B(16.5, 0.28, 2.4, WHITE, 0, 1.45, 0.8);          // asa alta
-  B(16.6, 0.3, 0.45, ORANGE, 0, 1.45, 1.8);
-  for (const sx of [-1, 1]) B(0.6, 0.32, 2.4, ORANGE, sx * 8.3, 1.45, 0.8);
-  B(6, 0.2, 1.6, WHITE, 0, 0.6, -7.0);              // estabilizador
-  B(6.05, 0.22, 0.35, ORANGE, 0, 0.6, -6.3);
-  B(0.28, 3.0, 2.0, ORANGE, 0, 2.0, -6.9, -0.25, 0, 0);  // leme
-  B(0.3, 0.6, 1.6, WHITE, 0, 0.95, -6.6, -0.25, 0, 0);
-  B(1.0, 0.1, 2.4, 0xbfbfbf, 1.4, -1.6, -2.6, 0.6, 0, 0);  // escada
+  // cauda: deriva alta enflechada e estabilizador em cima (cauda em T), rampa de carga
+  const fin = new THREE.BoxGeometry(0.34, 5.2, 3.6, 1, 6, 2);
+  { const p = fin.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i) + 2.6, k = y / 5.2; p.setZ(i, p.getZ(i) * (1 - k * 0.45) - k * 1.9); } }
+  partC(paint(fin.translate(0, 3.6 + 1.3, -8.4), (x, y) => y > 6.2 ? ORANGE : y > 5.9 ? NAVY : WHITE), 'metal');
+  const stab = new THREE.BoxGeometry(11, 0.26, 2.4, 10, 1, 1);
+  { const p = stab.attributes.position; for (let i = 0; i < p.count; i++) { const k = Math.abs(p.getX(i)) / 5.5; p.setZ(i, p.getZ(i) * (1 - k * 0.4) - k * 0.7); } }
+  partC(paint(stab.translate(0, 7.25, -10.4), (x) => Math.abs(x) > 4.9 ? ORANGE : WHITE), 'metal');
+  partC(paint(new THREE.BoxGeometry(2.6, 0.12, 3.6).translate(0, -0.25, -8.2), () => GRAY), 'metal');
   const pack = U.buildBy(P);
   const g = new THREE.Group();
-  for (const k in pack.mats) g.add(new THREE.Mesh(pack.mats[k], TX.mat(k)));
-  if (pack.o) g.add(new THREE.Mesh(pack.o, U.outlineMat(0.06)));
+  for (const k in pack.mats) {
+    const m = new THREE.Mesh(pack.mats[k], new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.35, roughness: 0.42, envMapIntensity: 1.1 }));
+    m.castShadow = true; g.add(m);
+  }
   g.userData.props = [];
-  const disc = new THREE.MeshBasicMaterial({ color: 0x9aa3ad, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false });
-  for (const x of [-3.7, 3.7]) {
-    const hub = new THREE.Group(); hub.position.set(x, 0.75, 3.2);
-    for (let i = 0; i < 3; i++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.7, 0.06), U.toon({ color: DARK })); bl.rotation.z = i * Math.PI * 2 / 3; bl.position.y = 0; bl.geometry.translate(0, 0.85, 0); hub.add(bl); }
-    const d = new THREE.Mesh(new THREE.CircleGeometry(1.75, 24), disc); hub.add(d);
+  const bladeM = new THREE.MeshStandardMaterial({ color: DARK, roughness: 0.5, metalness: 0.4 });
+  const spinM = new THREE.MeshStandardMaterial({ color: WHITE, roughness: 0.35, metalness: 0.4 });
+  const disc = new THREE.MeshBasicMaterial({ color: 0x9aa3ad, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false });
+  for (const [x, y, z] of props) {
+    const hub = new THREE.Group(); hub.position.set(x, y, z);
+    for (let i = 0; i < 4; i++) {
+      const bl = new THREE.Mesh(new THREE.BoxGeometry(0.26, 1.9, 0.05).translate(0, 0.95, 0), bladeM);
+      bl.rotation.z = i * Math.PI / 2; bl.rotation.y = 0.35; hub.add(bl);
+    }
+    hub.add(new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.7, 14).rotateX(Math.PI / 2).translate(0, 0, 0.3), spinM));
+    hub.add(new THREE.Mesh(new THREE.CircleGeometry(1.95, 28), disc));
     g.add(hub); g.userData.props.push(hub);
   }
   return g;
@@ -1165,8 +1196,64 @@ function jumpOut(a) {
   if (a.isPlayer) { G.yaw = a.face + Math.PI; G.pitch = -0.55; H.jumpHint.classList.remove('show'); }
 }
 
+// ---------- sala de espera (antes do avião, como no Free Fire) ----------
+// Todo mundo aparece numa área do mapa com uma arma para treinar; os tiros não machucam.
+// Quando o tempo acaba, as armas somem e todos vão para o avião.
+const WAIT_T = 20;
+function startWaiting(rnd) {
+  const a = W.A[W.MAP.show] || W.areaDefs[0];
+  G.wait = { t: WAIT_T, x: a.x, z: a.z, r: Math.max(10, Math.min(a.r * 0.75, 22)) };
+  G.drop = { state: 'wait', pos: new V3(), dir: new V3(1, 0, 0), start: new V3(), t: 0 };
+  if (planeObj) planeObj.visible = false;
+  for (const ac of G.actors) if (!(ac.remote && ac.human) && !(NET.isClient() && !ac.human)) placeWaiting(ac, rnd);
+  G.yaw = Math.atan2(G.player.pos.x - G.wait.x, G.player.pos.z - G.wait.z); G.pitch = -0.1;
+}
+function placeWaiting(ac, rnd) {
+  const w = G.wait;
+  let x = w.x, z = w.z;
+  for (let i = 0; i < 12; i++) {
+    const an = rnd() * 6.28, d = 2 + Math.sqrt(rnd()) * w.r;
+    x = w.x + Math.cos(an) * d; z = w.z + Math.sin(an) * d;
+    if (!W.inHouse(x, z) && W.height(x, z) > 0.2) break;
+  }
+  ac.pos.set(x, W.groundAt(x, z, 80), z); ac.vel.set(0, 0, 0); ac.vy = 0; ac.onGround = true;
+  ac.phase = 'ground'; ac.ch.root.visible = true; ac.ch.root.position.copy(ac.pos);
+  ac.face = rnd() * 6.28;
+  giveWeapon(ac, 'PISTOLA');
+  giveWeapon(ac, PRIMARIES[Math.floor(rnd() * PRIMARIES.length)]);
+  selectSlot(ac, 0);
+  if (ac.ai) { ac.ai.target = null; ac.ai.wp = null; }
+}
+function updateWaiting(dt) {
+  const w = G.wait;
+  w.t -= dt;
+  if (w.t > 0) return;
+  // fim da espera: limpa tudo e começa o voo
+  G.wait = null;
+  for (const ac of G.actors) {
+    if (ac.remote && ac.human) continue;
+    if (NET.isClient() && !ac.human) continue;
+    ac.slots = [null, null, null]; ac.cur = 3; ac.nadeHand = false; ac.reloadT = 0; ac.healT = 0;
+    ac.hp = ac.maxHp; ac.armor = 0; ac.helmet = 0; ac.nades = 0; ac.kits = 0; ac.gel = ac.isPlayer ? 2 : 1; ac.emote = null;
+    ac.kills = 0; ac.dmgDealt = 0; ac.aimOn = false; ac.crouch = false;
+    ac.phase = 'plane'; ac.ch.root.visible = false;
+    refreshGuns(ac);
+    if (ac.ai) { ac.ai.target = null; ac.ai.wp = null; }
+  }
+  for (const wl of G.walls.slice()) { wl.dead = true; scene.remove(wl.grp); }
+  G.walls.length = 0; W.dynamic.length = 0;
+  for (const n of G.nades) scene.remove(n.m);
+  G.nades.length = 0;
+  startDrop(G.dropArgs[0], G.dropArgs[1]);
+  G.yaw = Math.atan2(G.drop.dir.x, G.drop.dir.z) + Math.PI + 1.1; G.pitch = -0.25;
+  H.prep.classList.remove('hidden');
+  H.waitBox.classList.add('hidden');
+  bigText('PARA O AVIÃO!');
+}
+
 function updateDrop(dt) {
   const d = G.drop;
+  if (G.wait || d.state === 'wait') return;
   d.t += dt;
   d.pos.copy(d.start).addScaledVector(d.dir, d.speed * d.t); d.pos.y = d.alt;
   planeObj.position.copy(d.pos);
@@ -1541,7 +1628,11 @@ function botThink(b) {
   const z = G.zone;
   const zr = z.waiting ? z.toR : z.r;
   const zx = z.waiting ? z.toX : z.cx, zz = z.waiting ? z.toZ : z.cz;
-  if (G.mode === 'cs') {
+  if (G.wait) {
+    // sala de espera: anda e treina dentro da área
+    const w = G.wait;
+    if (!ai.wp || Math.hypot(b.pos.x - ai.wp.x, b.pos.z - ai.wp.z) < 3) { const an = Math.random() * 6.28, d = Math.random() * w.r; ai.wp = { x: w.x + Math.cos(an) * d, z: w.z + Math.sin(an) * d }; }
+  } else if (G.mode === 'cs') {
     // avança para o lado do inimigo por caminhos variados
     if (!ai.wp || Math.hypot(b.pos.x - ai.wp.x, b.pos.z - ai.wp.z) < 3) {
       const e = CS.BASE[1 - b.team], k = 0.2 + Math.random() * 0.8;

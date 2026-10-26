@@ -271,24 +271,71 @@ CH.boardGeo = function () {
   return CH.cache.board;
 };
 
+// paraquedas de células (tipo asa): perfil de asa com espessura, células infladas, painéis laterais
+// e faixas coloridas; a linha central passa pelo topo (y = 0) e as pontas caem em arco
+CH.CHUTE = { R: 3.7, SPAN: 1.02, CHORD: 2.8, CELLS: 9 };
 CH.chuteGeo = function () {
   if (CH.cache.chute) return CH.cache.chute;
-  // asa curva em gomos vermelho/branco
-  const g = new THREE.CylinderGeometry(3.4, 3.4, 2.6, 24, 4, true, -1.15, 2.3);
-  g.rotateX(-Math.PI / 2);
-  const ng = g.toNonIndexed();
-  const pos = ng.attributes.position, n = pos.count, cols = new Float32Array(n * 3);
-  for (let i = 0; i < n; i += 3) {
-    let x = 0, y = 0;
-    for (let k = 0; k < 3; k++) { x += pos.getX(i + k); y += pos.getY(i + k); }
-    const a = Math.floor((Math.atan2(x / 3, y / 3) + 1.15) / 2.3 * 8);
-    const red = a % 2 === 0;
-    for (let k = 0; k < 3; k++) { const j = (i + k) * 3; cols[j] = red ? 0.82 : 0.95; cols[j + 1] = red ? 0.16 : 0.95; cols[j + 2] = red ? 0.14 : 0.93; }
+  const C = CH.CHUTE, NS = C.CELLS * 4, NC = 14;
+  const pos = [], col = [], uv = [], idx = [];
+  const PAL = [[0.86, 0.14, 0.12], [0.96, 0.95, 0.92], [0.98, 0.72, 0.1], [0.96, 0.95, 0.92]];
+  // perfil NACA (espessura) com leve curvatura; t = 0 bordo de ataque (frente, +z)
+  const thick = (t) => 5 * 0.17 * (0.2969 * Math.sqrt(t) - 0.126 * t - 0.3516 * t * t + 0.2843 * t * t * t - 0.1036 * t * t * t * t) * C.CHORD;
+  const camber = (t) => 0.07 * C.CHORD * Math.sin(Math.PI * t) * (1 - t * 0.4);
+  const point = (u, t, side) => {
+    const a = u * C.SPAN, rx = Math.sin(a), ry = Math.cos(a);
+    const cellPh = ((u + 1) / 2 * C.CELLS) % 1, bulge = 0.82 + 0.28 * Math.sin(Math.PI * cellPh);
+    const off = camber(t) + side * thick(t) / 2 * (side > 0 ? bulge : 0.95);
+    const r = C.R + off;
+    return [rx * r, ry * r - C.R, C.CHORD / 2 - t * C.CHORD];
+  };
+  // superfície de cima (side 1) e de baixo (side -1)
+  for (const side of [1, -1]) {
+    const base = pos.length / 3;
+    for (let i = 0; i <= NS; i++) for (let j = 0; j <= NC; j++) {
+      const u = i / NS * 2 - 1, t = Math.pow(j / NC, 1.4);
+      const p = point(u, t, side);
+      pos.push(p[0], p[1], p[2]);
+      const cell = Math.min(C.CELLS - 1, Math.floor((u + 1) / 2 * C.CELLS)), c = PAL[cell % PAL.length], k = side > 0 ? 1 : 0.62;
+      col.push(c[0] * k, c[1] * k, c[2] * k);
+      uv.push((u + 1) * 6, t * 3);
+    }
+    for (let i = 0; i < NS; i++) for (let j = 0; j < NC; j++) {
+      const a = base + i * (NC + 1) + j, b2 = a + NC + 1;
+      if (side > 0) idx.push(a, b2, a + 1, b2, b2 + 1, a + 1); else idx.push(a, a + 1, b2, b2, a + 1, b2 + 1);
+    }
   }
-  ng.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-  ng.computeVertexNormals();
-  CH.cache.chute = ng;
-  return ng;
+  // painéis das pontas (fecham o perfil dos dois lados)
+  for (const u of [-1, 1]) {
+    const base = pos.length / 3;
+    for (let j = 0; j <= NC; j++) {
+      const t = Math.pow(j / NC, 1.4);
+      for (const side of [1, -1]) { const p = point(u, t, side); pos.push(p[0], p[1], p[2]); col.push(0.2, 0.22, 0.26); uv.push(t * 3, side > 0 ? 1 : 0); }
+    }
+    for (let j = 0; j < NC; j++) { const a = base + j * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  CH.cache.chute = g;
+  return g;
+};
+// linhas: de cada mão (tirantes) até vários pontos da parte de baixo da asa
+CH.chuteLines = function (y0) {
+  const C = CH.CHUTE, lp = [];
+  for (let i = 0; i < 8; i++) {
+    const u = (i + 0.5) / 8 * 2 - 1, a = u * C.SPAN, sd = u < 0 ? -1 : 1;
+    for (const t of [0.12, 0.45, 0.8]) {
+      const r = C.R - 0.08, x = Math.sin(a) * r, y = Math.cos(a) * r - C.R + y0, z = C.CHORD / 2 - t * C.CHORD;
+      lp.push(sd * 0.26, 2.02, 0.05, x, y, z);
+    }
+  }
+  const lg = new THREE.BufferGeometry();
+  lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
+  return lg;
 };
 
 // ---------- personagem ----------
@@ -332,16 +379,19 @@ CH.make = function (key, hq) {
   board.position.y = -0.02; board.visible = false;
   root.add(board);
   const chute = new THREE.Group();
-  const canopy = new THREE.Mesh(CH.chuteGeo(), new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.7 }));
-  canopy.position.y = 2.2; canopy.castShadow = true;
-  chute.add(canopy);
-  const lp = [];
-  for (const x of [-2.9, -1.2, 1.2, 2.9]) for (const z of [-1.1, 1.1]) {
-    const ang = x / 3.4;
-    lp.push(0, 1.45, 0, Math.sin(ang) * 3.25, 2.2 + Math.cos(ang) * 3.25 - 0.1, z);
+  if (!CH.chuteMat) {
+    const fab = TX.tex('weave');
+    CH.chuteMat = new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.62, metalness: 0.02, bumpMap: fab, bumpScale: 0.6, envMapIntensity: 0.8 });
+    CH.lineMat = new THREE.LineBasicMaterial({ color: 0x2a2d33, transparent: true, opacity: 0.85 });
   }
-  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
-  chute.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x333333 })));
+  const CY = 5.3;
+  const canopy = new THREE.Mesh(CH.chuteGeo(), CH.chuteMat);
+  canopy.position.y = CY; canopy.castShadow = true;
+  chute.add(canopy);
+  chute.add(new THREE.LineSegments(CH.chuteLines(CY), CH.lineMat));
+  // tirantes nos ombros
+  const riser = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.05, 0.06), new THREE.MeshStandardMaterial({ color: 0x1d2026, roughness: 0.8 }));
+  riser.position.set(0, 2.02, 0.05); chute.add(riser);
   chute.visible = false;
   root.add(chute);
 
@@ -542,6 +592,11 @@ CH.animate = function (ch, dt, s) {
   const mode = s.dead ? 'dead' : s.mode || 'ground';
   ch.board.visible = mode === 'fall' && s.board !== false;
   ch.chute.visible = mode === 'chute';
+  if (mode === 'chute') {
+    // a asa acompanha o corpo, balança e inclina um pouco nas curvas
+    const t = performance.now() / 1000;
+    ch.chute.rotation.set(Math.sin(t * 1.3) * 0.03, ch.body.rotation.y, Math.sin(t * 0.9) * 0.05, 'YXZ');
+  }
   if (mode === 'dead') {
     if (ch.deadT < 0) ch.deadT = 0;
     ch.deadT += dt;

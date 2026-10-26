@@ -692,6 +692,11 @@ body.hud-editing #joyBase { opacity: .9; }
 .rkWeapons { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; } .rkWeapons .chip { padding: 4px 10px; font-size: 12px; }
 @media (max-height: 460px) { .lbNav { top: 60px; transform: none; gap: 4px; } .lbNav button { height: 33px; font-size: 13px; width: 142px; } .lbNav button .ico { width: 17px; height: 17px; } }
 
+/* ---------- sala de espera ---------- */
+#waitBox { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 40px); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; padding: 5px 18px 6px;
+  background: linear-gradient(90deg, rgba(8,14,26,0), rgba(8,14,26,.85) 20%, rgba(8,14,26,.85) 80%, rgba(8,14,26,0)); text-align: center; pointer-events: none; }
+#waitBox b { font-size: 13px; letter-spacing: 3px; color: var(--yellow); } #waitBox span { font-size: 20px; font-weight: 600; } #waitBox small { font-size: 11px; color: var(--muted); }
+
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
   <linearGradient id="gmG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9f6ff"/><stop offset=".5" stop-color="#4fc3ff"/><stop offset="1" stop-color="#7a3cff"/></linearGradient>
@@ -740,6 +745,7 @@ body.hud-editing #joyBase { opacity: .9; }
   <div id="handHint"></div>
   <div id="emoteWheel" class="hidden"></div>
   <div id="bcOSD" class="hidden"><span class="rec">REC</span><b id="bcTime"></b><small>BODYCAM 07 · 1080p · AUTO</small></div>
+  <div id="waitBox" class="hidden"><b>SALA DE ESPERA</b><span id="waitT">O avião sai em 20s</span><small>Treine à vontade: aqui os tiros não machucam</small></div>
   <div id="csTags"></div>
   <div id="csScore" class="csScore"></div>
   <div id="csBuy" class="hidden"><b id="csBuyT">ESCOLHA SUA ARMA</b><div id="csBuyList"></div><small>Você começa com pistola, colete e capacete Nv. 2, 1 granada, 1 kit e 2 Gel.</small></div>
@@ -820,7 +826,7 @@ body.hud-editing #joyBase { opacity: .9; }
     <button id="mPlay" class="playBtn"><b>JOGAR</b><small>SOLO · SALA COM AMIGOS</small></button>
   </div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v2.7</div>
+  <div class="ver">v2.8</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1063,7 +1069,7 @@ body.hud-editing #joyBase { opacity: .9; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v2.7 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v2.8 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -1959,6 +1965,8 @@ W.collide = function (p, rad, feetY, height) {
 // altura do chão (terreno ou topo de bloco) logo abaixo do personagem
 W.groundAt = function (x, z, y) {
   let g = W.height(x, z);
+  const fl = W.floorAt(x, z);
+  if (fl && g > fl.b - 0.15) g = fl.b - 0.15; // dentro de construção vale o piso, não o morro
   const list = W.nearby(x, z, _near);
   for (const c of list) {
     if (c.type !== 'b' || c.dead || !c.walkable) continue;
@@ -2108,7 +2116,7 @@ W.buildSteps = function (scene, quality, mapId) {
   if (!W.seaMat) steps.push(['Mar', () => W.buildSea(scene)]); else steps.push(['Mar', () => W.updateSeaDepth()]);
   W.MAP.build.forEach((b, i) => steps.push([b[0], () => b[1](P, rnd)]));
   steps.push(['Pedras e caixas', () => { W.buildRocks(P, rnd); W.buildCrates(P, rnd); W.solidMesh(R, P, 0.04); }]);
-  steps.push(['Árvores', () => W.buildTrees(R, rnd)]);
+  steps.push(['Árvores', () => { W.carveFloors(); W.buildTrees(R, rnd); }]);
   steps.push(['Grama', () => W.buildGrass(R, quality)]);
   return steps;
 };
@@ -2207,6 +2215,8 @@ W.buildTerrain = function (scene) {
   geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
   geo.computeVertexNormals();
   const m = new THREE.Mesh(geo, TX.mat('ground'));
+  // o chão fica um tiquinho "atrás" de pisos e praças na mesma altura (sem piscar)
+  m.material.polygonOffset = true; m.material.polygonOffsetFactor = 1; m.material.polygonOffsetUnits = 3;
   m.receiveShadow = true;
   scene.add(m);
   W.terrain = m;
@@ -2635,7 +2645,40 @@ W.house = function (parts, x, z, rot, base, idx, styleName, size) {
   box(HW + 0.75, 0, HD + 0.5, 0.55, 0.85, 0.55, 0x2e9a4a, true, false, 'plain');
   W.lootSpots.push([wx(0.2, 0.8), wz(0.2, 0.8)], [wx(-HW + 1.6, 1.2), wz(-HW + 1.6, 1.2)]);
   W.occupied.push([x, z, Math.max(HW, HD) + 3.5]);
-  W.houses.push({ x: x, z: z, c: c, s: s, hw: HW + 0.35, hd: HD + 0.35, h: base + H });
+  W.houses.push({ x: x, z: z, c: c, s: s, hw: HW + 0.35, hd: HD + 0.35, h: base + H, b: base, fw: HW, fd: HD });
+};
+
+// piso de construção embaixo de (x, z): o terreno nunca passa por cima dele
+W.floorAt = function (x, z) {
+  for (const h of W.houses) {
+    if (h.b === undefined) continue;
+    const dx = x - h.x, dz = z - h.z;
+    if (Math.abs(dx) > h.fw + h.fd || Math.abs(dz) > h.fw + h.fd) continue;
+    const lx = dx * h.c - dz * h.s, lz = dx * h.s + dz * h.c;
+    if (Math.abs(lx) < h.fw && Math.abs(lz) < h.fd) return h;
+  }
+  return null;
+};
+// rebaixa o terreno desenhado que ficaria acima dos pisos (casas em encosta)
+W.carveFloors = function () {
+  const T = W.tg, m = W.terrain;
+  if (!T || !m) return;
+  const pos = m.geometry.attributes.position, R = T.N + 1, step = T.S / T.N;
+  let changed = false;
+  for (const h of W.houses) {
+    if (h.b === undefined) continue;
+    const rad = Math.hypot(h.fw, h.fd) + step;
+    const i0 = Math.max(0, Math.floor((h.x - rad + T.S / 2) / step)), i1 = Math.min(T.N, Math.ceil((h.x + rad + T.S / 2) / step));
+    const j0 = Math.max(0, Math.floor((h.z - rad + T.S / 2) / step)), j1 = Math.min(T.N, Math.ceil((h.z + rad + T.S / 2) / step));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const k = j * R + i, x = pos.getX(k), z = pos.getZ(k);
+      const dx = x - h.x, dz = z - h.z, lx = dx * h.c - dz * h.s, lz = dx * h.s + dz * h.c;
+      if (Math.abs(lx) > h.fw + 0.2 || Math.abs(lz) > h.fd + 0.2) continue;
+      const lim = h.b - 0.18;
+      if (pos.getY(k) > lim) { pos.setY(k, lim); T.h[k] = lim; changed = true; }
+    }
+  }
+  if (changed) { pos.needsUpdate = true; m.geometry.computeVertexNormals(); }
 };
 
 W.inHouse = function (x, z) {
@@ -3102,7 +3145,7 @@ W.update = function (dt, px, pz, py) {
     }
     // forro do terraço: bloqueia a câmera vinda de cima só por dentro
     W.occupied.push([x, z, Math.max(HW, HD) + 3.5]);
-    W.houses.push({ x: x, z: z, c: F.c, s: F.s, hw: HW + 0.3, hd: HD + 0.3, h: base + FH * floors });
+    W.houses.push({ x: x, z: z, c: F.c, s: F.s, hw: HW + 0.3, hd: HD + 0.3, h: base + FH * floors, b: base, fw: HW, fd: HD });
   };
 
   // ---------- hangar com teto em arco ----------
@@ -3129,7 +3172,7 @@ W.update = function (dt, px, pz, py) {
     F.box(HW - 3, 0, -HD + 3, 2.2, 1.4, 3.2, 0xd9a21c, 'metal', 2);
     F.loot(0, 0); F.loot(-HW * 0.5, HD * 0.4); F.loot(HW * 0.5, -HD * 0.5);
     W.occupied.push([x, z, Math.max(HW, HD) + 3]);
-    W.houses.push({ x: x, z: z, c: F.c, s: F.s, hw: HW, hd: HD, h: base + H });
+    W.houses.push({ x: x, z: z, c: F.c, s: F.s, hw: HW, hd: HD, h: base + H, b: base, fw: HW - 0.2, fd: HD - 0.2 });
   };
 
   // avião parado (cobertura no meio da pista)
@@ -4320,24 +4363,71 @@ CH.boardGeo = function () {
   return CH.cache.board;
 };
 
+// paraquedas de células (tipo asa): perfil de asa com espessura, células infladas, painéis laterais
+// e faixas coloridas; a linha central passa pelo topo (y = 0) e as pontas caem em arco
+CH.CHUTE = { R: 3.7, SPAN: 1.02, CHORD: 2.8, CELLS: 9 };
 CH.chuteGeo = function () {
   if (CH.cache.chute) return CH.cache.chute;
-  // asa curva em gomos vermelho/branco
-  const g = new THREE.CylinderGeometry(3.4, 3.4, 2.6, 24, 4, true, -1.15, 2.3);
-  g.rotateX(-Math.PI / 2);
-  const ng = g.toNonIndexed();
-  const pos = ng.attributes.position, n = pos.count, cols = new Float32Array(n * 3);
-  for (let i = 0; i < n; i += 3) {
-    let x = 0, y = 0;
-    for (let k = 0; k < 3; k++) { x += pos.getX(i + k); y += pos.getY(i + k); }
-    const a = Math.floor((Math.atan2(x / 3, y / 3) + 1.15) / 2.3 * 8);
-    const red = a % 2 === 0;
-    for (let k = 0; k < 3; k++) { const j = (i + k) * 3; cols[j] = red ? 0.82 : 0.95; cols[j + 1] = red ? 0.16 : 0.95; cols[j + 2] = red ? 0.14 : 0.93; }
+  const C = CH.CHUTE, NS = C.CELLS * 4, NC = 14;
+  const pos = [], col = [], uv = [], idx = [];
+  const PAL = [[0.86, 0.14, 0.12], [0.96, 0.95, 0.92], [0.98, 0.72, 0.1], [0.96, 0.95, 0.92]];
+  // perfil NACA (espessura) com leve curvatura; t = 0 bordo de ataque (frente, +z)
+  const thick = (t) => 5 * 0.17 * (0.2969 * Math.sqrt(t) - 0.126 * t - 0.3516 * t * t + 0.2843 * t * t * t - 0.1036 * t * t * t * t) * C.CHORD;
+  const camber = (t) => 0.07 * C.CHORD * Math.sin(Math.PI * t) * (1 - t * 0.4);
+  const point = (u, t, side) => {
+    const a = u * C.SPAN, rx = Math.sin(a), ry = Math.cos(a);
+    const cellPh = ((u + 1) / 2 * C.CELLS) % 1, bulge = 0.82 + 0.28 * Math.sin(Math.PI * cellPh);
+    const off = camber(t) + side * thick(t) / 2 * (side > 0 ? bulge : 0.95);
+    const r = C.R + off;
+    return [rx * r, ry * r - C.R, C.CHORD / 2 - t * C.CHORD];
+  };
+  // superfície de cima (side 1) e de baixo (side -1)
+  for (const side of [1, -1]) {
+    const base = pos.length / 3;
+    for (let i = 0; i <= NS; i++) for (let j = 0; j <= NC; j++) {
+      const u = i / NS * 2 - 1, t = Math.pow(j / NC, 1.4);
+      const p = point(u, t, side);
+      pos.push(p[0], p[1], p[2]);
+      const cell = Math.min(C.CELLS - 1, Math.floor((u + 1) / 2 * C.CELLS)), c = PAL[cell % PAL.length], k = side > 0 ? 1 : 0.62;
+      col.push(c[0] * k, c[1] * k, c[2] * k);
+      uv.push((u + 1) * 6, t * 3);
+    }
+    for (let i = 0; i < NS; i++) for (let j = 0; j < NC; j++) {
+      const a = base + i * (NC + 1) + j, b2 = a + NC + 1;
+      if (side > 0) idx.push(a, b2, a + 1, b2, b2 + 1, a + 1); else idx.push(a, a + 1, b2, b2, a + 1, b2 + 1);
+    }
   }
-  ng.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-  ng.computeVertexNormals();
-  CH.cache.chute = ng;
-  return ng;
+  // painéis das pontas (fecham o perfil dos dois lados)
+  for (const u of [-1, 1]) {
+    const base = pos.length / 3;
+    for (let j = 0; j <= NC; j++) {
+      const t = Math.pow(j / NC, 1.4);
+      for (const side of [1, -1]) { const p = point(u, t, side); pos.push(p[0], p[1], p[2]); col.push(0.2, 0.22, 0.26); uv.push(t * 3, side > 0 ? 1 : 0); }
+    }
+    for (let j = 0; j < NC; j++) { const a = base + j * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  CH.cache.chute = g;
+  return g;
+};
+// linhas: de cada mão (tirantes) até vários pontos da parte de baixo da asa
+CH.chuteLines = function (y0) {
+  const C = CH.CHUTE, lp = [];
+  for (let i = 0; i < 8; i++) {
+    const u = (i + 0.5) / 8 * 2 - 1, a = u * C.SPAN, sd = u < 0 ? -1 : 1;
+    for (const t of [0.12, 0.45, 0.8]) {
+      const r = C.R - 0.08, x = Math.sin(a) * r, y = Math.cos(a) * r - C.R + y0, z = C.CHORD / 2 - t * C.CHORD;
+      lp.push(sd * 0.26, 2.02, 0.05, x, y, z);
+    }
+  }
+  const lg = new THREE.BufferGeometry();
+  lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
+  return lg;
 };
 
 // ---------- personagem ----------
@@ -4381,16 +4471,19 @@ CH.make = function (key, hq) {
   board.position.y = -0.02; board.visible = false;
   root.add(board);
   const chute = new THREE.Group();
-  const canopy = new THREE.Mesh(CH.chuteGeo(), new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.7 }));
-  canopy.position.y = 2.2; canopy.castShadow = true;
-  chute.add(canopy);
-  const lp = [];
-  for (const x of [-2.9, -1.2, 1.2, 2.9]) for (const z of [-1.1, 1.1]) {
-    const ang = x / 3.4;
-    lp.push(0, 1.45, 0, Math.sin(ang) * 3.25, 2.2 + Math.cos(ang) * 3.25 - 0.1, z);
+  if (!CH.chuteMat) {
+    const fab = TX.tex('weave');
+    CH.chuteMat = new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.62, metalness: 0.02, bumpMap: fab, bumpScale: 0.6, envMapIntensity: 0.8 });
+    CH.lineMat = new THREE.LineBasicMaterial({ color: 0x2a2d33, transparent: true, opacity: 0.85 });
   }
-  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
-  chute.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x333333 })));
+  const CY = 5.3;
+  const canopy = new THREE.Mesh(CH.chuteGeo(), CH.chuteMat);
+  canopy.position.y = CY; canopy.castShadow = true;
+  chute.add(canopy);
+  chute.add(new THREE.LineSegments(CH.chuteLines(CY), CH.lineMat));
+  // tirantes nos ombros
+  const riser = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.05, 0.06), new THREE.MeshStandardMaterial({ color: 0x1d2026, roughness: 0.8 }));
+  riser.position.set(0, 2.02, 0.05); chute.add(riser);
   chute.visible = false;
   root.add(chute);
 
@@ -4591,6 +4684,11 @@ CH.animate = function (ch, dt, s) {
   const mode = s.dead ? 'dead' : s.mode || 'ground';
   ch.board.visible = mode === 'fall' && s.board !== false;
   ch.chute.visible = mode === 'chute';
+  if (mode === 'chute') {
+    // a asa acompanha o corpo, balança e inclina um pouco nas curvas
+    const t = performance.now() / 1000;
+    ch.chute.rotation.set(Math.sin(t * 1.3) * 0.03, ch.body.rotation.y, Math.sin(t * 0.9) * 0.05, 'YXZ');
+  }
   if (mode === 'dead') {
     if (ch.deadT < 0) ch.deadT = 0;
     ch.deadT += dt;
@@ -5340,7 +5438,8 @@ function initRenderer() {
   scene.add(sun); scene.add(sun.target);
   G.sunDir = new V3(-0.55, 1, 0.42).normalize();
 
-  TX.aniso = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+  TX.aniso = Math.min(q === 'baixa' ? 2 : 8, renderer.capabilities.getMaxAnisotropy());
+  if (q === 'alta') for (const k of ['ground', 'plaster', 'roof', 'wood', 'stone', 'metal', 'plain']) TX.SIZE[k] = Math.min(1024, (TX.SIZE[k] || 256) * 2);
   window.addEventListener('resize', onResize);
 }
 
@@ -5528,6 +5627,7 @@ function punch(a) {
 
 function damageActor(a, dmg, attacker, head, weapon) {
   if (!a.alive) return;
+  if (G.wait) return; // sala de espera: os tiros não machucam
   if (attacker && attacker !== a && CS.ally(attacker, a)) return; // sem fogo amigo no Contra Squad
   // no multiplayer o cliente só avisa o anfitrião dos acertos que ele mesmo fez
   if (NET.isClient()) {
@@ -6137,6 +6237,7 @@ function nearestWeaponLoot(a, maxD) {
 
 function playerPickup() {
   const p = G.player;
+  if (G.wait) { toast('Os itens valem depois do salto'); return; }
   const it = nearestWeaponLoot(p, 2.2);
   if (!it) return;
   if (NET.isClient()) { NET.requestTake(it); return; }
@@ -6153,6 +6254,7 @@ function updateLoot(dt) {
   for (let i = G.loot.length - 1; i >= 0; i--) {
     const it = G.loot[i];
     it.t += dt;
+    if (G.wait) continue; // na sala de espera ninguém pega os itens do mapa
     for (const a of G.actors) {
       if (!a.alive || a.phase !== 'ground' || a.remote) continue;
       const dx = a.pos.x - it.x, dz = a.pos.z - it.z;
@@ -6335,44 +6437,71 @@ function openAirdropGoods(a) {
 
 // ------------------------------------------------------------------ avião e salto
 let planeObj = null;
+// avião de transporte: fuselagem arredondada (torno), asa alta afinada, 4 turbo-hélices, cauda em T e rampa
 function buildPlane() {
+  const WHITE = 0xf2f3f0, GRAY = 0xb9bfc6, ORANGE = 0xf28a1e, NAVY = 0x22344f, GLASS = 0x1b2d42, DARK = 0x24272c;
   const P = [];
-  const B = (w, h, d, c, x, y, z, rx, ry, rz) => P.push(U.part(new THREE.BoxGeometry(w, h, d), c, U.mat4(x, y, z, rx, ry, rz), 'radial', 'plain'));
-  const S = (r, c, x, y, z, sx, sy, sz) => P.push(U.part(new THREE.SphereGeometry(r, 16, 12), c, U.mat4(x, y, z, 0, 0, 0, sx, sy, sz), 'radial', 'plain'));
-  const Cz = (r0, r1, l, c, x, y, z) => P.push(U.part(new THREE.CylinderGeometry(r1, r0, l, 16).rotateX(Math.PI / 2), c, U.mat4(x, y, z), null, 'plain'));
-  const WHITE = 0xf5f5f2, ORANGE = 0xf28a1e, TEAL = 0x2aa7b8, GLASS = 0x2b5d8a, DARK = 0x2a2d33;
-  Cz(1.55, 1.55, 7.5, WHITE, 0, 0, 0.3);           // fuselagem
-  S(1.55, WHITE, 0, 0, 4.05, 1, 1, 1.5);            // nariz
-  Cz(1.55, 0.45, 4.2, WHITE, 0, 0.35, -5.5);        // cone da cauda
-  Cz(1.57, 1.57, 7.3, ORANGE, 0, -0.62, 0.3);       // faixa laranja (embaixo)
-  B(3.15, 0.18, 7.3, TEAL, 0, -0.05, 0.3);          // faixa azul
-  for (const sx of [-1, 1]) {
-    for (let i = 0; i < 7; i++) B(0.08, 0.42, 0.5, GLASS, sx * 1.53, 0.5, 2.6 - i * 0.9);
-    B(0.9, 0.55, 0.08, GLASS, sx * 0.55, 0.65, 5.35, -0.5, sx * 0.35, 0);
-    // motor sob a asa
-    Cz(0.6, 0.5, 3.2, WHITE, sx * 3.7, 0.75, 1.2); Cz(0.62, 0.62, 0.4, ORANGE, sx * 3.7, 0.75, 2.0);
-    S(0.3, DARK, sx * 3.7, 0.75, 2.95, 1, 1, 1.4);
-    // trem de pouso
-    B(0.14, 1.3, 0.14, DARK, sx * 1.2, -1.75, 1.0); S(0.38, 0x151618, sx * 1.2, -2.35, 1.0, 0.5, 1, 1);
+  const add = (geo, mat) => P.push(U.part(geo, 0xffffff, null, null, mat || 'plain'));
+  // pinta por vértice conforme a posição (barriga cinza, faixa laranja, janelas escuras)
+  const paint = (geo, fn) => {
+    const pos = geo.attributes.position, n = pos.count, c = new Float32Array(n * 3), col = new THREE.Color();
+    for (let i = 0; i < n; i++) { col.set(fn(pos.getX(i), pos.getY(i), pos.getZ(i))); c[i * 3] = col.r; c[i * 3 + 1] = col.g; c[i * 3 + 2] = col.b; }
+    geo.setAttribute('color', new THREE.BufferAttribute(c, 3));
+    return geo;
+  };
+  const partC = (geo, mat) => { const g = geo.index ? geo.toNonIndexed() : geo; g.computeVertexNormals(); P.push({ g: g, o: null, mat: mat || 'plain' }); };
+  // fuselagem
+  const prof = [[0.05, -10.6], [0.4, -10.2], [0.8, -9.2], [1.25, -7.6], [1.7, -5.6], [1.95, -3.6], [2.0, -1], [2.0, 4.2], [1.92, 5.4], [1.7, 6.4], [1.3, 7.2], [0.8, 7.75], [0.3, 8.05], [0.02, 8.12]];
+  const fus = new THREE.LatheGeometry(prof.map(p => new THREE.Vector2(p[0], p[1])), 36).rotateX(Math.PI / 2);
+  { const p = fus.attributes.position; for (let i = 0; i < p.count; i++) { const z = p.getZ(i); p.setY(i, p.getY(i) * 1.08 + (z < -4 ? (-4 - z) * 0.2 : 0)); } }
+  partC(paint(fus, (x, y, z) => {
+    if (z > 5.6 && y > 0.45 && y < 1.35 && Math.abs(x) < 1.3) return GLASS;
+    if (z > -6 && z < 4.6 && y > 0.55 && y < 0.95 && Math.abs(x) > 1.6 && Math.floor((z + 6) / 1.1) % 2 === 0) return GLASS;
+    if (y < -0.75 + (z < -4 ? (-4 - z) * 0.2 : 0)) return GRAY;
+    if (Math.abs(y - (0.15 + (z < -4 ? (-4 - z) * 0.2 : 0))) < 0.18) return ORANGE;
+    if (Math.abs(y - (-0.12 + (z < -4 ? (-4 - z) * 0.2 : 0))) < 0.07) return NAVY;
+    return WHITE;
+  }), 'metal');
+  // carenagens do trem de pouso
+  for (const sx of [-1, 1]) partC(paint(new THREE.SphereGeometry(1, 20, 12).scale(0.75, 0.75, 3.4).translate(sx * 1.75, -1.25, 0.6), () => GRAY), 'metal');
+  // asa alta, afinando para as pontas, com diedro
+  const wing = new THREE.BoxGeometry(30, 0.42, 3.8, 30, 1, 2);
+  { const p = wing.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), k = Math.abs(x) / 15; p.setZ(i, p.getZ(i) * (1 - k * 0.45) - k * 0.6); p.setY(i, p.getY(i) * (1 - k * 0.5) + k * 0.55); } }
+  partC(paint(wing.translate(0, 1.9, 0.8), (x) => Math.abs(x) > 13.6 ? ORANGE : WHITE), 'metal');
+  // motores: nacele, entrada de ar, hélice de 4 pás com cubo (as pás giram em grupos separados)
+  const props = [];
+  for (const ex of [-8.4, -4.6, 4.6, 8.4]) {
+    const k = Math.abs(ex) / 15, ey = 1.9 + k * 0.55 - 0.35, ez = 0.8 - k * 0.6;
+    const nac = new THREE.LatheGeometry([[0.05, -2.6], [0.45, -2.2], [0.62, -1], [0.66, 1.2], [0.55, 2.2], [0.3, 2.6]].map(p => new THREE.Vector2(p[0], p[1])), 18).rotateX(Math.PI / 2);
+    partC(paint(nac.translate(ex, ey, ez + 1.2), (x, y, z) => z > ez + 2.9 ? DARK : WHITE), 'metal');
+    props.push([ex, ey, ez + 3.95]);
   }
-  B(16.5, 0.28, 2.4, WHITE, 0, 1.45, 0.8);          // asa alta
-  B(16.6, 0.3, 0.45, ORANGE, 0, 1.45, 1.8);
-  for (const sx of [-1, 1]) B(0.6, 0.32, 2.4, ORANGE, sx * 8.3, 1.45, 0.8);
-  B(6, 0.2, 1.6, WHITE, 0, 0.6, -7.0);              // estabilizador
-  B(6.05, 0.22, 0.35, ORANGE, 0, 0.6, -6.3);
-  B(0.28, 3.0, 2.0, ORANGE, 0, 2.0, -6.9, -0.25, 0, 0);  // leme
-  B(0.3, 0.6, 1.6, WHITE, 0, 0.95, -6.6, -0.25, 0, 0);
-  B(1.0, 0.1, 2.4, 0xbfbfbf, 1.4, -1.6, -2.6, 0.6, 0, 0);  // escada
+  // cauda: deriva alta enflechada e estabilizador em cima (cauda em T), rampa de carga
+  const fin = new THREE.BoxGeometry(0.34, 5.2, 3.6, 1, 6, 2);
+  { const p = fin.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i) + 2.6, k = y / 5.2; p.setZ(i, p.getZ(i) * (1 - k * 0.45) - k * 1.9); } }
+  partC(paint(fin.translate(0, 3.6 + 1.3, -8.4), (x, y) => y > 6.2 ? ORANGE : y > 5.9 ? NAVY : WHITE), 'metal');
+  const stab = new THREE.BoxGeometry(11, 0.26, 2.4, 10, 1, 1);
+  { const p = stab.attributes.position; for (let i = 0; i < p.count; i++) { const k = Math.abs(p.getX(i)) / 5.5; p.setZ(i, p.getZ(i) * (1 - k * 0.4) - k * 0.7); } }
+  partC(paint(stab.translate(0, 7.25, -10.4), (x) => Math.abs(x) > 4.9 ? ORANGE : WHITE), 'metal');
+  partC(paint(new THREE.BoxGeometry(2.6, 0.12, 3.6).translate(0, -0.25, -8.2), () => GRAY), 'metal');
   const pack = U.buildBy(P);
   const g = new THREE.Group();
-  for (const k in pack.mats) g.add(new THREE.Mesh(pack.mats[k], TX.mat(k)));
-  if (pack.o) g.add(new THREE.Mesh(pack.o, U.outlineMat(0.06)));
+  for (const k in pack.mats) {
+    const m = new THREE.Mesh(pack.mats[k], new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.35, roughness: 0.42, envMapIntensity: 1.1 }));
+    m.castShadow = true; g.add(m);
+  }
   g.userData.props = [];
-  const disc = new THREE.MeshBasicMaterial({ color: 0x9aa3ad, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false });
-  for (const x of [-3.7, 3.7]) {
-    const hub = new THREE.Group(); hub.position.set(x, 0.75, 3.2);
-    for (let i = 0; i < 3; i++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.7, 0.06), U.toon({ color: DARK })); bl.rotation.z = i * Math.PI * 2 / 3; bl.position.y = 0; bl.geometry.translate(0, 0.85, 0); hub.add(bl); }
-    const d = new THREE.Mesh(new THREE.CircleGeometry(1.75, 24), disc); hub.add(d);
+  const bladeM = new THREE.MeshStandardMaterial({ color: DARK, roughness: 0.5, metalness: 0.4 });
+  const spinM = new THREE.MeshStandardMaterial({ color: WHITE, roughness: 0.35, metalness: 0.4 });
+  const disc = new THREE.MeshBasicMaterial({ color: 0x9aa3ad, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false });
+  for (const [x, y, z] of props) {
+    const hub = new THREE.Group(); hub.position.set(x, y, z);
+    for (let i = 0; i < 4; i++) {
+      const bl = new THREE.Mesh(new THREE.BoxGeometry(0.26, 1.9, 0.05).translate(0, 0.95, 0), bladeM);
+      bl.rotation.z = i * Math.PI / 2; bl.rotation.y = 0.35; hub.add(bl);
+    }
+    hub.add(new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.7, 14).rotateX(Math.PI / 2).translate(0, 0, 0.3), spinM));
+    hub.add(new THREE.Mesh(new THREE.CircleGeometry(1.95, 28), disc));
     g.add(hub); g.userData.props.push(hub);
   }
   return g;
@@ -6401,8 +6530,64 @@ function jumpOut(a) {
   if (a.isPlayer) { G.yaw = a.face + Math.PI; G.pitch = -0.55; H.jumpHint.classList.remove('show'); }
 }
 
+// ---------- sala de espera (antes do avião, como no Free Fire) ----------
+// Todo mundo aparece numa área do mapa com uma arma para treinar; os tiros não machucam.
+// Quando o tempo acaba, as armas somem e todos vão para o avião.
+const WAIT_T = 20;
+function startWaiting(rnd) {
+  const a = W.A[W.MAP.show] || W.areaDefs[0];
+  G.wait = { t: WAIT_T, x: a.x, z: a.z, r: Math.max(10, Math.min(a.r * 0.75, 22)) };
+  G.drop = { state: 'wait', pos: new V3(), dir: new V3(1, 0, 0), start: new V3(), t: 0 };
+  if (planeObj) planeObj.visible = false;
+  for (const ac of G.actors) if (!(ac.remote && ac.human) && !(NET.isClient() && !ac.human)) placeWaiting(ac, rnd);
+  G.yaw = Math.atan2(G.player.pos.x - G.wait.x, G.player.pos.z - G.wait.z); G.pitch = -0.1;
+}
+function placeWaiting(ac, rnd) {
+  const w = G.wait;
+  let x = w.x, z = w.z;
+  for (let i = 0; i < 12; i++) {
+    const an = rnd() * 6.28, d = 2 + Math.sqrt(rnd()) * w.r;
+    x = w.x + Math.cos(an) * d; z = w.z + Math.sin(an) * d;
+    if (!W.inHouse(x, z) && W.height(x, z) > 0.2) break;
+  }
+  ac.pos.set(x, W.groundAt(x, z, 80), z); ac.vel.set(0, 0, 0); ac.vy = 0; ac.onGround = true;
+  ac.phase = 'ground'; ac.ch.root.visible = true; ac.ch.root.position.copy(ac.pos);
+  ac.face = rnd() * 6.28;
+  giveWeapon(ac, 'PISTOLA');
+  giveWeapon(ac, PRIMARIES[Math.floor(rnd() * PRIMARIES.length)]);
+  selectSlot(ac, 0);
+  if (ac.ai) { ac.ai.target = null; ac.ai.wp = null; }
+}
+function updateWaiting(dt) {
+  const w = G.wait;
+  w.t -= dt;
+  if (w.t > 0) return;
+  // fim da espera: limpa tudo e começa o voo
+  G.wait = null;
+  for (const ac of G.actors) {
+    if (ac.remote && ac.human) continue;
+    if (NET.isClient() && !ac.human) continue;
+    ac.slots = [null, null, null]; ac.cur = 3; ac.nadeHand = false; ac.reloadT = 0; ac.healT = 0;
+    ac.hp = ac.maxHp; ac.armor = 0; ac.helmet = 0; ac.nades = 0; ac.kits = 0; ac.gel = ac.isPlayer ? 2 : 1; ac.emote = null;
+    ac.kills = 0; ac.dmgDealt = 0; ac.aimOn = false; ac.crouch = false;
+    ac.phase = 'plane'; ac.ch.root.visible = false;
+    refreshGuns(ac);
+    if (ac.ai) { ac.ai.target = null; ac.ai.wp = null; }
+  }
+  for (const wl of G.walls.slice()) { wl.dead = true; scene.remove(wl.grp); }
+  G.walls.length = 0; W.dynamic.length = 0;
+  for (const n of G.nades) scene.remove(n.m);
+  G.nades.length = 0;
+  startDrop(G.dropArgs[0], G.dropArgs[1]);
+  G.yaw = Math.atan2(G.drop.dir.x, G.drop.dir.z) + Math.PI + 1.1; G.pitch = -0.25;
+  H.prep.classList.remove('hidden');
+  H.waitBox.classList.add('hidden');
+  bigText('PARA O AVIÃO!');
+}
+
 function updateDrop(dt) {
   const d = G.drop;
+  if (G.wait || d.state === 'wait') return;
   d.t += dt;
   d.pos.copy(d.start).addScaledVector(d.dir, d.speed * d.t); d.pos.y = d.alt;
   planeObj.position.copy(d.pos);
@@ -6777,7 +6962,11 @@ function botThink(b) {
   const z = G.zone;
   const zr = z.waiting ? z.toR : z.r;
   const zx = z.waiting ? z.toX : z.cx, zz = z.waiting ? z.toZ : z.cz;
-  if (G.mode === 'cs') {
+  if (G.wait) {
+    // sala de espera: anda e treina dentro da área
+    const w = G.wait;
+    if (!ai.wp || Math.hypot(b.pos.x - ai.wp.x, b.pos.z - ai.wp.z) < 3) { const an = Math.random() * 6.28, d = Math.random() * w.r; ai.wp = { x: w.x + Math.cos(an) * d, z: w.z + Math.sin(an) * d }; }
+  } else if (G.mode === 'cs') {
     // avança para o lado do inimigo por caminhos variados
     if (!ai.wp || Math.hypot(b.pos.x - ai.wp.x, b.pos.z - ai.wp.z) < 3) {
       const e = CS.BASE[1 - b.team], k = 0.2 + Math.random() * 0.8;
@@ -9858,6 +10047,7 @@ function setHTML(el, key, v) { if (H.cache[key] === v) return; H.cache[key] = v;
 function setClass(el, key, cls, on) { if (H.cache[key] === on) return; H.cache[key] = on; el.classList.toggle(cls, on); }
 
 function initHUD() {
+  H.waitBox = $('waitBox'); H.waitT = $('waitT');
   document.querySelectorAll('[data-icon]').forEach(el => { el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)); });
   ['hud', 'touch', 'hpFill', 'hpNum', 'vestBadge', 'helmBadge', 'aliveNum', 'killNum', 'compassStrip', 'compassNum', 'notifs', 'areaBanner', 'areaName',
     'killBanner', 'kbCount', 'kbName', 'minimap', 'zoneTime', 'zoneText', 'topStatus', 'prep', 'prepNum', 'bigText', 'jumpHint', 'diveStats', 'diveHint', 'altMark',
@@ -9915,6 +10105,7 @@ function updateHUD(dt) {
   setText(H.topStatus, 'ts', nPlane + nAir > 0 ? 'no avião ' + nPlane + ' · no ar ' + nAir + ' · saltaram ' + (G.actors.length - nPlane) + '/' + G.actors.length : '');
   setClass(H.topStatus, 'tsh', 'hidden', nPlane + nAir === 0);
   if (G.mode === 'cs') CS.hud();
+  if (G.wait) setText(H.waitT, 'wt', 'O avião sai em ' + Math.max(0, Math.ceil(G.wait.t)) + 's');
   // barra de armas e itens
   for (let i = 0; i < 3; i++) {
     const s = p.slots[i], el = H['wb' + i];
@@ -10134,7 +10325,7 @@ function goLobby() {
   G.state = 'lobby';
   showScreen('lobbyScr');
   showEmote(Math.random() < 0.5 ? 'wave' : 'cheer2');
-  lobbyT = 15;
+  lobbyT = 5;
   const cs = G.settings.mode === 'cs', n = G.settings.csSize || 4;
   $('lobbyPlayers').textContent = cs ? n + ' x ' + n : TOTAL + '/' + TOTAL;
   $('lpMap').textContent = cs ? 'ARENA' : W.MAP.name.toUpperCase();
@@ -10208,12 +10399,14 @@ function startMatch(msg) {
   }
   G.airdrop = { state: 'none' };
   initZone();
-  if (msg) startDrop(msg.ang, msg.side); else startDrop();
-  G.yaw = Math.atan2(G.drop.dir.x, G.drop.dir.z) + Math.PI + 1.1; G.pitch = -0.25;
+  // sala de espera antes do avião
+  G.dropArgs = msg ? [msg.ang, msg.side] : [Math.random() * Math.PI * 2, Math.random() - 0.5];
+  startWaiting(msg ? U.rng(msg.seed + 11) : Math.random);
   G.state = 'play';
   H.hud.classList.remove('hidden');
   H.touch.classList.toggle('hidden', !isTouch);
-  H.prep.classList.remove('hidden');
+  H.prep.classList.add('hidden');
+  H.waitBox.classList.remove('hidden');
   H.jumpHint.classList.remove('show');
   onResize();
   warmup();
@@ -10726,6 +10919,8 @@ function initScreens() {
 
 // ------------------------------------------------------------------ partida
 function clearMatch() {
+  G.wait = null;
+  if (H.waitBox) H.waitBox.classList.add('hidden');
   if ($('csBuy')) $('csBuy').classList.add('hidden');
   if ($('csTags')) $('csTags').innerHTML = '';
   CS.tags = [];
@@ -10761,6 +10956,7 @@ function tick(dt) {
   updateNades(dt);
   updateLoot(dt);
   if (G.mode === 'cs') CS.update(dt);
+  else if (G.wait) updateWaiting(dt);
   else { updateZone(dt); updateAirdrop(dt); }
   if (G.endT > 0) { G.endT -= dt; if (G.endT <= 0) endMatch(); }
   NET.update(dt);

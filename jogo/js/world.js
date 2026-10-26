@@ -233,6 +233,8 @@ W.collide = function (p, rad, feetY, height) {
 // altura do chão (terreno ou topo de bloco) logo abaixo do personagem
 W.groundAt = function (x, z, y) {
   let g = W.height(x, z);
+  const fl = W.floorAt(x, z);
+  if (fl && g > fl.b - 0.15) g = fl.b - 0.15; // dentro de construção vale o piso, não o morro
   const list = W.nearby(x, z, _near);
   for (const c of list) {
     if (c.type !== 'b' || c.dead || !c.walkable) continue;
@@ -382,7 +384,7 @@ W.buildSteps = function (scene, quality, mapId) {
   if (!W.seaMat) steps.push(['Mar', () => W.buildSea(scene)]); else steps.push(['Mar', () => W.updateSeaDepth()]);
   W.MAP.build.forEach((b, i) => steps.push([b[0], () => b[1](P, rnd)]));
   steps.push(['Pedras e caixas', () => { W.buildRocks(P, rnd); W.buildCrates(P, rnd); W.solidMesh(R, P, 0.04); }]);
-  steps.push(['Árvores', () => W.buildTrees(R, rnd)]);
+  steps.push(['Árvores', () => { W.carveFloors(); W.buildTrees(R, rnd); }]);
   steps.push(['Grama', () => W.buildGrass(R, quality)]);
   return steps;
 };
@@ -481,6 +483,8 @@ W.buildTerrain = function (scene) {
   geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
   geo.computeVertexNormals();
   const m = new THREE.Mesh(geo, TX.mat('ground'));
+  // o chão fica um tiquinho "atrás" de pisos e praças na mesma altura (sem piscar)
+  m.material.polygonOffset = true; m.material.polygonOffsetFactor = 1; m.material.polygonOffsetUnits = 3;
   m.receiveShadow = true;
   scene.add(m);
   W.terrain = m;
@@ -909,7 +913,40 @@ W.house = function (parts, x, z, rot, base, idx, styleName, size) {
   box(HW + 0.75, 0, HD + 0.5, 0.55, 0.85, 0.55, 0x2e9a4a, true, false, 'plain');
   W.lootSpots.push([wx(0.2, 0.8), wz(0.2, 0.8)], [wx(-HW + 1.6, 1.2), wz(-HW + 1.6, 1.2)]);
   W.occupied.push([x, z, Math.max(HW, HD) + 3.5]);
-  W.houses.push({ x: x, z: z, c: c, s: s, hw: HW + 0.35, hd: HD + 0.35, h: base + H });
+  W.houses.push({ x: x, z: z, c: c, s: s, hw: HW + 0.35, hd: HD + 0.35, h: base + H, b: base, fw: HW, fd: HD });
+};
+
+// piso de construção embaixo de (x, z): o terreno nunca passa por cima dele
+W.floorAt = function (x, z) {
+  for (const h of W.houses) {
+    if (h.b === undefined) continue;
+    const dx = x - h.x, dz = z - h.z;
+    if (Math.abs(dx) > h.fw + h.fd || Math.abs(dz) > h.fw + h.fd) continue;
+    const lx = dx * h.c - dz * h.s, lz = dx * h.s + dz * h.c;
+    if (Math.abs(lx) < h.fw && Math.abs(lz) < h.fd) return h;
+  }
+  return null;
+};
+// rebaixa o terreno desenhado que ficaria acima dos pisos (casas em encosta)
+W.carveFloors = function () {
+  const T = W.tg, m = W.terrain;
+  if (!T || !m) return;
+  const pos = m.geometry.attributes.position, R = T.N + 1, step = T.S / T.N;
+  let changed = false;
+  for (const h of W.houses) {
+    if (h.b === undefined) continue;
+    const rad = Math.hypot(h.fw, h.fd) + step;
+    const i0 = Math.max(0, Math.floor((h.x - rad + T.S / 2) / step)), i1 = Math.min(T.N, Math.ceil((h.x + rad + T.S / 2) / step));
+    const j0 = Math.max(0, Math.floor((h.z - rad + T.S / 2) / step)), j1 = Math.min(T.N, Math.ceil((h.z + rad + T.S / 2) / step));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const k = j * R + i, x = pos.getX(k), z = pos.getZ(k);
+      const dx = x - h.x, dz = z - h.z, lx = dx * h.c - dz * h.s, lz = dx * h.s + dz * h.c;
+      if (Math.abs(lx) > h.fw + 0.2 || Math.abs(lz) > h.fd + 0.2) continue;
+      const lim = h.b - 0.18;
+      if (pos.getY(k) > lim) { pos.setY(k, lim); T.h[k] = lim; changed = true; }
+    }
+  }
+  if (changed) { pos.needsUpdate = true; m.geometry.computeVertexNormals(); }
 };
 
 W.inHouse = function (x, z) {

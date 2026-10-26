@@ -82,6 +82,16 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v2.8
+- **Sala de espera (como no Free Fire):** antes do avião, todo mundo aparece numa área do mapa com uma arma aleatória e pistola, durante 20 segundos. Os tiros ali não machucam e os itens do chão ficam para depois do salto. Quando o tempo acaba, as armas somem e todos vão para o avião.
+- **Avião novo:** cargueiro com fuselagem arredondada, cabine com janelas, asa alta afinada, 4 motores turbo-hélice com hélices girando, cauda em T, rampa de carga e pintura branca com faixas.
+- **Paraquedas novo:** asa de células com espessura de verdade (perfil de asa e células infladas), painéis laterais, faixas coloridas, tecido com trama e 48 linhas até os tirantes. Ele vira junto com o personagem e balança.
+- **Chão atravessando o piso:**
+  - o terreno não pisca mais junto com pisos e praças na mesma altura;
+  - dentro de construções feitas em morro, o terreno é rebaixado e o piso vale como chão.
+- **Texturas mais nítidas:** filtro anisotrópico 8x no Média e no Alta, e texturas de chão e de construções com o dobro da resolução no Alta.
+- A contagem do lobby antes da partida caiu de 15 para 5 segundos, porque agora existe a sala de espera.
+
 ## Novidades da v2.7
 - **Servidor das contas na Netlify** (`netlify/functions/contas.mjs` + `server/contas-core.mjs`):
   - as contas ficam no **Netlify Blobs**, o armazenamento que já vem com o site, de graça e sem outra conta;

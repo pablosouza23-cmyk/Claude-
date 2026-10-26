@@ -107,7 +107,7 @@
     }
     // forro do terraço: bloqueia a câmera vinda de cima só por dentro
     W.occupied.push([x, z, Math.max(HW, HD) + 3.5]);
-    W.houses.push({ x: x, z: z, c: F.c, s: F.s, hw: HW + 0.3, hd: HD + 0.3, h: base + FH * floors });
+    W.houses.push({ x: x, z: z, c: F.c, s: F.s, hw: HW + 0.3, hd: HD + 0.3, h: base + FH * floors, b: base, fw: HW, fd: HD });
   };
 
   // ---------- hangar com teto em arco ----------
@@ -134,7 +134,7 @@
     F.box(HW - 3, 0, -HD + 3, 2.2, 1.4, 3.2, 0xd9a21c, 'metal', 2);
     F.loot(0, 0); F.loot(-HW * 0.5, HD * 0.4); F.loot(HW * 0.5, -HD * 0.5);
     W.occupied.push([x, z, Math.max(HW, HD) + 3]);
-    W.houses.push({ x: x, z: z, c: F.c, s: F.s, hw: HW, hd: HD, h: base + H });
+    W.houses.push({ x: x, z: z, c: F.c, s: F.s, hw: HW, hd: HD, h: base + H, b: base, fw: HW - 0.2, fd: HD - 0.2 });
   };
 
   // avião parado (cobertura no meio da pista)

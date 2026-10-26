@@ -211,9 +211,13 @@ NET.packActor = function (a) {
   if (a.remote && a.net) { /* o anfitrião repassa o que o dono mandou */ return NET.repack(a); }
   const fl = (a.board ? 1 : 0) | (a.crouch ? 2 : 0) | (a.onGround ? 4 : 0) | (a.alive ? 8 : 0) | (a.aimOn ? 16 : 0) | (inHand ? 32 : 0) | (a.healT > 0 ? 64 : 0);
   const aim = a.isPlayer ? (G.time - a.lastFire < 0.7 || a.aimOn ? 1 : 0) : (a.ai && a.ai.target && inHand ? 1 : 0);
+  // no ar a velocidade não fica em vel (é rumo + hs): manda a velocidade de verdade, inclusive a de descida,
+  // para os outros aparelhos preverem o movimento em vez de andar aos trancos
+  const air = a.phase === 'fall' || a.phase === 'chute';
+  const vx = air ? Math.sin(a.face) * a.hs : a.vel.x, vz = air ? Math.cos(a.face) * a.hs : a.vel.z;
   return [Math.round(a.pos.x * 100), Math.round(a.pos.y * 100), Math.round(a.pos.z * 100), Math.round(a.face * 1000), NET.PHASES.indexOf(a.phase), fl,
-    Math.round(a.vel.x * 10), Math.round(a.vel.z * 10), Math.round((a.phase === 'ground' ? a.speed : a.hs) * 10), gunCode(inHand), gunCode(back),
-    Math.round(a.hp), a.armor, a.helmet, Math.round((a.isPlayer ? G.pitch : 0) * 100), aim, a.emote ? EMOTE_KEYS.indexOf(a.emote) + 1 : 0];
+    Math.round(vx * 10), Math.round(vz * 10), Math.round((a.phase === 'ground' ? a.speed : a.hs) * 10), gunCode(inHand), gunCode(back),
+    Math.round(a.hp), a.armor, a.helmet, Math.round((a.isPlayer ? G.pitch : 0) * 100), aim, a.emote ? EMOTE_KEYS.indexOf(a.emote) + 1 : 0, air ? Math.round(-a.vdown * 10) : 0];
 };
 NET.repack = function (a) {
   const n = a.net.s.slice();
@@ -247,11 +251,12 @@ const _np = new THREE.Vector3();
 function updatePuppet(a, dt) {
   if (!a.net) { if (a.phase === 'plane' && G.drop) a.pos.copy(G.drop.pos); return; }
   const s = a.net.s;
-  const age = Math.min(0.25, (performance.now() - a.net.t) / 1000);
-  _np.set(s[0] / 100 + s[6] / 10 * age, s[1] / 100, s[2] / 100 + s[7] / 10 * age);
+  const air = a.phase === 'fall' || a.phase === 'chute';
+  const age = Math.min(air ? 0.4 : 0.25, (performance.now() - a.net.t) / 1000);
+  _np.set(s[0] / 100 + s[6] / 10 * age, s[1] / 100 + (s[17] || 0) / 10 * age, s[2] / 100 + s[7] / 10 * age);
   if (a.phase === 'plane' && G.drop) _np.copy(G.drop.pos);
-  if (a.pos.distanceTo(_np) > 8) a.pos.copy(_np);
-  else a.pos.lerp(_np, 1 - Math.exp(-14 * dt));
+  if (a.pos.distanceTo(_np) > (air ? 25 : 8)) a.pos.copy(_np);
+  else a.pos.lerp(_np, 1 - Math.exp(-(air ? 8 : 14) * dt));
   a.face = U.dampAngle(a.face, s[3] / 1000, 14, dt);
   a.vel.set(s[6] / 10, 0, s[7] / 10);
   a.speed = s[8] / 10; a.hs = a.speed;

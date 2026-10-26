@@ -1509,6 +1509,7 @@ function updatePlayer(dt) {
   if (!p.alive) { CH.animate(p.ch, dt, { dead: true }); return; }
   const ads = isScoped(p);
   const sensK = G.settings.sens * (ads ? scopeSens(curW(p)) * 1.2 / curW(p).zoom : 1) * aimAssist(p, dt);
+  if (Math.abs(input.lookX) > 1e-4) G.lookT = G.time;
   G.yaw -= input.lookX * sensK; G.pitch -= input.lookY * sensK;
   input.lookX = 0; input.lookY = 0;
   const mv = readMove();
@@ -1523,9 +1524,11 @@ function updatePlayer(dt) {
     G.pitch = U.clamp(G.pitch, -1.3, 0.4);
     const open = consume('chute') || (p.phase === 'fall' && consume('jump', 'Space'));
     const rel = consume('board', 'KeyT');
+    // girou a câmera: o personagem vira para onde você está olhando (sem a câmera e o corpo brigarem)
+    if (G.time - (G.lookT || -9) < 1.2) p.face = U.dampAngle(p.face, G.yaw + Math.PI, 2.2, dt);
     updateAir(p, dt, { mx: mv.mx, my: mv.my, open: open, release: rel });
-    // a câmera acompanha o rumo devagar
-    G.yaw = U.dampAngle(G.yaw, p.face + Math.PI, 1.6, dt);
+    // sem mexer na câmera, ela acompanha o rumo devagar
+    if (G.time - (G.lookT || -9) >= 1.2) G.yaw = U.dampAngle(G.yaw, p.face + Math.PI, 1.6, dt);
     CH.animate(p.ch, dt, { mode: p.phase, board: p.board });
     return;
   }
@@ -1780,8 +1783,9 @@ function botThink(b) {
 function botAirControl(b, dt) {
   const f = TEAM.airTarget(b), t = f || b.ai.land;
   const dx = t.x - b.pos.x, dz = t.z - b.pos.z, d = Math.hypot(dx, dz);
-  const want = Math.atan2(dx, dz);
-  const turn = U.clamp(U.angDiff(b.face, want) * 2, -1, 1);
+  // perto do ponto: segue o rumo do líder (ou mantém o seu) em vez de ficar virando para lá e para cá em volta do ponto
+  const want = f && d < 18 ? f.lead.face : d < 10 ? b.face : Math.atan2(dx, dz);
+  const turn = U.clamp(U.angDiff(b.face, want) * (d < 18 ? 0.8 : 1.5), -1, 1);
   // seguindo o líder: mesma velocidade de queda que ele, e acelera se ficou para trás
   const my = f ? (d > 25 ? 1 : f.lead.phase === 'fall' && f.lead.hs > 26 ? 1 : 0) : d > 60 ? 1 : d < 20 ? -1 : 0;
   updateAir(b, dt, { mx: -turn, my: my, open: b.phase === 'fall' && (f ? f.open : d < 35), release: false });

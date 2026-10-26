@@ -82,6 +82,14 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Correções da v3.1
+- **Salto, prancha e paraquedas sem ir e voltar:**
+  - No multiplayer, os outros jogadores e os bots agora descem suaves. Antes, a velocidade de quem estava no ar ia como zero e o boneco andava aos trancos e descia em degraus.
+  - Os bots do time não ficam mais em zigue-zague em volta do líder: perto dele, eles copiam o rumo.
+  - Girando a câmera no ar, o personagem vira para onde você olha, em vez de a câmera e o corpo ficarem brigando.
+- **Inspecionar a arma:** o giro ficou menor e mais perto do peito. As duas mãos ficam no cabo e na telha durante todo o movimento.
+- **Celeiro e galpões:** as empenas (os triângulos das pontas) eram montadas tortas, com duas "orelhas" vermelhas saindo do telhado e um buraco embaixo. Agora são um triângulo exato que fecha com o telhado, em todos os mapas.
+
 ## Novidades da v3.0
 - **Equipes no Battle Royale:** escolha **SOLO, DUPLA, TRIO, SQUAD (4)** ou **SQUAD 6** em JOGAR ou na sala.
   - Os amigos da sala ficam no mesmo time, e os bots completam o seu time e formam os times adversários.

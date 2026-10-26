@@ -1073,10 +1073,14 @@ W.shed = function (P, x, z, rot, base, HW, HD, H, wallCol, roofCol, wallMat, roo
       new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, -sd * ang, 'YXZ')), new THREE.Vector3(half, 0.2, HD * 2 + 1));
     P.push(U.part(new THREE.BoxGeometry(1, 1, 1), roofCol, m, 'radial', roofMat));
   }
-  const tri = new THREE.CylinderGeometry(1, 1, 1, 3, 1).rotateX(Math.PI / 2).rotateZ(Math.PI / 2);
+  // empenas: triângulo exato entre as paredes e o telhado (base na largura do galpão, ponta logo abaixo da cumeeira)
+  const sh = new THREE.Shape();
+  sh.moveTo(-HW - T / 2, 0); sh.lineTo(HW + T / 2, 0); sh.lineTo(0, Math.tan(ang) * (HW + 0.6) - 0.08); sh.closePath();
+  const tri = new THREE.ExtrudeGeometry(sh, { depth: T, bevelEnabled: false }).translate(0, 0, -T / 2).toNonIndexed();
+  tri.clearGroups();
   for (const sd of [-1, 1]) {
-    P.push(U.part(tri, wallCol, new THREE.Matrix4().compose(new THREE.Vector3(wx(0, sd * HD), base + H + 0.01, wz(0, sd * HD)),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, 0)), new THREE.Vector3(Math.tan(ang) * HW * 1.33, HW * 1.15, T)), 'radial', wallMat));
+    P.push(U.part(tri, wallCol, new THREE.Matrix4().compose(new THREE.Vector3(wx(0, sd * HD), base + H, wz(0, sd * HD)),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, 0)), new THREE.Vector3(1, 1, 1)), 'radial', wallMat));
   }
   W.occupied.push([x, z, Math.max(HW, HD) + 3]);
   W.lootSpots.push([wx(0, 0), wz(0, 0)], [wx(HW * 0.5, -HD * 0.5), wz(HW * 0.5, -HD * 0.5)]);

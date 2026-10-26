@@ -763,13 +763,14 @@ CH.animate = function (ch, dt, s) {
     } else {
       _gunE.set(pitch * 0.98 - rc * 0.1 - dk * 1.1, face, dk * 0.6);
       _gunQ.setFromEuler(_gunE);
-      _gunPos.copy(chest).addScaledVector(_bodyR, sx * (1 - ie * 0.55)).addScaledVector(UP, sy - 0.12 - dk * 0.28 + ie * 0.1);
-      _tmp.set(0, -0.02, sz - rc * 0.05 - ie * 0.08).applyQuaternion(_gunQ);
+      _gunPos.copy(chest).addScaledVector(_bodyR, sx * (1 - ie * 0.35)).addScaledVector(UP, sy - 0.12 - dk * 0.28 + ie * 0.06);
+      _tmp.set(0, -0.02, sz - rc * 0.05 - ie * 0.04).applyQuaternion(_gunQ);
       _gunPos.add(_tmp);
     }
     if (ie > 0) {
-      const roll = it < 0.5 ? U.smooth(0.12, 0.42, it) * 1.15 : 1.15 - U.smooth(0.5, 0.78, it) * 2.1;
-      _gunE.set(0.28 + Math.sin(it * 9) * 0.03, s.gunAt ? -0.5 : 0.85, roll); _gunE.x *= ie; _gunE.y *= ie; _gunE.z *= ie;
+      // gira pouco em volta do próprio cano (mostra um lado, depois o outro): as mãos continuam no cabo e na telha
+      const roll = it < 0.5 ? U.smooth(0.1, 0.4, it) * 0.62 : 0.62 - U.smooth(0.5, 0.8, it) * 1.1;
+      _gunE.set(0.24 + Math.sin(it * 6) * 0.02, s.gunAt ? -0.3 : 0.42, roll); _gunE.x *= ie; _gunE.y *= ie; _gunE.z *= ie;
       _q1.setFromEuler(_gunE); _gunQ.multiply(_q1);
     }
     // o grupo da arma é filho do corpo: converte para o espaço local

@@ -911,7 +911,7 @@ body.hud-editing #joyBase { opacity: .9; }
   </div>
   <div id="squadBar" class="squadBar"><small>SEU GRUPO</small><div id="squadSlots"></div></div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v3.0</div>
+  <div class="ver">v3.1</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1157,7 +1157,7 @@ body.hud-editing #joyBase { opacity: .9; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v3.0 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v3.1 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -2988,10 +2988,14 @@ W.shed = function (P, x, z, rot, base, HW, HD, H, wallCol, roofCol, wallMat, roo
       new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, -sd * ang, 'YXZ')), new THREE.Vector3(half, 0.2, HD * 2 + 1));
     P.push(U.part(new THREE.BoxGeometry(1, 1, 1), roofCol, m, 'radial', roofMat));
   }
-  const tri = new THREE.CylinderGeometry(1, 1, 1, 3, 1).rotateX(Math.PI / 2).rotateZ(Math.PI / 2);
+  // empenas: triângulo exato entre as paredes e o telhado (base na largura do galpão, ponta logo abaixo da cumeeira)
+  const sh = new THREE.Shape();
+  sh.moveTo(-HW - T / 2, 0); sh.lineTo(HW + T / 2, 0); sh.lineTo(0, Math.tan(ang) * (HW + 0.6) - 0.08); sh.closePath();
+  const tri = new THREE.ExtrudeGeometry(sh, { depth: T, bevelEnabled: false }).translate(0, 0, -T / 2).toNonIndexed();
+  tri.clearGroups();
   for (const sd of [-1, 1]) {
-    P.push(U.part(tri, wallCol, new THREE.Matrix4().compose(new THREE.Vector3(wx(0, sd * HD), base + H + 0.01, wz(0, sd * HD)),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, 0)), new THREE.Vector3(Math.tan(ang) * HW * 1.33, HW * 1.15, T)), 'radial', wallMat));
+    P.push(U.part(tri, wallCol, new THREE.Matrix4().compose(new THREE.Vector3(wx(0, sd * HD), base + H, wz(0, sd * HD)),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, 0)), new THREE.Vector3(1, 1, 1)), 'radial', wallMat));
   }
   W.occupied.push([x, z, Math.max(HW, HD) + 3]);
   W.lootSpots.push([wx(0, 0), wz(0, 0)], [wx(HW * 0.5, -HD * 0.5), wz(HW * 0.5, -HD * 0.5)]);
@@ -5130,13 +5134,14 @@ CH.animate = function (ch, dt, s) {
     } else {
       _gunE.set(pitch * 0.98 - rc * 0.1 - dk * 1.1, face, dk * 0.6);
       _gunQ.setFromEuler(_gunE);
-      _gunPos.copy(chest).addScaledVector(_bodyR, sx * (1 - ie * 0.55)).addScaledVector(UP, sy - 0.12 - dk * 0.28 + ie * 0.1);
-      _tmp.set(0, -0.02, sz - rc * 0.05 - ie * 0.08).applyQuaternion(_gunQ);
+      _gunPos.copy(chest).addScaledVector(_bodyR, sx * (1 - ie * 0.35)).addScaledVector(UP, sy - 0.12 - dk * 0.28 + ie * 0.06);
+      _tmp.set(0, -0.02, sz - rc * 0.05 - ie * 0.04).applyQuaternion(_gunQ);
       _gunPos.add(_tmp);
     }
     if (ie > 0) {
-      const roll = it < 0.5 ? U.smooth(0.12, 0.42, it) * 1.15 : 1.15 - U.smooth(0.5, 0.78, it) * 2.1;
-      _gunE.set(0.28 + Math.sin(it * 9) * 0.03, s.gunAt ? -0.5 : 0.85, roll); _gunE.x *= ie; _gunE.y *= ie; _gunE.z *= ie;
+      // gira pouco em volta do próprio cano (mostra um lado, depois o outro): as mãos continuam no cabo e na telha
+      const roll = it < 0.5 ? U.smooth(0.1, 0.4, it) * 0.62 : 0.62 - U.smooth(0.5, 0.8, it) * 1.1;
+      _gunE.set(0.24 + Math.sin(it * 6) * 0.02, s.gunAt ? -0.3 : 0.42, roll); _gunE.x *= ie; _gunE.y *= ie; _gunE.z *= ie;
       _q1.setFromEuler(_gunE); _gunQ.multiply(_q1);
     }
     // o grupo da arma é filho do corpo: converte para o espaço local
@@ -7126,6 +7131,7 @@ function updatePlayer(dt) {
   if (!p.alive) { CH.animate(p.ch, dt, { dead: true }); return; }
   const ads = isScoped(p);
   const sensK = G.settings.sens * (ads ? scopeSens(curW(p)) * 1.2 / curW(p).zoom : 1) * aimAssist(p, dt);
+  if (Math.abs(input.lookX) > 1e-4) G.lookT = G.time;
   G.yaw -= input.lookX * sensK; G.pitch -= input.lookY * sensK;
   input.lookX = 0; input.lookY = 0;
   const mv = readMove();
@@ -7140,9 +7146,11 @@ function updatePlayer(dt) {
     G.pitch = U.clamp(G.pitch, -1.3, 0.4);
     const open = consume('chute') || (p.phase === 'fall' && consume('jump', 'Space'));
     const rel = consume('board', 'KeyT');
+    // girou a câmera: o personagem vira para onde você está olhando (sem a câmera e o corpo brigarem)
+    if (G.time - (G.lookT || -9) < 1.2) p.face = U.dampAngle(p.face, G.yaw + Math.PI, 2.2, dt);
     updateAir(p, dt, { mx: mv.mx, my: mv.my, open: open, release: rel });
-    // a câmera acompanha o rumo devagar
-    G.yaw = U.dampAngle(G.yaw, p.face + Math.PI, 1.6, dt);
+    // sem mexer na câmera, ela acompanha o rumo devagar
+    if (G.time - (G.lookT || -9) >= 1.2) G.yaw = U.dampAngle(G.yaw, p.face + Math.PI, 1.6, dt);
     CH.animate(p.ch, dt, { mode: p.phase, board: p.board });
     return;
   }
@@ -7397,8 +7405,9 @@ function botThink(b) {
 function botAirControl(b, dt) {
   const f = TEAM.airTarget(b), t = f || b.ai.land;
   const dx = t.x - b.pos.x, dz = t.z - b.pos.z, d = Math.hypot(dx, dz);
-  const want = Math.atan2(dx, dz);
-  const turn = U.clamp(U.angDiff(b.face, want) * 2, -1, 1);
+  // perto do ponto: segue o rumo do líder (ou mantém o seu) em vez de ficar virando para lá e para cá em volta do ponto
+  const want = f && d < 18 ? f.lead.face : d < 10 ? b.face : Math.atan2(dx, dz);
+  const turn = U.clamp(U.angDiff(b.face, want) * (d < 18 ? 0.8 : 1.5), -1, 1);
   // seguindo o líder: mesma velocidade de queda que ele, e acelera se ficou para trás
   const my = f ? (d > 25 ? 1 : f.lead.phase === 'fall' && f.lead.hs > 26 ? 1 : 0) : d > 60 ? 1 : d < 20 ? -1 : 0;
   updateAir(b, dt, { mx: -turn, my: my, open: b.phase === 'fall' && (f ? f.open : d < 35), release: false });
@@ -8091,9 +8100,13 @@ NET.packActor = function (a) {
   if (a.remote && a.net) { /* o anfitrião repassa o que o dono mandou */ return NET.repack(a); }
   const fl = (a.board ? 1 : 0) | (a.crouch ? 2 : 0) | (a.onGround ? 4 : 0) | (a.alive ? 8 : 0) | (a.aimOn ? 16 : 0) | (inHand ? 32 : 0) | (a.healT > 0 ? 64 : 0);
   const aim = a.isPlayer ? (G.time - a.lastFire < 0.7 || a.aimOn ? 1 : 0) : (a.ai && a.ai.target && inHand ? 1 : 0);
+  // no ar a velocidade não fica em vel (é rumo + hs): manda a velocidade de verdade, inclusive a de descida,
+  // para os outros aparelhos preverem o movimento em vez de andar aos trancos
+  const air = a.phase === 'fall' || a.phase === 'chute';
+  const vx = air ? Math.sin(a.face) * a.hs : a.vel.x, vz = air ? Math.cos(a.face) * a.hs : a.vel.z;
   return [Math.round(a.pos.x * 100), Math.round(a.pos.y * 100), Math.round(a.pos.z * 100), Math.round(a.face * 1000), NET.PHASES.indexOf(a.phase), fl,
-    Math.round(a.vel.x * 10), Math.round(a.vel.z * 10), Math.round((a.phase === 'ground' ? a.speed : a.hs) * 10), gunCode(inHand), gunCode(back),
-    Math.round(a.hp), a.armor, a.helmet, Math.round((a.isPlayer ? G.pitch : 0) * 100), aim, a.emote ? EMOTE_KEYS.indexOf(a.emote) + 1 : 0];
+    Math.round(vx * 10), Math.round(vz * 10), Math.round((a.phase === 'ground' ? a.speed : a.hs) * 10), gunCode(inHand), gunCode(back),
+    Math.round(a.hp), a.armor, a.helmet, Math.round((a.isPlayer ? G.pitch : 0) * 100), aim, a.emote ? EMOTE_KEYS.indexOf(a.emote) + 1 : 0, air ? Math.round(-a.vdown * 10) : 0];
 };
 NET.repack = function (a) {
   const n = a.net.s.slice();
@@ -8127,11 +8140,12 @@ const _np = new THREE.Vector3();
 function updatePuppet(a, dt) {
   if (!a.net) { if (a.phase === 'plane' && G.drop) a.pos.copy(G.drop.pos); return; }
   const s = a.net.s;
-  const age = Math.min(0.25, (performance.now() - a.net.t) / 1000);
-  _np.set(s[0] / 100 + s[6] / 10 * age, s[1] / 100, s[2] / 100 + s[7] / 10 * age);
+  const air = a.phase === 'fall' || a.phase === 'chute';
+  const age = Math.min(air ? 0.4 : 0.25, (performance.now() - a.net.t) / 1000);
+  _np.set(s[0] / 100 + s[6] / 10 * age, s[1] / 100 + (s[17] || 0) / 10 * age, s[2] / 100 + s[7] / 10 * age);
   if (a.phase === 'plane' && G.drop) _np.copy(G.drop.pos);
-  if (a.pos.distanceTo(_np) > 8) a.pos.copy(_np);
-  else a.pos.lerp(_np, 1 - Math.exp(-14 * dt));
+  if (a.pos.distanceTo(_np) > (air ? 25 : 8)) a.pos.copy(_np);
+  else a.pos.lerp(_np, 1 - Math.exp(-(air ? 8 : 14) * dt));
   a.face = U.dampAngle(a.face, s[3] / 1000, 14, dt);
   a.vel.set(s[6] / 10, 0, s[7] / 10);
   a.speed = s[8] / 10; a.hs = a.speed;

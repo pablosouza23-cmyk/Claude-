@@ -6,7 +6,7 @@ const V3 = THREE.Vector3;
 
 const G = {
   state: 'menu', time: 0, built: false,
-  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'ilha', mode: 'br', csSize: 4, csGun: 'FUZIL', crossStyle: 'cruz', crossCol: 'branco' },
+  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'ilha', mode: 'br', csSize: 4, csGun: 'FUZIL', brTeam: 1, crossStyle: 'cruz', crossCol: 'branco' },
   actors: [], bots: [], walls: [], loot: [], nades: [], props: [],
 };
 
@@ -338,12 +338,8 @@ function killActor(a, killer, weapon) {
   if (revive) { a.revives--; a.respawnT = RESPAWN_T; a.rsWait = RESPAWN_T + 12; }
   NET.onKill(a, killer, weapon);
   if (revive) { if (a.isPlayer) bigText('VOCÊ CAIU! VAI RENASCER'); return; }
-  if (a.isPlayer) {
-    G.endT = 2.5;
-    G.place = aliveCount() + 1;
-  } else if (G.player.alive && aliveCount() === 1) {
-    G.endT = 2.0; G.place = 1;
-  }
+  if (a.isPlayer) TEAM.onPlayerOut();
+  TEAM.check();
 }
 
 // abates por arma do jogador deste aparelho (vai para o ranking por arma)
@@ -1340,6 +1336,7 @@ function updateWaiting(dt) {
   for (const n of G.nades) scene.remove(n.m);
   G.nades.length = 0;
   startDrop(G.dropArgs[0], G.dropArgs[1]);
+  TEAM.prepDrop();
   G.yaw = Math.atan2(G.drop.dir.x, G.drop.dir.z) + Math.PI + 1.1; G.pitch = -0.25;
   H.prep.classList.remove('hidden');
   H.waitBox.classList.add('hidden');
@@ -1363,7 +1360,8 @@ function updateDrop(dt) {
       if (G.player.phase === 'plane') H.jumpHint.classList.add('show');
     }
   } else if (d.state === 'go') {
-    if (!NET.isClient()) for (const b of G.bots) if (b.phase === 'plane' && d.t >= b.ai.jumpAt) jumpOut(b);
+    // bots aliados de um humano pulam logo depois dele; os outros, na hora sorteada
+    if (!NET.isClient()) for (const b of G.bots) if (b.phase === 'plane') { const f = TEAM.followJump(b); if (f === true || (f === false && d.t >= b.ai.jumpAt)) jumpOut(b); }
     if (d.t >= d.end) {
       for (const a of G.actors) if (a.phase === 'plane' && !a.remote) jumpOut(a);
       d.state = 'done';
@@ -1721,23 +1719,27 @@ function botThink(b) {
   const ai = b.ai;
   actorEye(b, _e1);
   let best = null, bd = hasGun(b) ? 60 : 12;
+  const thr = TEAM.threat(b); // quem está atirando no líder do time
   for (const a of G.actors) {
     if (a === b || !a.alive || a.phase !== 'ground' || CS.ally(a, b)) continue;
     const d = a.pos.distanceTo(b.pos);
-    if (d > bd + 15) continue;
-    const bias = a === b.lastAttacker && G.time - b.lastHurt < 4 ? 15 : 0;
+    if (d > bd + 25) continue;
+    const bias = a === b.lastAttacker && G.time - b.lastHurt < 4 ? 15 : a === thr ? 22 : 0;
     if (d - bias < bd && visible(_e1, _e2.set(a.pos.x, a.pos.y + 1.2, a.pos.z))) { best = a; bd = d - bias; }
   }
   if (best !== ai.target) { ai.target = best; ai.react = (0.45 + Math.random() * 0.5) / ai.skill; }
   if (!hasGun(b)) {
     // primeiro, pegar uma arma
-    const it = nearestWeaponLoot(b, 70);
-    if (it) ai.wp = { x: it.x, z: it.z };
+    // longe do líder do time: pega só armas por perto e vai na direção dele
+    const fl = TEAM.on() ? TEAM.groundWp(b) : null;
+    const it = nearestWeaponLoot(b, fl ? 25 : 70);
+    if (it) ai.wp = { x: it.x, z: it.z }; else if (fl) ai.wp = fl;
     if (G.time - b.landT > 16) giveWeapon(b, WPN.roll(null, true));
     return;
   }
   const z = G.zone;
   const zr = z.waiting ? z.toR : z.r;
+  let fw = null;
   const zx = z.waiting ? z.toX : z.cx, zz = z.waiting ? z.toZ : z.cz;
   if (G.wait) {
     // sala de espera: anda e treina dentro da área
@@ -1749,6 +1751,9 @@ function botThink(b) {
       const e = CS.BASE[1 - b.team], k = 0.2 + Math.random() * 0.8;
       ai.wp = { x: e[0] * k + (Math.random() - 0.5) * 20, z: e[1] + (Math.random() - 0.5) * 70 * (1 - k * 0.6) };
     }
+  } else if (TEAM.on() && (fw = TEAM.groundWp(b))) {
+    // anda junto com o líder do time
+    ai.wp = fw;
   } else if (!ai.wp || Math.hypot(b.pos.x - ai.wp.x, b.pos.z - ai.wp.z) < 3 || Math.hypot(ai.wp.x - zx, ai.wp.z - zz) > zr) {
     const a = Math.random() * 6.28, d = Math.sqrt(Math.random()) * zr * 0.8;
     ai.wp = { x: U.clamp(zx + Math.cos(a) * d, -W.LAND_R + 20, W.LAND_R - 20), z: U.clamp(zz + Math.sin(a) * d, -W.LAND_R + 20, W.LAND_R - 20) };
@@ -1768,11 +1773,13 @@ function botThink(b) {
 }
 
 function botAirControl(b, dt) {
-  const t = b.ai.land;
+  const f = TEAM.airTarget(b), t = f || b.ai.land;
   const dx = t.x - b.pos.x, dz = t.z - b.pos.z, d = Math.hypot(dx, dz);
   const want = Math.atan2(dx, dz);
   const turn = U.clamp(U.angDiff(b.face, want) * 2, -1, 1);
-  updateAir(b, dt, { mx: -turn, my: d > 60 ? 1 : d < 20 ? -1 : 0, open: d < 35 && b.phase === 'fall', release: false });
+  // seguindo o líder: mesma velocidade de queda que ele, e acelera se ficou para trás
+  const my = f ? (d > 25 ? 1 : f.lead.phase === 'fall' && f.lead.hs > 26 ? 1 : 0) : d > 60 ? 1 : d < 20 ? -1 : 0;
+  updateAir(b, dt, { mx: -turn, my: my, open: b.phase === 'fall' && (f ? f.open : d < 35), release: false });
 }
 
 function updateBot(b, dt) {

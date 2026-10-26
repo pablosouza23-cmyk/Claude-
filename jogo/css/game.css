@@ -656,7 +656,7 @@ body.hud-editing #joyBase { opacity: .9; }
 .csSizes { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; } .csSizes .chip { padding: 4px 9px; font-size: 13px; }
 .roomMode { display: flex; flex-direction: column; gap: 6px; } .roomMode .tabs button { flex: 1; padding: 5px 6px; font-size: 12.5px; } .roomMode .tabs button:disabled { opacity: .7; }
 .roomSize { display: flex; align-items: center; justify-content: center; gap: 12px; } .roomSize b { font-size: 20px; min-width: 70px; text-align: center; color: var(--yellow); } .roomSize .xBtn { font-size: 22px; } .roomSize .xBtn:disabled { opacity: .35; }
-#csTags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; } #hud:not(.cs) #csTags { display: none; }
+#csTags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; } #hud:not(.cs):not(.team) #csTags { display: none; }
 .csTag { position: absolute; left: 0; top: 0; padding: 0 6px 6px; font-size: 12px; font-weight: 600; color: #8fd0ff; text-shadow: 0 1px 2px #000, 0 0 3px #000; white-space: nowrap; }
 .csTag::after { content: ""; position: absolute; left: 50%; bottom: 0; border: 5px solid transparent; border-top-color: #3d9bff; transform: translateX(-50%); }
 
@@ -704,3 +704,39 @@ body.hud-editing #joyBase { opacity: .9; }
 .orLine::before, .orLine::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.18); }
 .pfG { margin: 12px 0 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: rgba(255,255,255,.85); }
 .pfG .ico { width: 15px; height: 15px; vertical-align: -3px; margin-right: 4px; color: #5be37d; }
+
+/* equipes do Battle Royale */
+.tmTag { color: #ffe27a; } .tmTag::after { border-top-color: #ffd23c; }
+.tmTag i { display: inline-block; min-width: 15px; height: 15px; margin-right: 4px; border-radius: 50%; background: #ffd23c; color: #111; font: 800 10px/15px system-ui, sans-serif; text-align: center; font-style: normal; }
+.teamBox { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; min-width: 150px; pointer-events: none; }
+.teamBox .tmT { font-size: 10px; letter-spacing: .12em; color: rgba(255,255,255,.75); text-shadow: 0 1px 2px #000; }
+.teamBox .tm { display: grid; grid-template-columns: 16px 1fr; grid-template-rows: auto 4px; column-gap: 5px; align-items: center; padding: 3px 6px 4px; border-radius: 5px; background: rgba(0,0,0,.38); }
+.teamBox .tm i { grid-row: span 2; width: 16px; height: 16px; border-radius: 50%; background: #ffd23c; color: #111; font: 800 10px/16px system-ui, sans-serif; text-align: center; font-style: normal; }
+.teamBox .tm.me i { background: #39b6ff; }
+.teamBox .tm span { font-size: 11px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.teamBox .tm span small { font-weight: 500; color: #ffb36b; font-size: 9px; }
+.teamBox .tm b { height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); overflow: hidden; }
+.teamBox .tm b em { display: block; height: 100%; background: linear-gradient(90deg, #4be37a, #b6f56b); }
+.teamBox .tm.out { opacity: .5; } .teamBox .tm.out i { background: #777; }
+.brSizes .chip:disabled { opacity: .6; }
+/* barra do grupo no menu */
+.squadBar { position: absolute; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.squadBar small { font-size: 10px; letter-spacing: .18em; color: rgba(255,255,255,.75); text-shadow: 0 1px 2px #000; }
+#squadSlots { display: flex; gap: 8px; align-items: center; }
+.sqMe { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #39b6ff; background: #1c2733 center/cover; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+.sqAdd { width: 40px; height: 40px; border-radius: 50%; border: 2px dashed rgba(255,255,255,.7); background: rgba(0,0,0,.35); color: #fff; font: 700 22px/1 system-ui, sans-serif; cursor: pointer; }
+.sqAdd:hover { border-color: #ffd23c; color: #ffd23c; }
+@media (max-height: 430px) { .squadBar { bottom: 8px; } .sqMe, .sqAdd { width: 34px; height: 34px; } .squadBar small { display: none; } }
+/* nomes do grupo em cima dos amigos no palco */
+.partyTags { position: fixed; inset: 0; pointer-events: none; z-index: 5; display: none; overflow: hidden; }
+.partyTags.on { display: block; }
+.pTag { position: absolute; left: 0; top: 0; padding: 2px 8px; border-radius: 10px; background: rgba(0,0,0,.5); color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 3px; }
+.pTag .ico { width: 13px; height: 13px; color: #ffd23c; } .pTag .vfI { width: 13px; height: 13px; }
+@media (max-aspect-ratio: 1/1) { .squadBar { top: 76px; bottom: auto; left: auto; right: 12px; transform: none; align-items: flex-end; } }
+@media (max-height: 500px) {
+  .teamBox { min-width: 118px; gap: 2px; }
+  .teamBox .tm { padding: 1px 5px 2px; grid-template-rows: auto 3px; column-gap: 4px; }
+  .teamBox .tm i { width: 13px; height: 13px; font-size: 9px; line-height: 13px; }
+  .teamBox .tm span { font-size: 10px; max-width: 92px; }
+  .teamBox .tm b { height: 3px; }
+}

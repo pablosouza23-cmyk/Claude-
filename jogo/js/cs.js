@@ -6,7 +6,8 @@
 const CS = { WIN: 4, BUY: 8, ROUND_T: 100, END_T: 4, GUNS: ['FUZIL', 'SMG', 'ESCOPETA', 'PRECISAO', 'METRALHADORA', 'CARABINA'] };
 CS.on = () => G.mode === 'cs';
 CS.frozen = () => G.mode === 'cs' && G.cs && G.cs.phase === 'buy';
-CS.ally = (a, b) => G.mode === 'cs' && a && b && a.team === b.team;
+// mesmo time (Contra Squad ou equipes do Battle Royale): sem fogo amigo e sem mirar no colega
+CS.ally = (a, b) => !!(a && b && a !== b && a.team !== undefined && a.team === b.team);
 CS.BASE = [[-56, 0], [56, 0]];
 
 // lugar fixo de cada um na base (igual em todos os aparelhos)

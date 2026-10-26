@@ -43,7 +43,7 @@ NET.createRoom = function () {
   if (!NET.available()) { NET.setStatus('Multiplayer indisponível: sem internet.', true); return; }
   NET.leave();
   NET.mode = 'host'; NET.pid = 0; NET.nextPid = 1;
-  NET.gm = G.settings.mode || 'br'; NET.gs = G.settings.csSize || 4;
+  NET.gm = G.settings.mode || 'br'; NET.gs = G.settings.csSize || 4; NET.bt = TEAM.size(G.settings.brTeam || 4);
   NET.code = NET.makeCode();
   NET.players = [{ pid: 0, name: G.settings.name || 'Jogador', av: G.settings.avatar || 'heroi', vf: !!(ACC.p && ACC.p.verified), lk: NET.myLook() }];
   NET.setStatus('Criando sala…');
@@ -149,7 +149,7 @@ NET.cleanLook = function (lk) {
 
 NET.toPid = function (pid, m) { const p = NET.players.find(x => x.pid === pid); if (p && p.conn && p.conn.open) p.conn.send(m); };
 
-NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av, p.vf ? 1 : 0, p.lk || null]), bots: NET.bots, live: NET.live, map: W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId, gm: NET.gm, gs: NET.gs });
+NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av, p.vf ? 1 : 0, p.lk || null]), bots: NET.bots, live: NET.live, map: W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId, gm: NET.gm, gs: NET.gs, bt: NET.bt });
 NET.bcastRoom = function () { if (NET.isHost()) NET.bcast(NET.roomMsg()); };
 
 NET.setAvatar = function (av) {
@@ -168,7 +168,7 @@ NET.hostStart = function () {
   const tm = {};
   NET.players.forEach((p, i) => { tm[p.pid] = i % 2; });
   const msg = { t: 'go', seed, ps: NET.players.map(p => [p.pid, p.name, p.av, p.lk || null]), bots: NET.bots, ang: Math.random() * Math.PI * 2, side: Math.random() - 0.5,
-    map: cs ? 'arena' : (W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId), mode: cs ? 'cs' : 'br', size: Math.max(NET.gs || 4, Math.ceil(NET.players.length / 2)), tm: tm };
+    map: cs ? 'arena' : (W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId), mode: cs ? 'cs' : 'br', size: Math.max(NET.gs || 4, Math.ceil(NET.players.length / 2)), tm: tm, bt: NET.bt || 1 };
   NET.bcast(msg);
   NET.begin(msg);
 };
@@ -194,6 +194,8 @@ NET.buildActors = function (msg) {
   const nb = msg.bots ? TOTAL - msg.ps.length : 0;
   spawnBots(nb, rnd);
   if (NET.isClient()) for (const b of G.bots) b.remote = true;
+  // equipes: o grupo da sala junto, os bots completam (a mesma conta em todos os aparelhos)
+  if (msg.mode !== 'cs') TEAM.assign(G.actors.filter(a => a.human), G.bots, msg.bt || 1);
 };
 
 NET.actorOf = function (pid) { return G.actors.find(a => a.pid === pid); };
@@ -356,8 +358,8 @@ NET.onRespawn = function (a) {
 };
 NET.checkWin = function () {
   if (!NET.isHost() || !NET.live || G.mode === 'cs') return;
-  if (aliveCount() <= 1) {
-    const w = G.actors.find(x => x.alive);
+  if (TEAM.teamsAlive() <= 1) {
+    const w = G.actors.find(x => x.alive && (x === G.player || x.human)) || G.actors.find(x => x.alive);
     NET.bcast({ t: 'win', i: w ? G.actors.indexOf(w) : -1 });
   }
 };
@@ -382,7 +384,7 @@ NET.clientRecv = function (d) {
     case 'full': NET.setStatus(d.live ? 'A partida já começou. Espere acabar e tente de novo.' : 'A sala está cheia.', true); break;
     case 'room':
       NET.players = d.ps.map(p => ({ pid: p[0], name: p[1], av: p[2], vf: !!p[3], lk: NET.cleanLook(p[4]) }));
-      NET.bots = d.bots; NET.code = d.code; NET.gm = d.gm || 'br'; NET.gs = d.gs || 4;
+      NET.bots = d.bots; NET.code = d.code; NET.gm = d.gm || 'br'; NET.gs = d.gs || 4; NET.bt = TEAM.size(d.bt || 1);
       if (d.map && d.map !== W.mapId && W.MAPS[d.map] && !NET.live && G.state !== 'play') LOB.switchMap(d.map, () => { if (UI.screen === 'roomScr') renderRoom(); });
       if (!NET.live && G.state !== 'play' && G.state !== 'end') { if (UI.screen !== 'roomScr') openRoom(); else renderRoom(); }
       break;
@@ -431,12 +433,13 @@ NET.clientRecv = function (d) {
       if (G.mode === 'cs') break;
       if (a.phase === 'ground') { const bag = bagMesh(); bag.position.set(a.pos.x + 0.4, W.groundAt(a.pos.x, a.pos.z, a.pos.y + 0.5), a.pos.z - 0.3); scene.add(bag); G.props.push(bag); }
       if (a === G.player) {
-        if (d.rs) { a.respawnT = RESPAWN_T; a.rsWait = RESPAWN_T + 12; a.revives = 0; bigText('VOCÊ CAIU! VAI RENASCER'); } else { G.endT = 2.5; G.place = d.pl || aliveCount() + 1; }
+        if (d.rs) { a.respawnT = RESPAWN_T; a.rsWait = RESPAWN_T + 12; a.revives = 0; bigText('VOCÊ CAIU! VAI RENASCER'); } else TEAM.onPlayerOut();
       } else if (d.rs) a.rsWait = RESPAWN_T + 12;
+      TEAM.check();
       break;
     }
     case 'rsp': { const a = G.actors[d.i]; if (a && a !== G.player) { a.alive = true; a.respawnT = 0; a.rsWait = 0; a.hp = a.maxHp; a.armor = 0; a.helmet = 0; } break; }
-    case 'win': { const w = G.actors[d.i]; if (w === G.player && G.player.alive) { G.endT = 2.0; G.place = 1; } break; }
+    case 'win': { const w = G.actors[d.i]; if (w && w.team === G.player.team && G.endT <= 0) { G.endT = 2.0; G.place = 1; } break; }
     case 'la': if (!G.loot.find(x => x.id === d.id)) spawnLoot(d.ty, d.x, d.z, d.ex, d.id); break;
     case 'lr': { const it = G.loot.find(x => x.id === d.id); if (it) removeLoot(it); break; }
     case 'got': NET.clientGot(d); break;

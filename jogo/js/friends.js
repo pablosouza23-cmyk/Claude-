@@ -150,7 +150,7 @@ FR.isOnline = (id) => { const o = FR.online[id]; return !!(o && o.t && Date.now(
 // convidar: cria a sala se ainda não houver e manda o código para o amigo
 FR.invite = function (id) {
   const f = ACC.p.friends.find(x => x.id === id);
-  const go = () => FR.send(id, { t: 'inv', code: NET.code, gm: NET.gm, gs: NET.gs }).then(ok => notify(ok ? 'ok' : 'info', ok ? 'Convite enviado para ' + f.name : f.name + ' está off-line'));
+  const go = () => FR.send(id, { t: 'inv', code: NET.code, gm: NET.gm, gs: NET.gs, bt: NET.bt }).then(ok => notify(ok ? 'ok' : 'info', ok ? 'Convite enviado para ' + f.name : f.name + ' está off-line'));
   if (NET.on() && NET.code && NET.isHost()) { go(); return; }
   if (NET.isClient()) { notify('info', 'Só o anfitrião da sala pode convidar'); return; }
   NET.createRoom(); openRoom();
@@ -161,7 +161,7 @@ FR.invite = function (id) {
   }, 250);
 };
 FR.invited = function (from, d) {
-  const mode = d.gm === 'cs' ? 'Contra Squad ' + (d.gs || 4) + 'x' + (d.gs || 4) : 'Battle Royale';
+  const mode = d.gm === 'cs' ? 'Contra Squad ' + (d.gs || 4) + 'x' + (d.gs || 4) : 'Battle Royale · ' + TEAM.label(TEAM.size(d.bt || 1));
   if (G.state === 'play') { notify('info', from.name + ' te convidou para a sala ' + d.code); return; }
   SND.play('pick');
   LOB.dialog('CONVITE', '<b>' + escapeHTML(from.name) + '</b>' + (from.vf ? VERIFIED_SVG : '') + ' te chamou para jogar<br><small>' + mode + ' · sala ' + escapeHTML(d.code) + '</small>',

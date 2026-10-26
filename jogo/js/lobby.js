@@ -89,6 +89,58 @@ LOB.animStage = function (dt, t) {
   p.needsUpdate = true;
 };
 
+// ---------- grupo no palco do lobby ----------
+// os amigos da sala aparecem em pé ao seu lado (com o personagem e as skins deles), como no Free Fire
+LOB.party = [];
+LOB.clearParty = function () {
+  for (const m of LOB.party) scene.remove(m.a.ch.root);
+  LOB.party = [];
+  const t = $('partyTags'); if (t) t.innerHTML = '';
+};
+LOB.syncParty = function () {
+  if (!LOB.stage) return;
+  const want = NET.on() && G.state !== 'play' ? NET.players.filter(p => p.pid !== NET.pid).slice(0, 5) : [];
+  const key = (p) => p.pid + '|' + p.av + '|' + p.name + '|' + JSON.stringify(p.lk || {});
+  LOB.party = LOB.party.filter(m => { if (want.some(p => key(p) === m.key)) return true; scene.remove(m.a.ch.root); return false; });
+  for (const p of want) if (!LOB.party.some(m => m.key === key(p))) {
+    const a = makeActor(p.name, CH.AV[p.av] ? p.av : 'heroi', false);
+    a.ch.skins = (p.lk && p.lk.g) || {};
+    a.phase = 'ground'; a.ch.root.visible = true;
+    giveWeapon(a, 'FUZIL');
+    LOB.party.push({ key: key(p), pid: p.pid, a: a, name: p.name, vf: !!p.vf, host: p.pid === 0, t0: Math.random() * 6 });
+  }
+  LOB.party.sort((x, y) => x.pid - y.pid);
+  const tags = $('partyTags');
+  tags.innerHTML = LOB.party.map(m => '<div class="pTag">' + (m.host ? icon('crown') : '') + escapeHTML(m.name) + (m.vf ? VERIFIED_SVG : '') + '</div>').join('');
+  LOB.party.forEach((m, i) => { m.el = tags.children[i]; });
+};
+const _pv = new THREE.Vector3();
+LOB.updateParty = function (dt, t) {
+  const show = UI.screen === 'roomScr';
+  const tags = $('partyTags'); if (tags) tags.classList.toggle('on', show && LOB.party.length > 0);
+  if (!LOB.party.length) return;
+  const out = LOB.outYaw, fx = Math.sin(out), fz = Math.cos(out), rx = Math.cos(out), rz = -Math.sin(out);
+  const W2 = window.innerWidth / 2, H2 = window.innerHeight / 2;
+  LOB.party.forEach((m, i) => {
+    // lados alternados: 1º à direita, 2º à esquerda, e assim por diante, um pouco para trás
+    const side = i % 2 ? -1 : 1, rank = Math.floor(i / 2) + 1, lat = side * rank * 1.25, back = rank * 0.4;
+    const a = m.a;
+    a.pos.set(LOB.podium.x + rx * lat - fx * back, LOB.podium.y, LOB.podium.z + rz * lat - fz * back);
+    a.face = out - side * 0.18 + Math.sin(t * 0.5 + m.t0) * 0.05;
+    a.ch.body.rotation.y = a.face; a.ch.root.position.copy(a.pos); a.ch.root.visible = true;
+    // de vez em quando acena ou dança
+    if (!m.em && Math.random() < dt * 0.06) { m.em = ['wave', 'clap', 'dance', 'cheer2'][Math.floor(Math.random() * 4)]; m.emT = 3; if (a.ch.acts[m.em]) a.ch.acts[m.em].time = 0; }
+    if (m.em) { m.emT -= dt; if (m.emT <= 0) m.em = null; }
+    CH.animate(a.ch, dt, { mode: 'ground', speed: 0, aim: 0, pitch: 0, armed: false, emote: m.em });
+    if (m.el) {
+      _pv.set(a.pos.x, a.pos.y + 2.05, a.pos.z).project(camera);
+      const vis = show && _pv.z < 1 && Math.abs(_pv.x) < 1.05;
+      m.el.style.display = vis ? '' : 'none';
+      if (vis) m.el.style.transform = 'translate(' + (W2 + _pv.x * W2) + 'px,' + (H2 - _pv.y * H2) + 'px) translate(-50%,-100%)';
+    }
+  });
+};
+
 // girar o personagem arrastando a tela
 LOB.initDrag = function () {
   const cv = $('c');
@@ -116,13 +168,14 @@ LOB.renderTop = function () {
   $('lbMailN').textContent = n > 9 ? '9+' : n;
   $('lbMailN').classList.toggle('hidden', !n);
   LOB.renderFriendBadge();
+  LOB.renderSquad();
   $('lbLvl').textContent = p.level;
   $('lbXp').style.width = Math.min(100, p.xp / ACC.need(p.level) * 100) + '%';
   $('lbAvatar').style.backgroundImage = LOB.thumbs[p.skin] ? 'url(' + LOB.thumbs[p.skin] + ')' : '';
   $('lbAvatar').textContent = LOB.thumbs[p.skin] ? '' : p.name.charAt(0).toUpperCase();
   const cs = G.settings.mode === 'cs';
   $('lbMapName').textContent = cs ? 'CONTRA SQUAD ' + G.settings.csSize + 'x' + G.settings.csSize : (W.mapId === 'arena' ? W.MAPS[G.settings.map || 'ilha'] : W.MAP).name.toUpperCase();
-  $('lbMapLbl').textContent = cs ? 'MODO · ARENA' : 'MAPA';
+  $('lbMapLbl').textContent = cs ? 'MODO · ARENA' : 'MAPA · ' + TEAM.label(TEAM.size(G.settings.brTeam || 1));
   LOB.drawMapThumb($('lbMapCv'), cs ? 'arena' : W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId);
   LOB.renderCur();
 };
@@ -714,7 +767,22 @@ LOB.renderMode = function () {
   $('csSizes').classList.toggle('hidden', m !== 'cs');
   $('csSizes').innerHTML = Array.from({ length: 10 }, (_, i) => '<button class="chip' + (i + 1 === n ? ' hot' : '') + '" data-n="' + (i + 1) + '">' + (i + 1) + 'x' + (i + 1) + '</button>').join('');
   $('csSizes').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); G.settings.csSize = +b.dataset.n; G.saveSettings(); LOB.renderMode(); }));
-  $('mdSoloTxt').textContent = m === 'cs' ? (n === 1 ? 'X1 contra um bot na Arena' : 'Você e ' + (n - 1) + ' bot(s) contra ' + n + ' bots na Arena') : 'Você contra 24 bots';
+  // Battle Royale: solo, dupla, trio, squad de 4 ou de 6
+  const bt = TEAM.size(G.settings.brTeam || 1);
+  $('brSizes').classList.toggle('hidden', m !== 'br');
+  $('brSizes').innerHTML = TEAM.SIZES.map(k => '<button class="chip' + (k === bt ? ' hot' : '') + '" data-n="' + k + '">' + TEAM.label(k) + '</button>').join('');
+  $('brSizes').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); G.settings.brTeam = +b.dataset.n; G.saveSettings(); LOB.renderMode(); }));
+  $('mdSoloB').textContent = m === 'cs' || bt === 1 ? 'SOLO' : TEAM.label(bt) + ' COM BOTS';
+  $('mdSoloTxt').textContent = m === 'cs' ? (n === 1 ? 'X1 contra um bot na Arena' : 'Você e ' + (n - 1) + ' bot(s) contra ' + n + ' bots na Arena') :
+    bt === 1 ? 'Você contra 24 bots' : 'Você + ' + (bt - 1) + ' bot(s) do seu time contra ' + (Math.ceil(TOTAL / bt) - 1) + ' times';
+};
+// barra do grupo no menu (como no Free Fire): você e os espaços para chamar amigos
+LOB.renderSquad = function () {
+  const el = $('squadSlots'); if (!el || !ACC.p) return;
+  const bt = TEAM.size(G.settings.brTeam || 1), n = Math.max(3, bt - 1);
+  el.innerHTML = '<span class="sqMe" style="background-image:url(' + (LOB.thumbs[ACC.p.skin] || '') + ')" title="Você"></span>' +
+    Array.from({ length: Math.min(5, n) }, () => '<button class="sqAdd" aria-label="Convidar amigo">+</button>').join('');
+  el.querySelectorAll('.sqAdd').forEach(b => b.addEventListener('click', () => { SND.play('ui'); FR.openScr('amigos'); notify('info', 'Toque em CONVIDAR num amigo on-line para ele entrar no seu grupo'); }));
 };
 LOB.setMode = function (m) { G.settings.mode = m; G.saveSettings(); LOB.renderMode(); };
 // sala: o anfitrião escolhe o modo e o tamanho dos times
@@ -722,16 +790,21 @@ LOB.renderRoomMode = function () {
   const host = NET.isHost(), m = NET.gm || 'br', n = NET.gs || 4;
   document.querySelectorAll('#roomModeTabs button').forEach(b => { b.classList.toggle('on', b.dataset.m === m); b.disabled = !host; });
   $('roomSizeRow').classList.toggle('hidden', m !== 'cs');
+  const bt = TEAM.size(NET.bt || 1);
+  $('roomBrRow').classList.toggle('hidden', m !== 'br');
+  $('roomBrRow').innerHTML = TEAM.SIZES.map(k => '<button class="chip' + (k === bt ? ' hot' : '') + '" data-n="' + k + '"' + (host ? '' : ' disabled') + '>' + TEAM.label(k) + '</button>').join('');
+  $('roomBrRow').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.roomSet(null, null, +b.dataset.n); }));
   $('rmSize').textContent = n + ' x ' + n;
   $('rmMinus').disabled = $('rmPlus').disabled = !host;
   if (m === 'cs') { $('roomMapName').textContent = 'ARENA'; $('roomMap').disabled = true; }
   $('roomBotsRow').querySelector('span').textContent = m === 'cs' ? 'Completar os times com bots' : 'Completar com bots (25 na ilha)';
 };
-LOB.roomSet = function (gm, gs) {
+LOB.roomSet = function (gm, gs, bt) {
   if (!NET.isHost()) return;
   if (gm) NET.gm = gm;
   if (gs) NET.gs = U.clamp(gs, 1, 10);
-  G.settings.mode = NET.gm; G.settings.csSize = NET.gs; G.saveSettings();
+  if (bt) NET.bt = TEAM.size(bt);
+  G.settings.mode = NET.gm; G.settings.csSize = NET.gs; G.settings.brTeam = NET.bt || 1; G.saveSettings();
   NET.bcastRoom(); renderRoom();
 };
 
@@ -844,7 +917,9 @@ LOB.matchEnd = function () {
   const p = G.player;
   if (!ACC.p || !p || LOB.rewarded === G.matchId) { $('resReward').innerHTML = ''; return; }
   LOB.rewarded = G.matchId;
-  const r = ACC.reward({ place: G.place || G.actors.length, total: G.actors.length, kills: p.kills, dmg: p.dmgDealt || 0, time: G.time, cs: G.mode === 'cs', wk: p.wk || {} });
+  // com equipes, a colocação do time vira a posição equivalente entre todos (prêmio justo para squad)
+  const tot = G.actors.length, pl = !G.place ? tot : TEAM.on() && G.place > 1 ? Math.min(tot, Math.ceil(G.place / G.teamCount * tot)) : G.place;
+  const r = ACC.reward({ place: pl, total: tot, kills: p.kills, dmg: p.dmgDealt || 0, time: G.time, cs: G.mode === 'cs', wk: p.wk || {} });
   if (!r) return;
   $('resReward').innerHTML = '<div class="rw">' + COIN_SVG + '<b>+' + fmtN(r.gold) + '</b><small>OURO</small></div><div class="rw xp"><i>XP</i><b>+' + fmtN(r.xp) + '</b><small>EXPERIÊNCIA</small></div>' +
     (r.gems ? '<div class="rw">' + GEM_SVG + '<b>+' + r.gems + '</b><small>GEMAS</small></div>' : '') +

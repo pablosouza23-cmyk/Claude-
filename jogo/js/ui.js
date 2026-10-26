@@ -163,6 +163,17 @@ function updateCamera(dt) {
   if (camera.view && camera.view.enabled) camera.clearViewOffset();
   if (!p.alive) {
     G.deathOrbit = (G.deathOrbit || 0) + dt * 0.35;
+    // eliminado com o time ainda vivo: a câmera acompanha um colega
+    const sp = G.mode !== 'cs' && TEAM.spectate();
+    if (sp) {
+      const fx = Math.sin(sp.face), fz = Math.cos(sp.face);
+      _m.set(sp.pos.x - fx * 4.2, sp.pos.y + 2.4, sp.pos.z - fz * 4.2);
+      camera.position.lerp(_m, Math.min(1, dt * 4));
+      camera.lookAt(sp.pos.x, sp.pos.y + 1.3, sp.pos.z);
+      G.ads = false;
+      updateSpeedLines(dt, false);
+      return;
+    }
     const c = p.pos;
     camera.position.set(c.x + Math.sin(G.deathOrbit) * 5, c.y + 3.2, c.z + Math.cos(G.deathOrbit) * 5);
     camera.lookAt(c.x, c.y + 0.6, c.z);
@@ -335,8 +346,12 @@ function menuCamera(dt) {
   LOB.stage.visible = true;
   LOB.animStage(dt, G.menuT);
   LOB.updateDisplay(dt, G.menuT);
+  LOB.updateParty(dt, G.menuT);
   const portrait = camera.aspect < 1;
-  const fx = Math.sin(out), fz = Math.cos(out), dist = portrait ? 6.4 : 4.6, sway = Math.sin(G.menuT * 0.25) * 0.25;
+  // com o grupo no palco, a câmera recua para caber todo mundo
+  const pn = LOB.party.length, far = pn ? (pn > 2 ? 2.6 : 1.6) : 0;
+  G.camFar = (G.camFar || 0) + (far - (G.camFar || 0)) * Math.min(1, dt * 3);
+  const fx = Math.sin(out), fz = Math.cos(out), dist = (portrait ? 6.4 : 4.6) + G.camFar * (portrait ? 1.8 : 1), sway = Math.sin(G.menuT * 0.25) * 0.25;
   camera.position.set(s.pos.x + fx * dist + fz * sway, s.pos.y + (portrait ? 1.4 : 1.2), s.pos.z + fz * dist - fx * sway);
   camera.lookAt(s.pos.x, s.pos.y + 0.98, s.pos.z);
   const fov = portrait ? 52 : 36;
@@ -421,7 +436,7 @@ function updateHUD(dt) {
   for (const a of G.actors) { if (a.phase === 'plane') nPlane++; else if (a.phase === 'fall' || a.phase === 'chute') nAir++; }
   setText(H.topStatus, 'ts', nPlane + nAir > 0 ? 'no avião ' + nPlane + ' · no ar ' + nAir + ' · saltaram ' + (G.actors.length - nPlane) + '/' + G.actors.length : '');
   setClass(H.topStatus, 'tsh', 'hidden', nPlane + nAir === 0);
-  if (G.mode === 'cs') CS.hud();
+  if (G.mode === 'cs') CS.hud(); else TEAM.hud();
   if (G.wait) setText(H.waitT, 'wt', 'O avião sai em ' + Math.max(0, Math.ceil(G.wait.t)) + 's');
   // barra de armas e itens
   for (let i = 0; i < 3; i++) {
@@ -555,8 +570,21 @@ function drawMapLayer(g, S, cx, cz, scale, rotate, full) {
   // inimigos que atiraram por perto (aparecem como no mapa da referência)
   g.fillStyle = '#ff2a2a';
   for (const b of G.bots) {
-    if (!b.alive || b.phase !== 'ground' || G.time - b.lastFire > 2.5 || b.pos.distanceTo(p.pos) > 90) continue;
+    if (!b.alive || b.phase !== 'ground' || CS.ally(b, p) || G.time - b.lastFire > 2.5 || b.pos.distanceTo(p.pos) > 90) continue;
     g.beginPath(); g.arc(b.pos.x * scale, b.pos.z * scale, full ? 4 : 3, 0, 7); g.fill();
+  }
+  // colegas de time: bolinha amarela com o número
+  if (TEAM.on()) {
+    g.font = '700 ' + (full ? 11 : 9) + 'px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const t of TEAM.tags) {
+      const a = t.a;
+      if (!a.alive) continue;
+      const q = a.phase === 'plane' && G.drop ? G.drop.pos : a.pos, r = full ? 7 : 5.5;
+      g.fillStyle = '#ffd23c'; g.strokeStyle = '#000'; g.lineWidth = 1.2;
+      g.beginPath(); g.arc(q.x * scale, q.z * scale, r, 0, 7); g.fill(); g.stroke();
+      g.fillStyle = '#000'; g.fillText(String(t.n), q.x * scale, q.z * scale + 0.5);
+    }
+    g.textBaseline = 'alphabetic';
   }
   if (full) {
     g.font = '600 ' + Math.round(12) + 'px Oswald, system-ui, sans-serif'; g.textAlign = 'center';
@@ -643,6 +671,7 @@ function goMenu() {
   H.hud.classList.add('hidden'); H.touch.classList.add('hidden');
   setupShowcase();
   G.show.ch.root.visible = true;
+  if (!NET.on()) LOB.clearParty();
   LOB.preview = null; LOB.shift = -0.07;
   if (!ACC.p) { LOB.showAuth(); return; }
   showScreen('menuScr');
@@ -659,7 +688,7 @@ function goLobby() {
   const cs = G.settings.mode === 'cs', n = G.settings.csSize || 4;
   $('lobbyPlayers').textContent = cs ? n + ' x ' + n : TOTAL + '/' + TOTAL;
   $('lpMap').textContent = cs ? 'ARENA' : W.MAP.name.toUpperCase();
-  $('lpMode').textContent = cs ? 'CONTRA SQUAD' : 'SOLO';
+  $('lpMode').textContent = cs ? 'CONTRA SQUAD' : TEAM.label(TEAM.size(G.settings.brTeam || 1));
   if (cs) lobbyT = 6;
   LOB.shift = 0;
   clearInterval(lobbyIv);
@@ -704,6 +733,9 @@ function startMatch(msg) {
   for (const k in input) if (typeof input[k] === 'boolean') input[k] = false;
   G.mode = (msg ? msg.mode : G.settings.mode) === 'cs' ? 'cs' : 'br';
   H.hud.classList.toggle('cs', G.mode === 'cs');
+  G.teamSize = 1; G.teamCount = 0; TEAM.tags = []; TEAM.spec = null;
+  H.hud.classList.remove('team'); $('teamBox').classList.add('hidden');
+  if (LOB.clearParty) LOB.clearParty();
   if (G.mode === 'cs') {
     CS.start(msg);
     G.state = 'play';
@@ -726,6 +758,7 @@ function startMatch(msg) {
     G.player = p; G.actors.push(p);
     spawnBots();
     scatterLoot();
+    TEAM.assign([p], G.bots, G.settings.brTeam);
   }
   G.airdrop = { state: 'none' };
   initZone();
@@ -777,6 +810,10 @@ function endMatch() {
     $('resTitle').textContent = won ? 'VITÓRIA' : 'DERROTA';
     $('resultCard').className = 'resCard ' + (won ? 'win' : 'lose');
     $('resPlace').innerHTML = G.cs.score[me] + ' <small>x</small> ' + G.cs.score[1 - me] + '<small> · CONTRA SQUAD ' + G.cs.n + 'x' + G.cs.n + '</small>';
+  } else if (TEAM.on()) {
+    $('resTitle').textContent = G.place === 1 ? 'VITÓRIA' : 'DERROTA';
+    $('resultCard').className = 'resCard ' + (G.place === 1 ? 'win' : 'lose');
+    $('resPlace').innerHTML = '#' + G.place + '<small>/' + G.teamCount + ' · ' + TEAM.label(G.teamSize) + '</small>';
   } else $('resPlace').innerHTML = '#' + G.place + '<small>/' + G.actors.length + '</small>';
   $('resKills').textContent = p.kills;
   $('resDmg').textContent = Math.round(p.dmgDealt);
@@ -792,6 +829,7 @@ function endMatch() {
 // ---------- sala multiplayer ----------
 function renderRoom() {
   if (!$('roomScr')) return;
+  LOB.syncParty();
   const host = NET.isHost();
   $('roomCode').textContent = NET.code || '-----';
   const list = $('roomList');
@@ -1336,7 +1374,7 @@ function tick(dt) {
   updateLoot(dt);
   if (G.mode === 'cs') CS.update(dt);
   else if (G.wait) updateWaiting(dt);
-  else { updateZone(dt); updateAirdrop(dt); }
+  else { updateZone(dt); updateAirdrop(dt); TEAM.check(); }
   if (G.endT > 0) { G.endT -= dt; if (G.endT <= 0) endMatch(); }
   NET.update(dt);
 }

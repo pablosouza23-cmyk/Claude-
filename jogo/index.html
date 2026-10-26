@@ -63,6 +63,9 @@
   <div id="handHint"></div>
   <div id="emoteWheel" class="hidden"></div>
   <div id="bcOSD" class="hidden"><span class="rec">REC</span><b id="bcTime"></b><small>BODYCAM 07 · 1080p · AUTO</small></div>
+  <div id="csTags"></div>
+  <div id="csScore" class="csScore"></div>
+  <div id="csBuy" class="hidden"><b id="csBuyT">ESCOLHA SUA ARMA</b><div id="csBuyList"></div><small>Você começa com pistola, colete e capacete Nv. 2, 1 granada, 1 kit e 2 Gel.</small></div>
   <div id="killfeed"></div>
   <div id="dmgLayer"></div>
   <div id="vignette"></div>
@@ -130,15 +133,16 @@
     <button data-go="emotes" data-icon="smile"><span>EMOTES</span></button>
     <button data-go="recharge" class="hot" data-icon="crown"><span>RECARGA</span></button>
     <button data-go="arsenal" data-icon="bullet"><span>ARSENAL</span></button>
+    <button data-go="friends" data-icon="users"><span>AMIGOS</span><em id="lbFrN" class="badgeN hidden">0</em></button>
     <button data-go="profile" data-icon="user"><span>PERFIL</span></button>
   </nav>
   <div class="lbSide">
     <button id="lbNews" class="news"></button>
-    <button id="lbMap" class="mapCard"><canvas id="lbMapCv" width="96" height="96"></canvas><div><small>MAPA</small><b id="lbMapName">ILHA</b><span>TROCAR ›</span></div></button>
+    <button id="lbMap" class="mapCard"><canvas id="lbMapCv" width="96" height="96"></canvas><div><small id="lbMapLbl">MAPA</small><b id="lbMapName">ILHA</b><span>TROCAR ›</span></div></button>
     <button id="mPlay" class="playBtn"><b>JOGAR</b><small>SOLO · SALA COM AMIGOS</small></button>
   </div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v2.4</div>
+  <div class="ver">v2.5</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -174,6 +178,14 @@
   </div>
 </div>
 
+<div id="friendsScr" class="screen dim hidden">
+  <div class="panel frPanel">
+    <div class="panelHead"><b>AMIGOS</b><div id="frTabs" class="tabs"><button data-t="amigos">AMIGOS</button><button data-t="pedidos">PEDIDOS</button><button data-t="add">ADICIONAR</button></div><button id="frClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <p id="frStatus" class="frStatus"></p>
+    <div id="frBody" class="frBody"></div>
+  </div>
+</div>
+
 <div id="adminScr" class="screen dim hidden">
   <div class="panel adPanel">
     <div class="panelHead"><b>PAINEL DO DONO</b><div id="adTabs" class="tabs"><button data-t="hoje">CRIADAS HOJE</button><button data-t="todas">TODAS</button><button data-t="enviar">ENVIAR CORREIO</button></div><button id="adClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
@@ -192,7 +204,9 @@
   <div class="logo small"><b>BATTLE</b><span>ISLAND</span></div>
   <div class="modePanel">
     <h2>COMO VOCÊ QUER JOGAR?</h2>
-    <button id="mdSolo" class="modeCard"><i data-icon="person"></i><div><b>SOLO</b><small>Você contra 24 bots</small></div></button>
+    <div id="modeTabs" class="tabs modeTabs"><button data-m="br">BATTLE ROYALE</button><button data-m="cs">CONTRA SQUAD</button></div>
+    <div id="csSizes" class="csSizes hidden"></div>
+    <button id="mdSolo" class="modeCard"><i data-icon="person"></i><div><b>SOLO</b><small id="mdSoloTxt">Você contra 24 bots</small></div></button>
     <button id="mdCreate" class="modeCard hot"><i data-icon="users"></i><div><b>CRIAR SALA</b><small>Jogue com os amigos: mande o código</small></div></button>
     <button id="mdJoin" class="modeCard"><i data-icon="enter"></i><div><b>ENTRAR NA SALA</b><small>Digite o código que o amigo mandou</small></div></button>
     <button id="mdBack" class="mBtn ghost">VOLTAR</button>
@@ -220,8 +234,10 @@
   </div>
   <div class="roomPanel">
     <div class="roomCode"><small>CÓDIGO DA SALA</small><b id="roomCode">-----</b>
-      <div class="roomShare"><button id="roomCopy" class="chip" data-icon="copy">COPIAR</button><button id="roomShareBtn" class="chip" data-icon="share">CONVIDAR</button></div>
+      <div class="roomShare"><button id="roomCopy" class="chip" data-icon="copy">COPIAR</button><button id="roomShareBtn" class="chip" data-icon="share">LINK</button><button id="roomFriends" class="chip hot" data-icon="users">AMIGOS</button></div>
     </div>
+    <div id="roomModeRow" class="roomMode"><div id="roomModeTabs" class="tabs"><button data-m="br">BATTLE ROYALE</button><button data-m="cs">CONTRA SQUAD</button></div>
+      <div id="roomSizeRow" class="roomSize"><button id="rmMinus" class="xBtn" aria-label="Menos">−</button><b id="rmSize">4 x 4</b><button id="rmPlus" class="xBtn" aria-label="Mais">+</button></div></div>
     <button id="roomMap" class="chip roomMap">MAPA: <b id="roomMapName">ILHA</b></button>
     <p id="roomStatus" class="netStatus"></p>
     <ul id="roomList"></ul>
@@ -236,7 +252,7 @@
   <div class="logo small"><b>BATTLE</b><span>ISLAND</span></div>
   <div class="lobbyTop">Jogadores: <b id="lobbyPlayers">25/25</b></div>
   <div class="lobbyPanel">
-    <div class="lpRow"><div><small>MAPA</small><b id="lpMap">ILHA</b></div><div><small>MODO</small><b>SOLO</b></div></div>
+    <div class="lpRow"><div><small>MAPA</small><b id="lpMap">ILHA</b></div><div><small>MODO</small><b id="lpMode">SOLO</b></div></div>
     <div class="lpTime"><small>A PARTIDA COMEÇA EM</small><b id="lobbyTime">00:15</b></div>
     <button id="lReady" class="mBtn primary">PRONTO</button>
     <button id="lBack" class="mBtn ghost">VOLTAR</button>
@@ -362,7 +378,7 @@
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v2.4 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v2.5 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -377,11 +393,13 @@
 <script src="js/character.js"></script>
 <script src="js/effects.js"></script>
 <script src="js/game.js"></script>
+<script src="js/cs.js"></script>
 <script src="js/peerjs.min.js"></script>
 <script src="js/net.js"></script>
 <script src="js/post.js"></script>
 <script src="js/account.js"></script>
 <script src="js/lobby.js"></script>
+<script src="js/friends.js"></script>
 <script src="js/ui.js"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function () {});

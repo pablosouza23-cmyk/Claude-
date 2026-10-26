@@ -8,7 +8,8 @@ const SKIN_INFO = { heroi: 'Moletom com capuz e cabelo cacheado', camisa: 'Visua
   soldado: 'Uniforme camuflado de combate', soldado2: 'Sargento com equipamento completo', soldada: 'Soldada das forças especiais', swat: 'Tropa de elite com colete tático' };
 const GEM_SVG = '<svg class="gemI" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 13L2 9z" fill="url(#gmG)" stroke="#1b1450" stroke-width="1.2"/><path d="M2 9h20M8.5 3 12 9l3.5-6M12 9v13M7 9l5 13 5-13" fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".8"/></svg>';
 const COIN_SVG = '<svg class="coinI" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="url(#cnG)" stroke="#6b3d00" stroke-width="1.3"/><circle cx="12" cy="12" r="7" fill="none" stroke="#a65f00" stroke-width="1"/><path d="m12 6.8 1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff6c8" stroke="#a65f00" stroke-width=".6"/></svg>';
-const VERIFIED_SVG = '<svg class="vfI" viewBox="0 0 24 24" role="img" aria-label="verificado"><path fill="#1d9bf0" d="m12 1.5 2.6 1.9 3.2-.2 1 3 2.7 1.8-1 3 1 3-2.7 1.8-1 3-3.2-.2-2.6 1.9-2.6-1.9-3.2.2-1-3L2.5 16l1-3-1-3 2.7-1.8 1-3 3.2.2z"/><path fill="#fff" d="m10.4 15.8-3.4-3.4 1.4-1.4 2 2 5.1-5.1 1.4 1.4z"/></svg>';
+// selo de verificado (assets/verified.png): troque o arquivo para mudar o desenho
+const VERIFIED_SVG = '<img class="vfI" src="' + CH.url('assets/verified.png') + '" alt="verificado" draggable="false">';
 const cur = (k) => k === 'gems' ? GEM_SVG : COIN_SVG;
 const fmtN = (n) => Math.round(n).toLocaleString('pt-BR');
 const NEWS = [
@@ -114,13 +115,21 @@ LOB.renderTop = function () {
   const n = ACC.unread();
   $('lbMailN').textContent = n > 9 ? '9+' : n;
   $('lbMailN').classList.toggle('hidden', !n);
+  LOB.renderFriendBadge();
   $('lbLvl').textContent = p.level;
   $('lbXp').style.width = Math.min(100, p.xp / ACC.need(p.level) * 100) + '%';
   $('lbAvatar').style.backgroundImage = LOB.thumbs[p.skin] ? 'url(' + LOB.thumbs[p.skin] + ')' : '';
   $('lbAvatar').textContent = LOB.thumbs[p.skin] ? '' : p.name.charAt(0).toUpperCase();
-  $('lbMapName').textContent = W.MAP.name.toUpperCase();
-  LOB.drawMapThumb($('lbMapCv'), W.mapId);
+  const cs = G.settings.mode === 'cs';
+  $('lbMapName').textContent = cs ? 'CONTRA SQUAD ' + G.settings.csSize + 'x' + G.settings.csSize : (W.mapId === 'arena' ? W.MAPS[G.settings.map || 'ilha'] : W.MAP).name.toUpperCase();
+  $('lbMapLbl').textContent = cs ? 'MODO · ARENA' : 'MAPA';
+  LOB.drawMapThumb($('lbMapCv'), cs ? 'arena' : W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId);
   LOB.renderCur();
+};
+
+LOB.renderFriendBadge = function () {
+  const n = ACC.p ? ACC.p.freq.length : 0;
+  $('lbFrN').textContent = n; $('lbFrN').classList.toggle('hidden', !n);
 };
 
 // ---------- novidades (carrossel) ----------
@@ -183,6 +192,7 @@ LOB.enter = function (msg) {
   if (msg) notify('ok', msg);
   if (!PAY.ready && !PAY.busy) { PAY.busy = true; PAY.init().then(() => { if (UI.screen === 'rechargeScr') LOB.renderRecharge(); }); }
   setTimeout(() => { LOB.makeThumbs(); if (UI.screen === 'menuScr') LOB.renderTop(); }, 400);
+  FR.start();
   if (LOB.pendingRoom) { const c = LOB.pendingRoom; LOB.pendingRoom = null; LOB.joinLink(c); }
   const d = ACC.daily();
   if (d) setTimeout(() => LOB.dialog('PRÊMIO DIÁRIO', '<div class="dlgPrize">' + COIN_SVG + '<b>+' + d + '</b></div>Volte amanhã para ganhar mais ouro.', [['PEGAR', null, true]]), 600);
@@ -392,13 +402,13 @@ LOB.renderProfile = function () {
     if (LOB.idTaps >= 5 && !p.owner) { LOB.idTaps = 0; LOB.ownerPrompt(); return; }
     try { navigator.clipboard.writeText(p.id).then(() => notify('ok', 'ID copiado: ' + p.id), () => notify('info', 'ID: ' + p.id)); } catch (e) { notify('info', 'ID: ' + p.id); }
   });
-  on('pfOut', () => { ACC.logout(); LOB.showAuth('login'); });
+  on('pfOut', () => { FR.stop(); ACC.logout(); LOB.showAuth('login'); });
   on('pfCode', () => {
     const code = ACC.exportCode();
     LOB.dialog('CÓDIGO DE TRANSFERÊNCIA', 'Copie este código e cole no outro aparelho em <b>ENTRAR › CÓDIGO</b>. Ele leva sua conta inteira; não mande para ninguém.<textarea class="codeBox" readonly>' + code + '</textarea>',
       [['COPIAR', () => { try { navigator.clipboard.writeText(code).then(() => notify('ok', 'Código copiado'), () => notify('info', 'Selecione e copie o código')); } catch (e) { notify('info', 'Selecione e copie o código'); } }, true], ['FECHAR']]);
   });
-  on('pfDel', () => LOB.dialog('APAGAR CONTA', 'Isso apaga a conta <b>' + escapeHTML(ACC.user) + '</b> deste aparelho, com todo o progresso e itens. Não dá para desfazer.', [['APAGAR', () => { ACC.deleteAccount(); LOB.showAuth('new'); }, 'danger'], ['CANCELAR']]));
+  on('pfDel', () => LOB.dialog('APAGAR CONTA', 'Isso apaga a conta <b>' + escapeHTML(ACC.user) + '</b> deste aparelho, com todo o progresso e itens. Não dá para desfazer.', [['APAGAR', () => { FR.stop(); ACC.deleteAccount(); LOB.showAuth('new'); }, 'danger'], ['CANCELAR']]));
 };
 LOB.setName = function (v) {
   const n = String(v || '').trim().slice(0, 14);
@@ -519,6 +529,34 @@ LOB.renderAdmin = function () {
   body.querySelectorAll('[data-to]').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.adTo = b.dataset.to; LOB.adTab = 'enviar'; LOB.renderAdmin(); }));
 };
 
+// ---------- modo de jogo (Battle Royale ou Contra Squad 1x1 a 10x10) ----------
+LOB.renderMode = function () {
+  const m = G.settings.mode === 'cs' ? 'cs' : 'br', n = G.settings.csSize || 4;
+  document.querySelectorAll('#modeTabs button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  $('csSizes').classList.toggle('hidden', m !== 'cs');
+  $('csSizes').innerHTML = Array.from({ length: 10 }, (_, i) => '<button class="chip' + (i + 1 === n ? ' hot' : '') + '" data-n="' + (i + 1) + '">' + (i + 1) + 'x' + (i + 1) + '</button>').join('');
+  $('csSizes').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); G.settings.csSize = +b.dataset.n; G.saveSettings(); LOB.renderMode(); }));
+  $('mdSoloTxt').textContent = m === 'cs' ? (n === 1 ? 'X1 contra um bot na Arena' : 'Você e ' + (n - 1) + ' bot(s) contra ' + n + ' bots na Arena') : 'Você contra 24 bots';
+};
+LOB.setMode = function (m) { G.settings.mode = m; G.saveSettings(); LOB.renderMode(); };
+// sala: o anfitrião escolhe o modo e o tamanho dos times
+LOB.renderRoomMode = function () {
+  const host = NET.isHost(), m = NET.gm || 'br', n = NET.gs || 4;
+  document.querySelectorAll('#roomModeTabs button').forEach(b => { b.classList.toggle('on', b.dataset.m === m); b.disabled = !host; });
+  $('roomSizeRow').classList.toggle('hidden', m !== 'cs');
+  $('rmSize').textContent = n + ' x ' + n;
+  $('rmMinus').disabled = $('rmPlus').disabled = !host;
+  if (m === 'cs') { $('roomMapName').textContent = 'ARENA'; $('roomMap').disabled = true; }
+  $('roomBotsRow').querySelector('span').textContent = m === 'cs' ? 'Completar os times com bots' : 'Completar com bots (25 na ilha)';
+};
+LOB.roomSet = function (gm, gs) {
+  if (!NET.isHost()) return;
+  if (gm) NET.gm = gm;
+  if (gs) NET.gs = U.clamp(gs, 1, 10);
+  G.settings.mode = NET.gm; G.settings.csSize = NET.gs; G.saveSettings();
+  NET.bcastRoom(); renderRoom();
+};
+
 // ---------- mapas ----------
 LOB.drawMapThumb = function (cv, id) {
   if (!cv) return;
@@ -545,10 +583,11 @@ LOB.openMaps = function () {
   LOB.mpFrom = UI.screen;
   showScreen('mapPickScr');
   const host = !NET.on() || NET.isHost();
-  $('mpList').innerHTML = W.MAP_LIST.map(id => {
-    const m = W.MAPS[id];
-    return '<button class="mapOpt' + (id === W.mapId ? ' on' : '') + '" data-id="' + id + '"' + (host ? '' : ' disabled') + '><canvas width="200" height="200"></canvas><div><b>' + m.name.toUpperCase() + '</b><small>' + m.desc + '</small>' +
-      '<span>' + m.areas.filter(a => a.flat).length + ' locais · 25 jogadores</span></div>' + (id === W.mapId ? '<em>' + icon('check') + 'SELECIONADO</em>' : '') + '</button>';
+  const inRoom = NET.on(), cur = !inRoom && G.settings.mode === 'cs' ? 'arena' : W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId;
+  $('mpList').innerHTML = W.MAP_LIST.concat(inRoom ? [] : ['arena']).map(id => {
+    const m = W.MAPS[id], sel = id === cur;
+    return '<button class="mapOpt' + (sel ? ' on' : '') + '" data-id="' + id + '"' + (host ? '' : ' disabled') + '><canvas width="200" height="200"></canvas><div><b>' + m.name.toUpperCase() + '</b><small>' + m.desc + '</small>' +
+      '<span>' + (m.cs ? 'Contra Squad · 1x1 até 10x10' : m.areas.filter(a => a.flat).length + ' locais · 25 jogadores') + '</span></div>' + (sel ? '<em>' + icon('check') + 'SELECIONADO</em>' : '') + '</button>';
   }).join('') + (host ? '' : '<p class="hint">Só o anfitrião da sala escolhe o mapa.</p>');
   $('mpList').querySelectorAll('.mapOpt').forEach(b => {
     LOB.drawMapThumb(b.querySelector('canvas'), b.dataset.id);
@@ -557,7 +596,10 @@ LOB.openMaps = function () {
 };
 LOB.closeMaps = function () { if (LOB.mpFrom === 'roomScr' || NET.on()) openRoom(); else goMenu(); };
 LOB.pickMap = function (id) {
-  if (id === W.mapId) { LOB.closeMaps(); return; }
+  // a Arena é o mapa do Contra Squad; os outros são do Battle Royale
+  if (id === 'arena') { LOB.setMode('cs'); LOB.closeMaps(); notify('ok', 'Modo Contra Squad ' + G.settings.csSize + 'x' + G.settings.csSize + ' (troque o tamanho em JOGAR)'); return; }
+  if (!NET.on()) G.settings.mode = 'br';
+  if (id === W.mapId) { G.settings.map = id; G.saveSettings(); LOB.closeMaps(); return; }
   G.settings.map = id; G.saveSettings();
   LOB.switchMap(id, () => { LOB.closeMaps(); if (NET.isHost()) NET.bcastRoom(); notify('ok', 'Mapa: ' + W.MAP.name); });
 };
@@ -624,7 +666,7 @@ LOB.matchEnd = function () {
   const p = G.player;
   if (!ACC.p || !p || LOB.rewarded === G.matchId) { $('resReward').innerHTML = ''; return; }
   LOB.rewarded = G.matchId;
-  const r = ACC.reward({ place: G.place || G.actors.length, total: G.actors.length, kills: p.kills, dmg: p.dmgDealt || 0, time: G.time });
+  const r = ACC.reward({ place: G.place || G.actors.length, total: G.actors.length, kills: p.kills, dmg: p.dmgDealt || 0, time: G.time, cs: G.mode === 'cs' });
   if (!r) return;
   $('resReward').innerHTML = '<div class="rw">' + COIN_SVG + '<b>+' + fmtN(r.gold) + '</b><small>OURO</small></div><div class="rw xp"><i>XP</i><b>+' + fmtN(r.xp) + '</b><small>EXPERIÊNCIA</small></div>' +
     (r.gems ? '<div class="rw">' + GEM_SVG + '<b>+' + r.gems + '</b><small>GEMAS</small></div>' : '') +
@@ -659,6 +701,7 @@ LOB.init = function () {
     else if (k === 'recharge') LOB.openRecharge();
     else if (k === 'arsenal') openInventory('arsenal');
     else if (k === 'profile') LOB.openProfile();
+    else if (k === 'friends') FR.openScr();
   }));
   click('shBack', () => LOB.closeShop());
   document.querySelectorAll('#shTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.sh.kind = b.dataset.t; LOB.sh.sel = b.dataset.t === 'skins' ? ACC.p.skin : null; if (LOB.preview) { LOB.preview = null; swapShowcase(); } LOB.renderShop(); }));
@@ -667,8 +710,15 @@ LOB.init = function () {
   click('rcHist', () => LOB.history());
   click('pfClose', () => goMenu());
   click('mpClose', () => LOB.closeMaps());
+  click('frClose', () => FR.close());
+  click('roomFriends', () => FR.openScr('amigos'));
+  document.querySelectorAll('#frTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); FR.tab = b.dataset.t; FR.render(); }));
+  document.querySelectorAll('#modeTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.setMode(b.dataset.m); }));
+  document.querySelectorAll('#roomModeTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.roomSet(b.dataset.m); }));
+  click('rmMinus', () => LOB.roomSet(null, (NET.gs || 4) - 1));
+  click('rmPlus', () => LOB.roomSet(null, (NET.gs || 4) + 1));
   LOB.initDrag();
-  ACC.onChange(() => { if (UI.screen === 'menuScr') LOB.renderTop(); else LOB.renderCur(); });
+  ACC.onChange(() => { if (UI.screen === 'menuScr') LOB.renderTop(); else LOB.renderCur(); if (UI.screen === 'friendsScr') FR.render(); });
   setInterval(() => { if (UI.screen === 'menuScr') { LOB.newsI++; LOB.renderNews(); } }, 5000);
 };
 // link de convite (?sala=CODIGO)

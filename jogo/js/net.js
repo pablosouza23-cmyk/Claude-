@@ -43,6 +43,7 @@ NET.createRoom = function () {
   if (!NET.available()) { NET.setStatus('Multiplayer indisponível: sem internet.', true); return; }
   NET.leave();
   NET.mode = 'host'; NET.pid = 0; NET.nextPid = 1;
+  NET.gm = G.settings.mode || 'br'; NET.gs = G.settings.csSize || 4;
   NET.code = NET.makeCode();
   NET.players = [{ pid: 0, name: G.settings.name || 'Jogador', av: G.settings.avatar || 'heroi', vf: !!(ACC.p && ACC.p.verified) }];
   NET.setStatus('Criando sala…');
@@ -138,7 +139,7 @@ NET.send = function (m) { if (NET.conn && NET.conn.open) NET.conn.send(m); };
 NET.bcast = function (m, except) { for (const c of NET.conns) if (c !== except && c.open) c.send(m); };
 NET.toPid = function (pid, m) { const p = NET.players.find(x => x.pid === pid); if (p && p.conn && p.conn.open) p.conn.send(m); };
 
-NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av, p.vf ? 1 : 0]), bots: NET.bots, live: NET.live, map: W.mapId });
+NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av, p.vf ? 1 : 0]), bots: NET.bots, live: NET.live, map: W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId, gm: NET.gm, gs: NET.gs });
 NET.bcastRoom = function () { if (NET.isHost()) NET.bcast(NET.roomMsg()); };
 
 NET.setAvatar = function (av) {
@@ -152,7 +153,12 @@ NET.setBots = function (on) { NET.bots = on; NET.bcastRoom(); renderRoom(); };
 NET.hostStart = function () {
   if (!NET.isHost() || NET.live) return;
   const seed = Math.floor(Math.random() * 1e9);
-  const msg = { t: 'go', seed, ps: NET.players.map(p => [p.pid, p.name, p.av]), bots: NET.bots, ang: Math.random() * Math.PI * 2, side: Math.random() - 0.5, map: W.mapId };
+  const cs = NET.gm === 'cs';
+  // Contra Squad: times alternados pela ordem de entrada na sala
+  const tm = {};
+  NET.players.forEach((p, i) => { tm[p.pid] = i % 2; });
+  const msg = { t: 'go', seed, ps: NET.players.map(p => [p.pid, p.name, p.av]), bots: NET.bots, ang: Math.random() * Math.PI * 2, side: Math.random() - 0.5,
+    map: cs ? 'arena' : (W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId), mode: cs ? 'cs' : 'br', size: Math.max(NET.gs || 4, Math.ceil(NET.players.length / 2)), tm: tm };
   NET.bcast(msg);
   NET.begin(msg);
 };
@@ -337,7 +343,7 @@ NET.onRespawn = function (a) {
   else if (NET.isHost()) NET.bcast({ t: 'rsp', i: G.actors.indexOf(a) });
 };
 NET.checkWin = function () {
-  if (!NET.isHost() || !NET.live) return;
+  if (!NET.isHost() || !NET.live || G.mode === 'cs') return;
   if (aliveCount() <= 1) {
     const w = G.actors.find(x => x.alive);
     NET.bcast({ t: 'win', i: w ? G.actors.indexOf(w) : -1 });
@@ -364,7 +370,7 @@ NET.clientRecv = function (d) {
     case 'full': NET.setStatus(d.live ? 'A partida já começou. Espere acabar e tente de novo.' : 'A sala está cheia.', true); break;
     case 'room':
       NET.players = d.ps.map(p => ({ pid: p[0], name: p[1], av: p[2], vf: !!p[3] }));
-      NET.bots = d.bots; NET.code = d.code;
+      NET.bots = d.bots; NET.code = d.code; NET.gm = d.gm || 'br'; NET.gs = d.gs || 4;
       if (d.map && d.map !== W.mapId && W.MAPS[d.map] && !NET.live && G.state !== 'play') LOB.switchMap(d.map, () => { if (UI.screen === 'roomScr') renderRoom(); });
       if (!NET.live && G.state !== 'play' && G.state !== 'end') { if (UI.screen !== 'roomScr') openRoom(); else renderRoom(); }
       break;
@@ -410,6 +416,7 @@ NET.clientRecv = function (d) {
       a.alive = false; a.hp = 0; a.vel.set(0, 0, 0);
       if (k && k !== a) { k.kills++; killFeed(k.name, a.name, d.w); if (k === G.player) killBanner(k.kills, a.name); }
       else killFeed(a.name, null, d.w || 'Zona');
+      if (G.mode === 'cs') break;
       if (a.phase === 'ground') { const bag = bagMesh(); bag.position.set(a.pos.x + 0.4, W.groundAt(a.pos.x, a.pos.z, a.pos.y + 0.5), a.pos.z - 0.3); scene.add(bag); G.props.push(bag); }
       if (a === G.player) {
         if (d.rs) { a.respawnT = RESPAWN_T; a.rsWait = RESPAWN_T + 12; a.revives = 0; bigText('VOCÊ CAIU! VAI RENASCER'); } else { G.endT = 2.5; G.place = d.pl || aliveCount() + 1; }
@@ -425,6 +432,7 @@ NET.clientRecv = function (d) {
     case 'wall': { const a = G.actors[d.i]; if (a) NET.remoteWall(a, d); break; }
     case 'nade': { const a = G.actors[d.i]; if (a) NET.remoteNade(a, d); break; }
     case 'opened': openAirdropGoods(G.player); break;
+    case 'cs': CS.recv(d); break;
   }
 };
 

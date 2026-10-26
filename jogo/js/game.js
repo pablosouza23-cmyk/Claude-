@@ -6,7 +6,7 @@ const V3 = THREE.Vector3;
 
 const G = {
   state: 'menu', time: 0, built: false,
-  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'ilha' },
+  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'ilha', mode: 'br', csSize: 4, csGun: 'FUZIL' },
   actors: [], bots: [], walls: [], loot: [], nades: [], props: [],
 };
 
@@ -291,6 +291,7 @@ function punch(a) {
 
 function damageActor(a, dmg, attacker, head, weapon) {
   if (!a.alive) return;
+  if (attacker && attacker !== a && CS.ally(attacker, a)) return; // sem fogo amigo no Contra Squad
   // no multiplayer o cliente só avisa o anfitrião dos acertos que ele mesmo fez
   if (NET.isClient()) {
     if (attacker === G.player && a !== G.player) NET.send({ t: 'hit', i: G.actors.indexOf(a), d: Math.round(dmg * 10) / 10, h: head ? 1 : 0, w: weapon || weaponName(attacker) });
@@ -319,6 +320,7 @@ function killActor(a, killer, weapon) {
   if (killer && killer !== a) { killer.kills++; killFeed(killer.name, a.name, weapon); if (killer.isPlayer) killBanner(killer.kills, a.name); }
   else killFeed(a.name, null, 'Zona');
   // mochila caída com o que a pessoa carregava (como no vídeo)
+  if (G.mode === 'cs') { NET.onKill(a, killer, weapon); return; } // as rodadas cuidam do fim
   if (a.phase === 'ground') dropBag(a);
   // renascimento: jogadores (não os bots) voltam uma vez por partida no Battle Royale
   const revive = G.mode !== 'cs' && a.revives > 0 && (a.isPlayer || a.human);
@@ -1274,7 +1276,7 @@ function aimAssist(p, dt) {
   const eye = camera.position;
   let best = null, bestS = 1;
   for (const a of G.actors) {
-    if (a === p || !a.alive || a.phase !== 'ground') continue;
+    if (a === p || !a.alive || a.phase !== 'ground' || CS.ally(a, p)) continue;
     _aa.set(a.pos.x - eye.x, a.pos.y + (a.crouch ? 0.8 : 1.15) - eye.y, a.pos.z - eye.z);
     const dist = _aa.length();
     if (dist < 1.2 || dist > w.range) continue;
@@ -1325,6 +1327,14 @@ function updatePlayer(dt) {
     return;
   }
   G.pitch = U.clamp(G.pitch, -0.95, 0.8);
+  if (CS.frozen()) {
+    // escolha da arma: dá para olhar em volta, mas não andar nem atirar
+    p.vel.set(0, 0, 0); p.speed = 0;
+    p.face = U.dampAngle(p.face, G.yaw + Math.PI, 12, dt);
+    p.ch.body.rotation.y = p.face; p.ch.root.position.copy(p.pos); p.ch.root.visible = true;
+    CH.animate(p.ch, dt, { mode: 'ground', speed: 0, aim: 0, pitch: 0, armed: !!curSlot(p), gunAt: fpGunAt(p) });
+    return;
+  }
   const sy = Math.sin(G.yaw), cy = Math.cos(G.yaw);
   const wx = -sy * mv.my + cy * mv.mx, wz = -cy * mv.my - sy * mv.mx;
   if (consume('crouch', 'KeyC')) p.crouch = !p.crouch;
@@ -1505,7 +1515,7 @@ function botThink(b) {
   actorEye(b, _e1);
   let best = null, bd = hasGun(b) ? 60 : 12;
   for (const a of G.actors) {
-    if (a === b || !a.alive || a.phase !== 'ground') continue;
+    if (a === b || !a.alive || a.phase !== 'ground' || CS.ally(a, b)) continue;
     const d = a.pos.distanceTo(b.pos);
     if (d > bd + 15) continue;
     const bias = a === b.lastAttacker && G.time - b.lastHurt < 4 ? 15 : 0;
@@ -1522,7 +1532,13 @@ function botThink(b) {
   const z = G.zone;
   const zr = z.waiting ? z.toR : z.r;
   const zx = z.waiting ? z.toX : z.cx, zz = z.waiting ? z.toZ : z.cz;
-  if (!ai.wp || Math.hypot(b.pos.x - ai.wp.x, b.pos.z - ai.wp.z) < 3 || Math.hypot(ai.wp.x - zx, ai.wp.z - zz) > zr) {
+  if (G.mode === 'cs') {
+    // avança para o lado do inimigo por caminhos variados
+    if (!ai.wp || Math.hypot(b.pos.x - ai.wp.x, b.pos.z - ai.wp.z) < 3) {
+      const e = CS.BASE[1 - b.team], k = 0.2 + Math.random() * 0.8;
+      ai.wp = { x: e[0] * k + (Math.random() - 0.5) * 20, z: e[1] + (Math.random() - 0.5) * 70 * (1 - k * 0.6) };
+    }
+  } else if (!ai.wp || Math.hypot(b.pos.x - ai.wp.x, b.pos.z - ai.wp.z) < 3 || Math.hypot(ai.wp.x - zx, ai.wp.z - zz) > zr) {
     const a = Math.random() * 6.28, d = Math.sqrt(Math.random()) * zr * 0.8;
     ai.wp = { x: U.clamp(zx + Math.cos(a) * d, -W.LAND_R + 20, W.LAND_R - 20), z: U.clamp(zz + Math.sin(a) * d, -W.LAND_R + 20, W.LAND_R - 20) };
   }
@@ -1559,6 +1575,11 @@ function updateBot(b, dt) {
   if (b.phase === 'fall' || b.phase === 'chute') {
     botAirControl(b, dt);
     if (b.ch.root.visible) CH.animate(b.ch, dt, { mode: b.phase, board: b.board });
+    return;
+  }
+  if (CS.frozen()) {
+    b.ch.body.rotation.y = b.face; b.ch.root.position.copy(b.pos);
+    if (near < 120) CH.animate(b.ch, dt, { mode: 'ground', speed: 0, aim: 0, pitch: 0, armed: !!curSlot(b) });
     return;
   }
   const ai = b.ai;

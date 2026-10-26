@@ -82,6 +82,24 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v2.5
+- **Modo Contra Squad** (JOGAR → aba **CONTRA SQUAD**, ou o cartão do mapa → **Arena**):
+  - times de **1x1 até 10x10**; os bots completam as vagas;
+  - mapa novo **Arena**: ilha pequena com Base Azul e Base Vermelha, prédio de 2 andares no centro, contêineres, Mercado ao norte e Galpão ao sul;
+  - no começo de cada rodada, 8 segundos parados na base para escolher a arma (Fuzil, SMG, Escopeta, Precisão, Metralhadora ou Carabina). Todos ganham pistola, colete e capacete Nv. 2, 1 granada, 1 kit e 2 Gel;
+  - a rodada dura até um time ser eliminado ou acabar o tempo de 1:40. No fim do tempo, ganha quem tem mais gente viva; se empatar, quem tem mais vida;
+  - vence quem fizer **4 rodadas**;
+  - não tem fogo amigo, e os colegas aparecem com o nome em azul;
+  - placar no topo com rodada, tempo e quem está vivo em cada time;
+  - no multiplayer, o anfitrião escolhe na sala **BATTLE ROYALE** ou **CONTRA SQUAD** e o tamanho (− / +). Os jogadores são divididos nos dois times pela ordem de entrada.
+- **Amigos** (botão **AMIGOS** no lobby, e também na sala):
+  - **ADICIONAR**: digite o ID do amigo e mande o pedido;
+  - **PEDIDOS**: aceite ou recuse (a bolinha vermelha mostra quantos chegaram);
+  - **AMIGOS**: mostra quem está on-line, em partida ou numa sala. **CONVIDAR** cria a sala, se for preciso, e o amigo recebe o convite na tela com o botão **ENTRAR NA SALA**;
+  - funciona pelo mesmo serviço gratuito das salas (PeerJS), sem servidor próprio. O limite é que o pedido e o convite só chegam se o amigo estiver com o jogo aberto;
+  - num jogo grande, o ideal é ter um servidor de amigos (Firebase), que guarda os pedidos mesmo com o amigo off-line.
+- **Selo de verificado novo** (estrela azul com brilho), no arquivo `assets/verified.png`. Para trocar o desenho, substitua o arquivo, de preferência um PNG quadrado com fundo transparente.
+
 ## Novidades da v2.4
 - **Renascimento:** no Battle Royale, a primeira vez que você morre não acaba a partida. Aparece "RENASCENDO EM 5…" e você volta caindo de paraquedas num ponto dentro da zona, com 200 de vida e uma pistola. A segunda morte é eliminação. Os bots não renascem. No multiplayer cada amigo também tem um renascimento.
 - **Login corrigido:**
@@ -227,6 +245,8 @@ A licença MIT pede que o aviso de copyright vá junto com o jogo. Deixe esta ta
 | `js/post.js` | Filtro Bodycam (pós-processamento) |
 | `js/maps.js` | Mapas (Ilha Tropical e Ilha Triângulo): áreas, estradas, prédios, hangar, usina, estaleiro, moinho |
 | `js/account.js` | Contas (login, senha com hash, código de transferência), ouro, gemas, catálogo da loja e pagamento (Play Billing) |
+| `js/cs.js` | Modo Contra Squad: times, rodadas, escolha de arma, placar e sincronização |
+| `js/friends.js` | Amigos: pedidos, on-line, convite para a sala (PeerJS) |
 | `js/lobby.js` | Lobby, loja, recarga, perfil, escolha de mapa, palco 3D, diálogos e tela de carregamento |
 | `assets/props.bin` | Granada, mochila, kit, munição, colete, capacete, gel e caixa (modelados no Blender) |
 | `assets/chars/` | Personagens (malha + texturas) e animações, em formato binário compacto |

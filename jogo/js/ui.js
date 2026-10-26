@@ -394,6 +394,7 @@ function updateHUD(dt) {
   for (const a of G.actors) { if (a.phase === 'plane') nPlane++; else if (a.phase === 'fall' || a.phase === 'chute') nAir++; }
   setText(H.topStatus, 'ts', nPlane + nAir > 0 ? 'no avião ' + nPlane + ' · no ar ' + nAir + ' · saltaram ' + (G.actors.length - nPlane) + '/' + G.actors.length : '');
   setClass(H.topStatus, 'tsh', 'hidden', nPlane + nAir === 0);
+  if (G.mode === 'cs') CS.hud();
   // barra de armas e itens
   for (let i = 0; i < 3; i++) {
     const s = p.slots[i], el = H['wb' + i];
@@ -614,8 +615,11 @@ function goLobby() {
   showScreen('lobbyScr');
   showEmote(Math.random() < 0.5 ? 'wave' : 'cheer2');
   lobbyT = 15;
-  $('lobbyPlayers').textContent = TOTAL + '/' + TOTAL;
-  $('lpMap').textContent = W.MAP.name.toUpperCase();
+  const cs = G.settings.mode === 'cs', n = G.settings.csSize || 4;
+  $('lobbyPlayers').textContent = cs ? n + ' x ' + n : TOTAL + '/' + TOTAL;
+  $('lpMap').textContent = cs ? 'ARENA' : W.MAP.name.toUpperCase();
+  $('lpMode').textContent = cs ? 'CONTRA SQUAD' : 'SOLO';
+  if (cs) lobbyT = 6;
   LOB.shift = 0;
   clearInterval(lobbyIv);
   const tickL = () => {
@@ -629,6 +633,11 @@ function goLobby() {
 
 function beginMatch(msg) {
   clearInterval(lobbyIv);
+  // Contra Squad joga na Arena; o Battle Royale no mapa escolhido
+  if (!msg) {
+    const need = G.settings.mode === 'cs' ? 'arena' : (W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId);
+    if (need !== W.mapId) { LOB.switchMap(need, () => beginMatch()); return; }
+  }
   SND.init();
   SND.music(false);
   if (isTouch) {
@@ -652,6 +661,21 @@ function startMatch(msg) {
   G.botDmgScale = 0.55;
   G.time = 0; G.vignette = 0; G.endT = -1; G.area = null; G.deathOrbit = 0; G.mouseFire = false; G.prevFire = false; G.zoneWarned = -1; G.camDist = undefined;
   for (const k in input) if (typeof input[k] === 'boolean') input[k] = false;
+  G.mode = (msg ? msg.mode : G.settings.mode) === 'cs' ? 'cs' : 'br';
+  H.hud.classList.toggle('cs', G.mode === 'cs');
+  if (G.mode === 'cs') {
+    CS.start(msg);
+    G.state = 'play';
+    H.hud.classList.remove('hidden');
+    H.touch.classList.toggle('hidden', !isTouch);
+    H.prep.classList.add('hidden');
+    H.jumpHint.classList.remove('show');
+    onResize();
+    warmup();
+    return;
+  }
+  G.cs = null;
+  if (G.zoneMesh) { G.zoneMesh.visible = true; G.zoneRing.visible = true; }
   if (msg) {
     NET.buildActors(msg);
     scatterLoot(U.rng(msg.seed + 7));
@@ -705,7 +729,12 @@ function endMatch() {
   const p = G.player, win = p.alive;
   $('resTitle').textContent = win ? 'VITÓRIA' : 'DERROTA';
   $('resultCard').className = 'resCard ' + (win ? 'win' : 'lose');
-  $('resPlace').innerHTML = '#' + G.place + '<small>/' + G.actors.length + '</small>';
+  if (G.mode === 'cs' && G.cs) {
+    const me = p.team, won = G.cs.winner === me;
+    $('resTitle').textContent = won ? 'VITÓRIA' : 'DERROTA';
+    $('resultCard').className = 'resCard ' + (won ? 'win' : 'lose');
+    $('resPlace').innerHTML = G.cs.score[me] + ' <small>x</small> ' + G.cs.score[1 - me] + '<small> · CONTRA SQUAD ' + G.cs.n + 'x' + G.cs.n + '</small>';
+  } else $('resPlace').innerHTML = '#' + G.place + '<small>/' + G.actors.length + '</small>';
   $('resKills').textContent = p.kills;
   $('resDmg').textContent = Math.round(p.dmgDealt);
   $('resTime').textContent = U.fmtTime(G.time);
@@ -731,8 +760,9 @@ function renderRoom() {
   $('roomStart').classList.toggle('hidden', !host);
   $('roomWait').classList.toggle('hidden', host);
   $('skinName').textContent = skinName(G.settings.avatar || 'heroi');
-  $('roomMapName').textContent = W.MAP.name.toUpperCase();
+  $('roomMapName').textContent = (W.mapId === 'arena' ? W.MAPS[G.settings.map || 'ilha'] : W.MAP).name.toUpperCase();
   $('roomMap').disabled = !host && NET.on();
+  LOB.renderRoomMode();
 }
 function escapeHTML(t) { return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
 function openRoom() { G.state = 'lobby'; LOB.shift = -0.16; showScreen('roomScr'); renderRoom(); renderRoomEmotes(); showEmote('wave'); }
@@ -1120,7 +1150,7 @@ function isTouchEvent(e) { return e.pointerType === 'touch' || (e.sourceCapabili
 
 function initScreens() {
   const click = (id, fn) => $(id).addEventListener('click', () => { SND.init(); SND.play('ui'); fn(); });
-  click('mPlay', () => showScreen('modeScr'));
+  click('mPlay', () => { showScreen('modeScr'); LOB.renderMode(); });
   click('mdSolo', () => goLobby());
   click('mdCreate', () => { NET.createRoom(); openRoom(); });
   click('mdJoin', () => { showScreen('joinScr'); NET.setStatus(''); setTimeout(() => $('joinCode').focus(), 50); });
@@ -1162,6 +1192,9 @@ function initScreens() {
 
 // ------------------------------------------------------------------ partida
 function clearMatch() {
+  if ($('csBuy')) $('csBuy').classList.add('hidden');
+  if ($('csTags')) $('csTags').innerHTML = '';
+  CS.tags = [];
   for (const a of G.actors) scene.remove(a.ch.root);
   for (const w of G.walls.slice()) { w.dead = true; scene.remove(w.grp); }
   G.walls.length = 0; W.dynamic.length = 0;
@@ -1185,7 +1218,7 @@ function clearMatch() {
 function tick(dt) {
   G.time += dt;
   updateFrustum();
-  updateDrop(dt);
+  if (G.mode !== 'cs') updateDrop(dt);
   updatePlayer(dt);
   updateRespawn(dt);
   for (const a of G.actors) if (a.human && a.remote) updatePuppet(a, dt);
@@ -1193,8 +1226,8 @@ function tick(dt) {
   updateWalls(dt);
   updateNades(dt);
   updateLoot(dt);
-  updateZone(dt);
-  updateAirdrop(dt);
+  if (G.mode === 'cs') CS.update(dt);
+  else { updateZone(dt); updateAirdrop(dt); }
   if (G.endT > 0) { G.endT -= dt; if (G.endT <= 0) endMatch(); }
   NET.update(dt);
 }

@@ -80,6 +80,7 @@ ACC.newProfile = function (name) {
   return { name: name || 'Jogador', id: ACC.newId(), verified: false, owner: false, level: 1, xp: 0, gold: 500, gems: 0,
     owned: { skins: ['heroi', 'camisa'], emotes: ['wave', 'clap', 'shrug', 'dance'] }, skin: 'heroi',
     stats: { matches: 0, wins: 0, kills: 0, top5: 0, dmg: 0, best: 0 }, buys: [], daily: '', created: Date.now(),
+    friends: [], freq: [], fsent: [],
     mail: [ACC.letter('Equipe Battle Island', 'Bem-vindo à ilha!', 'Valeu por jogar! Aqui vai um presente para começar. Ganhe ouro nas partidas e confira a loja.', [{ k: 'gold', n: 300 }, { k: 'gems', n: 10 }])] };
 };
 ACC.db = function () {
@@ -235,14 +236,15 @@ ACC.exchange = function () {
 // prêmio da partida: ouro e XP por abates, colocação, dano e tempo vivo
 ACC.reward = function (r) {
   const p = ACC.p; if (!p) return null;
-  const placeB = r.place === 1 ? 200 : r.place <= 3 ? 110 : r.place <= 10 ? 50 : 0;
+  // Contra Squad: prêmio pela vitória do time; Battle Royale: pela colocação
+  const placeB = r.cs ? (r.place === 1 ? 150 : 40) : r.place === 1 ? 200 : r.place <= 3 ? 110 : r.place <= 10 ? 50 : 0;
   const gold = Math.round(25 + r.kills * 18 + placeB + Math.min(60, r.time / 10));
-  const xp = Math.round(60 + r.kills * 30 + Math.max(0, r.total - r.place) * 8 + r.dmg * 0.1);
+  const xp = Math.round(60 + r.kills * 30 + (r.cs ? (r.place === 1 ? 220 : 80) : Math.max(0, r.total - r.place) * 8) + r.dmg * 0.1);
   p.gold += gold; p.xp += xp;
   const st = p.stats;
   st.matches++; st.kills += r.kills; st.dmg += Math.round(r.dmg); st.best = Math.max(st.best, r.kills);
   if (r.place === 1) st.wins++;
-  if (r.place <= 5) st.top5++;
+  if (r.place <= 5 && !r.cs) st.top5++;
   const ups = [];
   let gems = 0;
   while (p.xp >= ACC.need(p.level)) {

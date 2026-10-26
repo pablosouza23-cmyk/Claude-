@@ -391,7 +391,7 @@ function initHUD() {
   document.querySelectorAll('[data-icon]').forEach(el => { el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)); });
   ['hud', 'touch', 'hpFill', 'hpNum', 'vestBadge', 'helmBadge', 'aliveNum', 'killNum', 'compassStrip', 'compassNum', 'notifs', 'areaBanner', 'areaName',
     'killBanner', 'kbCount', 'kbName', 'minimap', 'zoneTime', 'zoneText', 'topStatus', 'prep', 'prepNum', 'bigText', 'jumpHint', 'diveStats', 'diveHint', 'altMark',
-    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'wbGel', 'wbInsp', 'inspTag', 'vaultBtn',
+    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'btnGel', 'wbInsp', 'inspTag', 'vaultBtn', 'mkPin',
     'healRing', 'reloadBar'].forEach(id => { H[id] = $(id); });
   H.scopeWrap = H.scope.querySelector('.sWrap');
   H.mm = H.minimap.getContext('2d');
@@ -455,7 +455,8 @@ function updateHUD(dt) {
   }
   setHTML(H.wbNade, 'wbn', icon('grenade') + '<b>' + p.nades + '</b>');
   setHTML(H.wbKit, 'wbk', icon('medkit') + '<b>' + p.kits + '</b>');
-  setHTML(H.wbGel, 'wbg', icon('gel') + '<b>' + p.gel + '</b>');
+  setHTML(H.btnGel, 'wbg', icon('gel') + '<b>' + p.gel + '</b>');
+  updateMarkPin(p);
   setHTML(H.wbInsp, 'wbi', icon('eye'));
   setClass(H.wbInsp, 'wbiOn', 'on', !!p.inspect);
   // nome da arma (e da skin) enquanto inspeciona
@@ -584,6 +585,17 @@ function drawMapLayer(g, S, cx, cz, scale, rotate, full) {
     if (!b.alive || b.phase !== 'ground' || CS.ally(b, p) || G.time - b.lastFire > 2.5 || b.pos.distanceTo(p.pos) > 90) continue;
     g.beginPath(); g.arc(b.pos.x * scale, b.pos.z * scale, full ? 4 : 3, 0, 7); g.fill();
   }
+  // marcações: a sua (amarela) e a dos colegas (com o número deles)
+  const pin = (x, z, col, txt) => {
+    const k = full ? 1.4 : 1, X = x * scale, Z = z * scale;
+    g.save(); g.translate(X, Z); if (rotate) g.rotate(-G.yaw);
+    g.fillStyle = col; g.strokeStyle = '#2a1e00'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(-7 * k, -9 * k, -6 * k, -17 * k, 0, -17 * k); g.bezierCurveTo(6 * k, -17 * k, 7 * k, -9 * k, 0, 0); g.fill(); g.stroke();
+    if (txt) { g.fillStyle = '#000'; g.font = '700 ' + Math.round(8 * k) + 'px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(txt, 0, -9 * k); }
+    g.restore();
+  };
+  if (G.marker) pin(G.marker.x, G.marker.z, '#ffd23c', '');
+  for (const t of (TEAM.on() ? TEAM.tags : [])) if (t.a.mark) pin(t.a.mark.x, t.a.mark.z, '#7fe3ff', String(t.n));
   // colegas de time: bolinha amarela com o número
   if (TEAM.on()) {
     g.font = '700 ' + (full ? 11 : 9) + 'px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -613,6 +625,20 @@ function drawMapLayer(g, S, cx, cz, scale, rotate, full) {
   g.restore();
 }
 
+// marcação na tela: alfinete em cima do ponto, com a distância (preso na borda quando fica fora da tela)
+const _mk = new THREE.Vector3();
+function updateMarkPin(p) {
+  const el = H.mkPin, m = G.marker;
+  if (!m || !p.alive) { if (!el.classList.contains('hidden')) el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  _mk.set(m.x, W.height(m.x, m.z) + 2.5, m.z).project(camera);
+  const Wd = window.innerWidth, Ht = window.innerHeight;
+  let x = (_mk.x + 1) / 2 * Wd, y = (1 - _mk.y) / 2 * Ht;
+  if (_mk.z > 1) { x = Wd - x; y = Ht * 0.12; } // atrás da câmera: vai para a borda
+  x = U.clamp(x, 40, Wd - 40); y = U.clamp(y, 70, Ht - 120);
+  el.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px) translate(-50%,-100%)';
+  setText(el.querySelector('b'), 'mkd', Math.round(Math.hypot(m.x - p.pos.x, m.z - p.pos.z)) + ' m');
+}
 function drawMinimap() {
   const g = H.mm, S = 160, p = G.player;
   const pp = p.phase === 'plane' ? G.drop.pos : p.pos;
@@ -680,6 +706,7 @@ function goMenu() {
   if (G.state === 'play' || G.state === 'pause' || G.state === 'end') clearMatch();
   G.ads = false; G.nearWin = null; G.sprint = false;
   H.scope.classList.remove('show'); H.reticle.innerHTML = ''; H.cache.sight = '';
+  if (G.gelAim) releaseGelAim(true);
   G.state = 'menu';
   H.hud.classList.add('hidden'); H.touch.classList.add('hidden');
   setupShowcase();
@@ -748,6 +775,7 @@ function startMatch(msg) {
   H.hud.classList.toggle('cs', G.mode === 'cs');
   G.teamSize = 1; G.teamCount = 0; TEAM.tags = []; TEAM.spec = null;
   G.sprint = false; G.nearWin = null; $('btnRun').classList.remove('on');
+  G.marker = null; G.gelAim = null;
   H.hud.classList.remove('team'); $('teamBox').classList.add('hidden');
   if (LOB.clearParty) LOB.clearParty();
   if (G.mode === 'cs') {
@@ -911,17 +939,21 @@ function renderInventory(force) {
   const slot = (s, i) => {
     if (!s) return '<div class="islot w empty"><span class="n">' + (i + 1) + '</span><span>' + (i === 2 ? 'Secundária' : 'Arma principal') + '</span></div>';
     const w = WEAPONS[s.id], r = WPN.RARITY[w.rarity];
-    return '<div class="islot w' + (p.cur === i ? ' on' : '') + '" data-slot="' + i + '" style="--rc:' + r.color + '"><span class="n">' + (i + 1) + '</span><img alt="" src="' + thumbs[s.id] + '"><b>' + w.name + '</b><span class="am">' + s.mag + ' / ' + s.reserve + '</span></div>';
+    return '<div class="islot w' + (p.cur === i ? ' on' : '') + '" data-slot="' + i + '" style="--rc:' + r.color + '"><span class="n">' + (i + 1) + '</span><img alt="" src="' + thumbs[s.id] + '"><b>' + w.name + '</b><span class="am">' + s.mag + ' / ' + s.reserve + '</span>' +
+      '<span class="invBtns"><button class="invAct" data-drop="w:' + i + '">LARGAR</button>' + (s.reserve > 0 ? '<button class="invAct" data-drop="a:' + i + '">LARGAR MUNIÇÃO</button>' : '') + '</span></div>';
   };
-  const item = (ic, label, n, extra) => '<div class="islot it' + (n ? '' : ' dim') + '">' + icon(ic) + '<b>' + label + '</b><span class="cnt">' + (extra || n) + '</span></div>';
+  // botão LARGAR nos itens que dá para jogar fora
+  const item = (ic, label, n, extra, drop) => '<div class="islot it' + (n ? '' : ' dim') + '">' + icon(ic) + '<b>' + label + '</b><span class="cnt">' + (extra || n) + '</span>' + (drop && n ? '<button class="invAct" data-drop="' + drop + '">LARGAR</button>' : '') + '</div>';
   box.innerHTML = '<div class="invGrid">' +
     '<div class="invChar">' + icon('user') + '<b>' + G.settings.name + '</b></div>' +
     '<div class="invW">' + (p ? p.slots.map(slot).join('') : '<p class="hint">As armas que você pegar na partida aparecem aqui. Veja todas no ARSENAL.</p>') + '</div>' +
     '<div class="invI">' + (p ? item('helmet', 'Capacete', p.helmet, p.helmet ? 'Nv.' + p.helmet : '—') + item('vest', 'Colete', p.armor, p.armor ? 'Nv.' + p.armor : '—') +
-      item('bag', 'Mochila', 1, 'Nv.1') + item('grenade', 'Granada', p.nades) + item('medkit', 'Kit médico', p.kits) + item('gel', 'Gel', p.gel) +
+      item('bag', 'Mochila', 1, 'Nv.1') + item('grenade', 'Granada', p.nades, null, 'gren') + item('medkit', 'Kit médico', p.kits, null, 'kit') + item('gel', 'Gel', p.gel, null, 'gel') +
       item('ammo', 'Munição', 1, p.slots.reduce((t, s) => t + (s ? s.reserve : 0), 0)) : '') +
-      '<div class="islot lock">' + icon('lock') + '</div><div class="islot lock">' + icon('lock') + '</div></div></div>';
+      '<div class="islot lock">' + icon('lock') + '</div><div class="islot lock">' + icon('lock') + '</div>' +
+      (p && (p.kits >= 5 || p.nades >= 4 || p.gel >= 8 || p.slots.some(x => x && x.reserve >= ammoCap(x.id))) ? '<p class="invFull">' + icon('warn') + ' Mochila cheia em algum item: largue o que não quer para pegar mais.</p>' : '') + '</div></div>';
   box.querySelectorAll('[data-slot]').forEach(el => el.addEventListener('click', () => { selectSlot(G.player, +el.dataset.slot); renderInventory(true); }));
+  box.querySelectorAll('[data-drop]').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); dropItem(el.dataset.drop); renderInventory(true); }));
 }
 
 // fotos das armas para o arsenal/inventário e das skins para a loja (desenhadas uma vez num renderer pequeno)
@@ -1078,7 +1110,7 @@ function renderSettings() {
   }
 }
 // ---------- editor de HUD: arrastar e redimensionar os botões; salva em G.settings.hud ----------
-const HUD_EDIT = ['btnFire', 'btnFireL', 'btnAim', 'btnJump', 'btnCrouch', 'btnReload', 'btnInv', 'btnEmote', 'btnRun', 'joyBase', 'weaponBar', 'hudTR', 'hudTL'];
+const HUD_EDIT = ['btnFire', 'btnFireL', 'btnAim', 'btnJump', 'btnCrouch', 'btnReload', 'btnInv', 'btnEmote', 'btnRun', 'btnGel', 'ffCount', 'joyBase', 'weaponBar', 'hudTR', 'hudTL'];
 let heWork = null, heSel = null, heFrom = null;
 function applyHudLayout() {
   const L = G.settings.hud || {};
@@ -1193,10 +1225,11 @@ function initInput() {
     if (e.code === 'KeyM' && G.state === 'play') { UI.screen === 'map' ? showScreen(null) : openMap(); }
     if (e.code === 'KeyB' && G.state === 'play') openEmoteWheel();
     if (e.code === 'KeyI' && G.state === 'play') input.inspect = true;
+    if (e.code === 'KeyG' && G.state === 'play' && !e.repeat) startGelAim(0, 0);
     if (e.code === 'Backquote' && document.exitPointerLock) document.exitPointerLock();
     if (G.state === 'play' && (e.code === 'Space' || e.code.indexOf('Arrow') === 0)) e.preventDefault();
   });
-  window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+  window.addEventListener('keyup', (e) => { keys[e.code] = false; if (e.code === 'KeyG') releaseGelAim(false); });
   const canvas = $('c');
   canvas.addEventListener('mousedown', (e) => {
     if (G.state !== 'play' || isTouchEvent(e)) return;
@@ -1301,11 +1334,26 @@ function initInput() {
   holdBtn($('wb2'), () => { input.slot = 2; });
   holdBtn($('wbNade'), () => { input.nade = true; });
   holdBtn($('wbKit'), () => { input.heal = true; });
-  holdBtn($('wbGel'), () => { input.wall = true; });
   holdBtn($('wbInsp'), () => { input.inspect = true; });
   holdBtn($('btnPause'), () => { pauseGame(); });
   holdBtn($('btnMap'), () => { openMap(); });
   holdBtn($('mmWrap'), () => { openMap(); });
+  // gel: segurar, arrastar para escolher o lugar e soltar
+  const gb = $('btnGel');
+  gb.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); try { gb.setPointerCapture(e.pointerId); } catch (er) { /* ok */ } startGelAim(e.clientX, e.clientY); });
+  gb.addEventListener('pointermove', (e) => { if (G.gelAim) { e.preventDefault(); moveGelAim(e.clientX, e.clientY); } });
+  gb.addEventListener('pointerup', (e) => { e.preventDefault(); releaseGelAim(false); });
+  gb.addEventListener('pointercancel', () => releaseGelAim(true));
+  // marcar um ponto no mapa (toque de novo em cima para tirar)
+  $('fullMap').addEventListener('pointerdown', (e) => {
+    if (G.state !== 'play' && G.state !== 'pause') return;
+    const cv = $('fullMap'), r = cv.getBoundingClientRect(), S = cv.width, sc = S / 440;
+    const px = (e.clientX - r.left) * S / r.width, py = (e.clientY - r.top) * S / r.height;
+    const x = (px - S / 2) / sc, z = (py - S / 2) / sc;
+    G.marker = G.marker && Math.hypot(G.marker.x - x, G.marker.z - z) < 14 ? null : { x: x, z: z };
+    NET.sendMark(G.marker);
+    drawFullMap();
+  });
 }
 function isTouchEvent(e) { return e.pointerType === 'touch' || (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents); }
 

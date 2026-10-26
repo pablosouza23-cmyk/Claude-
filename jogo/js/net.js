@@ -322,7 +322,17 @@ NET.hostRecv = function (c, d) {
     }
     case 'take': NET.hostTake(a, pl, d.id); break;
     case 'drop': spawnLoot(d.ty, d.x, d.z, d.ex); break;
-    case 'wall': NET.remoteWall(a, d); NET.bcast({ t: 'wall', i: idx, x: d.x, y: d.y, z: d.z, yaw: d.yaw }, c); break;
+    case 'wall': NET.remoteWall(a, d); NET.bcast({ t: 'wall', i: idx, x: d.x, y: d.y, z: d.z, yaw: d.yaw, d: d.d }, c); break;
+    // item largado pela mochila do cliente: o anfitrião cria e avisa todos
+    case 'drop': {
+      const ty = String(d.ty || '');
+      if (!/^(w:[A-Z]+|ammo|kit|gren|gel)$/.test(ty) || (ty.indexOf('w:') === 0 && !WEAPONS[ty.slice(2)])) break;
+      if (Math.hypot((d.x || 0) - a.pos.x, (d.z || 0) - a.pos.z) > 4) break;
+      spawnLoot(ty, +d.x, +d.z, d.ex && typeof d.ex === 'object' ? { mag: d.ex.mag | 0, reserve: d.ex.reserve | 0, n: d.ex.n | 0, id: WEAPONS[d.ex.id] ? d.ex.id : undefined } : null, undefined, +d.y).byHuman = true;
+      break;
+    }
+    // marcação no mapa: repassa para todos (só o time mostra)
+    case 'mk': NET.bcast({ t: 'mk', i: idx, x: d.x, z: d.z }, c); NET.recvMark(a, d); break;
     case 'nade': NET.remoteNade(a, d); NET.bcast({ t: 'nade', i: idx, p: d.p, v: d.v }, c); break;
     case 'heal': if (a.alive) a.hp = Math.min(a.maxHp, a.hp + 75); break;
     case 'rsp':
@@ -450,6 +460,7 @@ NET.clientRecv = function (d) {
     case 'got': NET.clientGot(d); break;
     case 'nogot': if (G.pending) delete G.pending[d.id]; break;
     case 'wall': { const a = G.actors[d.i]; if (a) NET.remoteWall(a, d); break; }
+    case 'mk': { const a = G.actors[d.i]; if (a && a !== G.player) NET.recvMark(a, d); break; }
     case 'nade': { const a = G.actors[d.i]; if (a) NET.remoteNade(a, d); break; }
     case 'opened': openAirdropGoods(G.player); break;
     case 'cs': CS.recv(d); break;
@@ -514,11 +525,18 @@ NET.remoteShot = function (a, d) {
   if (pd < 90) SND.play('shotFar', U.clamp(1 - pd / 90, 0.05, 0.6));
 };
 
+// marcação de um colega no mapa
+NET.recvMark = function (a, d) { a.mark = typeof d.x === 'number' ? { x: d.x, z: d.z } : null; };
+NET.sendMark = function (m) {
+  if (!NET.live || !G.player) return;
+  const msg = { t: 'mk', i: G.actors.indexOf(G.player), x: m ? m.x : null, z: m ? m.z : null };
+  if (NET.isHost()) NET.bcast(msg); else NET.send(msg);
+};
 NET.remoteWall = function (a, d) {
   const px = a.pos.x, py = a.pos.y, pz = a.pos.z;
   a.pos.set(d.x, d.y, d.z);
   a.gel++; a.wallCd = 0;
-  deployWall(a, d.yaw, true);
+  deployWall(a, d.yaw, true, d.d);
   a.pos.set(px, py, pz);
 };
 NET.remoteNade = function (a, d) {

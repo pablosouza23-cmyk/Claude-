@@ -82,6 +82,16 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v3.4
+- **Mochila: largar o que não quer.**
+  - Botão **LARGAR** em cada arma e **LARGAR MUNIÇÃO** para jogar fora as balas guardadas daquela arma.
+  - **LARGAR** também no kit médico, na granada e no gel.
+  - A munição guardada tem limite (2 vezes a reserva da arma), assim como os kits (5), as granadas (4) e o gel (8). Com a mochila cheia aparece o aviso para largar algo.
+  - O que você larga só volta para a mochila se você sair de perto e voltar. Os bots não pegam, mas os amigos sim, então dá para passar itens para o time. No multiplayer, o item aparece para todo mundo.
+- **Marcação no mapa:** abra o mapa e toque num ponto. Aparece um alfinete amarelo no mapa, no minimapa e na tela, com a distância. Toque de novo em cima para tirar. Os amigos do time veem a sua marcação, com o número dele.
+- **HUD como no Free Fire:** minimapa no canto esquerdo, **vivos** e **abates** em caixas no canto direito, painel do time embaixo deles e barra de vida em cima das armas.
+- **Gel como botão do HUD:** saiu da barra de armas. **Segure** o botão: aparece a parede transparente. **Arraste** para os lados para girar e para cima/baixo para afastar ou aproximar, depois **solte** para o gel sair. No computador: segure G, mire com o mouse e solte.
+
 ## Novidades da v3.3
 - **Pular a janela:** chegando perto de uma janela e de frente para ela, aparece o botão **PULAR JANELA** (no computador, Espaço). O personagem apoia no peitoril, passa por cima com o corpo inclinado e cai do outro lado.
 - **Correr:** botão **CORRER** (no computador, Shift). Fica 38% mais rápido. Com o botão ligado, o personagem continua correndo para a frente mesmo soltando o controle. Mirar, agachar, atirar ou andar para trás desliga.

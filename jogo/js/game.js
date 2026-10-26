@@ -588,16 +588,17 @@ function drawCrack(g, x, y, ang, len, width, depth) {
   g.stroke();
 }
 
-function deployWall(owner, towardYaw, fromNet) {
+function deployWall(owner, towardYaw, fromNet, dist) {
   if (owner.gel <= 0 || owner.wallCd > 0 || !owner.alive || owner.phase !== 'ground') return false;
   owner.gel--; owner.wallCd = 0.8;
+  const D = U.clamp(dist || 2.4, 1.2, 6.5);
   if (NET.live && !fromNet && (owner === G.player || NET.isHost())) {
-    const m = { t: 'wall', i: G.actors.indexOf(owner), x: owner.pos.x, y: owner.pos.y, z: owner.pos.z, yaw: towardYaw };
+    const m = { t: 'wall', i: G.actors.indexOf(owner), x: owner.pos.x, y: owner.pos.y, z: owner.pos.z, yaw: towardYaw, d: +D.toFixed(2) };
     if (NET.isHost()) NET.bcast(m); else NET.send(m);
   }
   if (!wallGeo) buildWallGeo();
   const fx = -Math.sin(towardYaw), fz = -Math.cos(towardYaw);
-  const px = owner.pos.x + fx * 2.4, pz = owner.pos.z + fz * 2.4;
+  const px = owner.pos.x + fx * D, pz = owner.pos.z + fz * D;
   const cx = px - fx * WALL_R, cz = pz - fz * WALL_R;
   const base = Math.min(W.height(px, pz), W.height(px + fz * 1.5, pz - fx * 1.5), W.height(px - fz * 1.5, pz + fx * 1.5), owner.pos.y);
   const phi0 = Math.atan2(fx, fz);
@@ -942,13 +943,20 @@ function lootUseful(a, it) {
   if (t.indexOf('vest') === 0) return +t.slice(-1) > a.armor;
   if (t.indexOf('helm') === 0) return +t.slice(-1) > a.helmet;
   if (t === 'kit') return a.kits < 5;
-  if (t === 'ammo') return a.slots.some(x => x);
+  if (t === 'ammo') return a.slots.some(x => x && x.reserve < ammoCap(x.id));
   if (t === 'gel') return a.gel < 8;
   if (t === 'gren') return a.nades < 4;
   return false;
 }
 
 // itens que não são arma entram sozinhos ao passar por cima
+// mochila: limite de munição guardada por arma (2 vezes a reserva inicial)
+const ammoCap = (id) => WEAPONS[id].res * 2;
+function bagFull(a) {
+  if (!a.isPlayer || G.time - (G.fullT || -9) < 4) return;
+  G.fullT = G.time;
+  notify('info', 'Mochila cheia! Abra a mochila e largue o que não quer');
+}
 function takeLoot(a, it) {
   const t = it.type;
   if (it.isWeapon) {
@@ -965,16 +973,21 @@ function takeLoot(a, it) {
     const lvl = +t.slice(-1); if (lvl <= a.helmet) return false;
     a.helmet = lvl; if (a.isPlayer) toast('Capacete Nv. ' + lvl + ' Equipado');
   } else if (t === 'kit') {
-    if (a.kits >= 5) return false; a.kits++; if (a.isPlayer) toast('+1 Kit Médico');
+    if (a.kits >= 5) { bagFull(a); return false; } a.kits++; if (a.isPlayer) toast('+1 Kit Médico');
   } else if (t === 'ammo') {
     let any = false;
-    for (const s of a.slots) if (s) { s.reserve += Math.max(WEAPONS[s.id].mag, Math.round(WEAPONS[s.id].res / 3)); any = true; }
-    if (!any) return false;
+    const ex = it.extra;
+    if (ex && ex.n) {
+      // munição largada por alguém: volta a quantidade exata, para a mesma arma (ou a que estiver na mão)
+      const s = a.slots.find(x => x && x.id === ex.id) || a.slots.find(x => x);
+      if (s && s.reserve < ammoCap(s.id)) { s.reserve = Math.min(ammoCap(s.id), s.reserve + ex.n); any = true; }
+    } else for (const s of a.slots) if (s && s.reserve < ammoCap(s.id)) { s.reserve = Math.min(ammoCap(s.id), s.reserve + Math.max(WEAPONS[s.id].mag, Math.round(WEAPONS[s.id].res / 3))); any = true; }
+    if (!any) { if (a.slots.some(x => x)) bagFull(a); return false; }
     if (a.isPlayer) toast('+ Munição');
   } else if (t === 'gel') {
-    if (a.gel >= 8) return false; a.gel = Math.min(8, a.gel + 2); if (a.isPlayer) toast('+2 Gel');
+    if (a.gel >= 8) { bagFull(a); return false; } const n = (it.extra && it.extra.n) || 2; a.gel = Math.min(8, a.gel + n); if (a.isPlayer) toast('+' + n + ' Gel');
   } else if (t === 'gren') {
-    if (a.nades >= 4) return false; a.nades++; if (a.isPlayer) toast('+1 Granada');
+    if (a.nades >= 4) { bagFull(a); return false; } a.nades++; if (a.isPlayer) toast('+1 Granada');
   }
   if (a.isPlayer) SND.play('pick');
   return true;
@@ -1013,14 +1026,18 @@ function playerPickup() {
 
 function updateLoot(dt) {
   const px = G.player.pos.x, pz = G.player.pos.z;
+  for (const a of G.actors) if (a.dropAt && Math.hypot(a.pos.x - a.dropAt.x, a.pos.z - a.dropAt.z) > 3.5) a.dropAt = null;
   for (let i = G.loot.length - 1; i >= 0; i--) {
     const it = G.loot[i];
     it.t += dt;
     if (G.wait) continue; // na sala de espera ninguém pega os itens do mapa
     for (const a of G.actors) {
       if (!a.alive || a.phase !== 'ground' || a.remote) continue;
+      if (it.byHuman && !a.isPlayer && !a.human) continue; // bots não pegam o que um jogador largou
       const dx = a.pos.x - it.x, dz = a.pos.z - it.z;
       if (dx * dx + dz * dz < 1.5 * 1.5 && Math.abs(a.pos.y - it.y) < 1.5) {
+        // o que a pessoa largou só volta para a mochila depois que ela sai de perto e volta
+        if (a.dropAt && Math.hypot(it.x - a.dropAt.x, it.z - a.dropAt.z) < 3) continue;
         if (NET.isClient()) { if (a === G.player && lootUseful(a, it)) NET.requestTake(it); continue; }
         if (takeLoot(a, it)) { removeLoot(it); break; }
       }
@@ -1495,6 +1512,79 @@ function aimAssist(p, dt) {
   return isTouch ? 0.55 + bestS * 0.3 : 0.8;
 }
 
+// ---------- gel com mira (como no Free Fire) ----------
+// segura o botão (ou G): aparece a parede transparente; arrastando gira em volta e afasta/aproxima; soltando, o gel sai
+let gelGhost = null;
+function gelSpot(p, off, dist) {
+  const yaw = G.yaw + off, fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+  const px = p.pos.x + fx * dist, pz = p.pos.z + fz * dist;
+  const base = Math.min(W.height(px, pz), W.height(px + fz * 1.5, pz - fx * 1.5), W.height(px - fz * 1.5, pz + fx * 1.5), p.pos.y);
+  return { x: px - fx * WALL_R, z: pz - fz * WALL_R, base: base, phi: Math.atan2(fx, fz) };
+}
+function startGelAim(sx, sy) {
+  const p = G.player;
+  if (!p || !p.alive || p.phase !== 'ground' || G.state !== 'play' || G.gelAim) return;
+  if (p.gel <= 0) { toast('Sem Gel'); return; }
+  G.gelAim = { off: 0, dist: 2.4, sx: sx || 0, sy: sy || 0 };
+  const b = $('btnGel'); if (b) b.classList.add('aiming');
+  $('gelHint').classList.remove('hidden');
+}
+function moveGelAim(x, y) {
+  const a = G.gelAim; if (!a) return;
+  a.off = U.clamp((x - a.sx) * 0.007, -1.5, 1.5);
+  a.dist = U.clamp(2.4 + (a.sy - y) * 0.016, 1.4, 6);
+}
+function releaseGelAim(cancel) {
+  const a = G.gelAim;
+  G.gelAim = null;
+  const b = $('btnGel'); if (b) b.classList.remove('aiming');
+  $('gelHint').classList.add('hidden');
+  if (gelGhost) gelGhost.visible = false;
+  if (!a || cancel || !G.player) return;
+  if (!deployWall(G.player, G.yaw + a.off, false, a.dist) && G.player.gel <= 0) toast('Sem Gel');
+}
+function updateGelAim(p) {
+  if (!G.gelAim) { if (gelGhost) gelGhost.visible = false; return; }
+  if (!p.alive || p.phase !== 'ground') { releaseGelAim(true); return; }
+  if (!gelGhost) {
+    gelGhost = wallMesh(new THREE.MeshBasicMaterial({ color: 0x8fd6ff, transparent: true, opacity: 0.38, depthWrite: false }));
+    scene.add(gelGhost);
+  }
+  const s = gelSpot(p, G.gelAim.off, G.gelAim.dist);
+  gelGhost.position.set(s.x, s.base, s.z); gelGhost.rotation.y = s.phi;
+  gelGhost.children[0].material.color.setHex(p.wallCd > 0 ? 0xff8a7a : 0x8fd6ff);
+  gelGhost.visible = true;
+}
+
+// ---------- mochila: largar o que não quer ----------
+function dropLoot(p, type, extra) {
+  const k = 0.9 + Math.random() * 0.5, an = p.face + (Math.random() - 0.5) * 1.2;
+  const x = p.pos.x + Math.sin(an) * k, z = p.pos.z + Math.cos(an) * k;
+  if (NET.isClient()) NET.send({ t: 'drop', ty: type, ex: extra || null, x: +x.toFixed(2), z: +z.toFixed(2), y: +p.pos.y.toFixed(2) });
+  else spawnLoot(type, x, z, extra || null, undefined, p.pos.y).byHuman = true;
+}
+function dropItem(what) {
+  const p = G.player;
+  if (!p || !p.alive || p.phase !== 'ground' || G.wait) { toast('Só dá para largar itens no chão, depois do salto'); return; }
+  if (what.indexOf('w:') === 0) {
+    const i = +what.slice(2), s = p.slots[i]; if (!s) return;
+    p.slots[i] = null;
+    if (p.cur === i) { p.cur = p.slots[0] ? 0 : p.slots[1] ? 1 : p.slots[2] ? 2 : 3; p.reloadT = 0; }
+    refreshGuns(p);
+    dropLoot(p, 'w:' + s.id, { mag: s.mag, reserve: s.reserve });
+    toast(WEAPONS[s.id].name + ' largada');
+  } else if (what.indexOf('a:') === 0) {
+    const s = p.slots[+what.slice(2)]; if (!s || s.reserve <= 0) return;
+    const n = s.reserve; s.reserve = 0;
+    dropLoot(p, 'ammo', { n: n, id: s.id });
+    toast(n + ' balas largadas');
+  } else if (what === 'kit' && p.kits > 0) { p.kits--; dropLoot(p, 'kit'); toast('Kit médico largado'); }
+  else if (what === 'gren' && p.nades > 0) { p.nades--; if (!p.nades && p.nadeHand) { p.nadeHand = false; refreshGuns(p); } dropLoot(p, 'gren'); toast('Granada largada'); }
+  else if (what === 'gel' && p.gel > 0) { const n = Math.min(2, p.gel); p.gel -= n; dropLoot(p, 'gel', { n: n }); toast(n + ' Gel largado'); }
+  // pegar de volta só depois de se afastar (senão o item volta na hora)
+  p.dropAt = { x: p.pos.x, z: p.pos.z };
+}
+
 // ---------- pular a janela ----------
 // janela por perto, de frente para ela e com o chão abaixo do peitoril
 function nearWindow(p) {
@@ -1606,7 +1696,7 @@ function updatePlayer(dt) {
 
   // ações
   p.wallCd -= dt;
-  if (consume('wall', 'KeyG')) { if (!deployWall(p, G.yaw) && p.gel <= 0) toast('Sem Gel'); }
+  updateGelAim(p);
   if (consume('heal', 'Digit5')) startHeal(p);
   if (consume('use', 'KeyE') || consume('pick', 'KeyF')) {
     if (canOpenAirdrop()) openAirdrop(p); else playerPickup();

@@ -30,7 +30,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 
 /* ---------- HUD ---------- */
 #hud { position: fixed; inset: 0; z-index: 2; pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
-#hudTL { position: absolute; top: max(10px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 4px; }
+#hudTL { position: absolute; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 66px); left: 43%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .hpRow { display: flex; align-items: center; gap: 6px; }
 .hpIco .ico { width: 20px; height: 20px; color: #ff4d5e; filter: drop-shadow(0 1px 1px #000); }
 #hpBar { position: relative; width: 190px; height: 12px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.25); border-radius: 2px; overflow: hidden; }
@@ -38,7 +38,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 #hpFill.hp-g { background: linear-gradient(#6cf06a, var(--green)); } #hpFill.hp-y { background: linear-gradient(#f5ea6a, var(--hp-y)); } #hpFill.hp-o { background: linear-gradient(#ffad5a, var(--hp-o)); }
 #healRing { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: #fff; transform-origin: left; transform: scaleX(0); }
 #hpNum { font-size: 16px; font-weight: 600; min-width: 34px; }
-.armorRow { display: flex; gap: 6px; margin-left: 26px; }
+.armorRow { display: flex; gap: 6px; }
 .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted); background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.15); padding: 0 6px; border-radius: 2px; }
 .badge .ico { width: 12px; height: 12px; }
 .badge.on { color: #fff; border-color: rgba(177,92,255,.7); } .badge.on .ico { color: #c9a6ff; }
@@ -73,7 +73,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .kbTxt { display: flex; align-items: baseline; gap: 6px; } .kbTxt b { font-size: 34px; color: var(--yellow); } .kbTxt span { font-size: 22px; font-weight: 700; letter-spacing: 2px; }
 #kbName { width: 100%; text-align: center; font-size: 12px; color: var(--muted); }
 
-#hudTR { position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); display: flex; flex-direction: column; align-items: center; gap: 3px; }
+#hudTR { position: absolute; top: max(8px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); display: flex; flex-direction: column; align-items: center; gap: 3px; }
 #mmWrap { position: relative; width: 118px; height: 118px; border-radius: 50%; border: 2px solid rgba(255,255,255,.55); box-shadow: 0 0 0 2px rgba(0,0,0,.35); pointer-events: auto; overflow: hidden; background: #2a7fc4; }
 #minimap { width: 100%; height: 100%; display: block; }
 .mmN { position: absolute; top: 1px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 700; color: var(--yellow); }
@@ -81,7 +81,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .zoneInfo .ico { width: 15px; height: 15px; }
 .zoneInfo.shrink { color: #7fc4ff; }
 #zoneText { font-size: 10px; color: var(--muted); }
-#hudSide { position: absolute; top: max(8px, env(safe-area-inset-top)); right: calc(max(12px, env(safe-area-inset-right)) + 128px); display: flex; flex-direction: column; gap: 6px; }
+#hudSide { position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); display: flex; flex-direction: column; gap: 6px; }
 .sideBtn { width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.35); display: flex; align-items: center; justify-content: center; pointer-events: auto; }
 .sideBtn .ico { width: 18px; height: 18px; }
 #fps { position: absolute; top: 120px; left: 14px; font-size: 11px; background: rgba(0,0,0,.5); padding: 1px 5px; }
@@ -133,7 +133,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 #hurtArrow { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-bottom: 22px solid rgba(255,40,30,.85); opacity: 0; }
 #handHint { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); padding: 4px 18px; font-size: 13px; letter-spacing: .5px; white-space: nowrap; background: var(--panel); border: 1px solid var(--line); opacity: 0; }
 #handHint.show { opacity: 1; }
-#killfeed { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 172px); right: max(12px, env(safe-area-inset-right)); display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+#killfeed { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 96px); right: max(12px, env(safe-area-inset-right)); display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .kf { display: flex; align-items: center; gap: 5px; font-size: 12px; background: rgba(0,0,0,.45); padding: 1px 8px; border-radius: 2px; animation: noteIn .2s; }
 .kf .ico { width: 13px; height: 13px; color: #ff8a7a; } .kf span { color: var(--yellow); }
 #dmgLayer { position: absolute; inset: 0; overflow: hidden; }
@@ -161,7 +161,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 #inspTag { position: absolute; left: 50%; bottom: 24%; transform: translateX(-50%); padding: 6px 16px; border-radius: 6px; background: linear-gradient(90deg, transparent, rgba(0,0,0,.55) 20%, rgba(0,0,0,.55) 80%, transparent); color: #fff; font: 800 15px/1.2 var(--font, sans-serif); letter-spacing: .12em; text-align: center; pointer-events: none; opacity: 0; transition: opacity .25s; }
 #inspTag.show { opacity: 1; } #inspTag small { display: block; font-size: 10px; font-weight: 700; letter-spacing: .2em; opacity: .75; }
 #reloadBar { position: absolute; left: 0; right: 0; top: -6px; height: 3px; background: var(--yellow); transform-origin: left; transform: scaleX(0); }
-#useBtn { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px 18px; font-size: 15px; font-weight: 600;
+#useBtn { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px 18px; font-size: 15px; font-weight: 600;
   background: var(--panel); border: 2px solid var(--yellow); border-radius: 4px; pointer-events: auto; white-space: nowrap; }
 #useBtn .ico { width: 20px; height: 20px; color: var(--yellow); }
 #keysHint { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); font-size: 10px; color: var(--muted); white-space: nowrap; opacity: .8; }
@@ -372,7 +372,7 @@ body.hud-editing #joyBase { opacity: .9; }
   #hpBar { width: 34vw; }
   #notifs { top: 140px; }
   .note { min-width: 0; }
-  #hudSide { right: calc(max(12px, env(safe-area-inset-right)) + 104px); top: 130px; flex-direction: row; }
+  #hudSide { right: max(12px, env(safe-area-inset-right)); top: max(8px, env(safe-area-inset-top)); }
   #mmWrap { width: 96px; height: 96px; }
   #killfeed { top: 160px; }
   #weaponBar { bottom: 6px; transform: translateX(-50%) scale(.82); transform-origin: bottom center; }
@@ -637,7 +637,7 @@ body.hud-editing #joyBase { opacity: .9; }
 /* ---------- Contra Squad ---------- */
 .csScore { display: none; }
 #hud.cs .csScore { display: flex; position: absolute; top: max(6px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); align-items: stretch; gap: 0; filter: drop-shadow(0 2px 6px rgba(0,0,0,.45)); }
-#hud.cs #compass, #hud.cs #topStatus, #hud.cs .aliveRow, #hud.cs .zoneInfo, #hud.cs #zoneText, #hud.cs #prep { display: none !important; }
+#hud.cs #compass, #hud.cs #topStatus, #hud.cs #ffCount, #hud.cs .zoneInfo, #hud.cs #zoneText, #hud.cs #prep { display: none !important; }
 .csT { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 74px; padding: 2px 10px; }
 .csT b { font-family: var(--logo); font-weight: 400; font-size: 28px; line-height: 1; }
 .csT.blue { background: linear-gradient(90deg, rgba(20,70,170,.9), rgba(40,110,230,.85)); border-radius: 4px 0 0 4px; }
@@ -759,7 +759,33 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 .srvOff div { display: flex; flex-direction: column; gap: 3px; } .srvOff span { color: #ffd2c8; } .srvOff small { opacity: .85; line-height: 1.35; }
 #btnRun { right: calc(max(16px, env(safe-area-inset-right)) + 186px * var(--btn)); bottom: 18px; width: calc(46px * var(--btn)); height: calc(46px * var(--btn)); }
 #btnRun.on { background: rgba(255,200,60,.35); border-color: #ffd23c; } #btnRun.on .ico { color: #ffe27a; }
-#vaultBtn { position: absolute; left: 50%; bottom: 128px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 9px 20px; font-size: 15px; font-weight: 800; letter-spacing: .06em;
+#vaultBtn { position: absolute; left: 50%; bottom: 168px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 9px 20px; font-size: 15px; font-weight: 800; letter-spacing: .06em;
   color: #fff; background: rgba(10,20,34,.78); border: 2px solid #ffd23c; border-radius: 26px; pointer-events: auto; cursor: pointer; animation: dlgPop .18s ease-out; }
 #vaultBtn .ico { width: 20px; height: 20px; color: #ffd23c; } #vaultBtn.hidden { display: none; }
 @media (max-aspect-ratio: 1/1) { #btnRun { bottom: 70px; } }
+
+/* contadores como no Free Fire (vivos e abates), canto direito */
+#ffCount { position: absolute; top: max(8px, env(safe-area-inset-top)); right: calc(max(12px, env(safe-area-inset-right)) + 52px); display: flex; gap: 4px; }
+#ffCount .fc { display: flex; align-items: center; gap: 4px; min-width: 52px; height: 30px; padding: 0 9px; border-radius: 4px; font-size: 17px; font-weight: 800;
+  background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.4)); border: 1px solid rgba(255,255,255,.18); }
+#ffCount .fc .ico { width: 17px; height: 17px; } #ffCount .alive .ico { color: #ffd23c; } #ffCount .kills .ico { color: #ff6b5a; }
+#teamBox { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 38px); right: calc(max(12px, env(safe-area-inset-right)) + 52px); }
+#hud:not(.team) #teamBox { display: none; }
+#hud.team #killfeed { top: calc(max(8px, env(safe-area-inset-top)) + 190px); }
+/* gel: botão do HUD (segura, arrasta para girar/afastar, solta) */
+#btnGel { right: calc(max(16px, env(safe-area-inset-right)) + 252px * var(--btn)); bottom: calc(34px + 4px * var(--btn)); width: calc(52px * var(--btn)); height: calc(52px * var(--btn)); border-color: rgba(150,215,255,.85); flex-direction: column; gap: 0; }
+#btnGel .ico { color: #bfe9ff; width: 24px; height: 24px; } #btnGel b { font-size: 11px; line-height: 1; }
+#btnGel.aiming { background: rgba(80,170,255,.4); transform: scale(1.12); }
+#gelHint { position: absolute; left: 50%; bottom: 34%; transform: translateX(-50%); padding: 4px 12px; border-radius: 12px; background: rgba(0,0,0,.55); font-size: 12px; pointer-events: none; }
+/* marcação no mapa */
+#mkPin { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; pointer-events: none; transform: translate(-50%, -100%); }
+#mkPin i { width: 18px; height: 18px; background: #ffd23c; border: 2px solid #3a2a00; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 0 8px rgba(255,210,60,.7); }
+#mkPin b { margin-top: 3px; font-size: 11px; font-weight: 800; color: #ffe27a; text-shadow: 0 1px 2px #000; }
+#mkPin.hidden { display: none; }
+.lg.mark { background: #ffd23c; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
+#fullMap { cursor: crosshair; touch-action: none; }
+.invAct { margin-top: 4px; padding: 2px 8px; font-size: 10px; font-weight: 800; letter-spacing: .06em; color: #ffd2c8; background: rgba(255,80,60,.22); border: 1px solid rgba(255,100,80,.6); border-radius: 4px; cursor: pointer; pointer-events: auto; }
+.invAct:hover { background: rgba(255,80,60,.4); }
+.invFull { grid-column: 1 / -1; color: #ffb36b; font-size: 12px; }
+@media (max-aspect-ratio: 1/1) { #hudTL { bottom: 120px; } #ffCount { right: calc(max(12px, env(safe-area-inset-right)) + 52px); } }
+.invBtns { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }

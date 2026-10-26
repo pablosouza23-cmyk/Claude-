@@ -38,7 +38,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 
 /* ---------- HUD ---------- */
 #hud { position: fixed; inset: 0; z-index: 2; pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
-#hudTL { position: absolute; top: max(10px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 4px; }
+#hudTL { position: absolute; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 66px); left: 43%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .hpRow { display: flex; align-items: center; gap: 6px; }
 .hpIco .ico { width: 20px; height: 20px; color: #ff4d5e; filter: drop-shadow(0 1px 1px #000); }
 #hpBar { position: relative; width: 190px; height: 12px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.25); border-radius: 2px; overflow: hidden; }
@@ -46,7 +46,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 #hpFill.hp-g { background: linear-gradient(#6cf06a, var(--green)); } #hpFill.hp-y { background: linear-gradient(#f5ea6a, var(--hp-y)); } #hpFill.hp-o { background: linear-gradient(#ffad5a, var(--hp-o)); }
 #healRing { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: #fff; transform-origin: left; transform: scaleX(0); }
 #hpNum { font-size: 16px; font-weight: 600; min-width: 34px; }
-.armorRow { display: flex; gap: 6px; margin-left: 26px; }
+.armorRow { display: flex; gap: 6px; }
 .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted); background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.15); padding: 0 6px; border-radius: 2px; }
 .badge .ico { width: 12px; height: 12px; }
 .badge.on { color: #fff; border-color: rgba(177,92,255,.7); } .badge.on .ico { color: #c9a6ff; }
@@ -81,7 +81,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .kbTxt { display: flex; align-items: baseline; gap: 6px; } .kbTxt b { font-size: 34px; color: var(--yellow); } .kbTxt span { font-size: 22px; font-weight: 700; letter-spacing: 2px; }
 #kbName { width: 100%; text-align: center; font-size: 12px; color: var(--muted); }
 
-#hudTR { position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); display: flex; flex-direction: column; align-items: center; gap: 3px; }
+#hudTR { position: absolute; top: max(8px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); display: flex; flex-direction: column; align-items: center; gap: 3px; }
 #mmWrap { position: relative; width: 118px; height: 118px; border-radius: 50%; border: 2px solid rgba(255,255,255,.55); box-shadow: 0 0 0 2px rgba(0,0,0,.35); pointer-events: auto; overflow: hidden; background: #2a7fc4; }
 #minimap { width: 100%; height: 100%; display: block; }
 .mmN { position: absolute; top: 1px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 700; color: var(--yellow); }
@@ -89,7 +89,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .zoneInfo .ico { width: 15px; height: 15px; }
 .zoneInfo.shrink { color: #7fc4ff; }
 #zoneText { font-size: 10px; color: var(--muted); }
-#hudSide { position: absolute; top: max(8px, env(safe-area-inset-top)); right: calc(max(12px, env(safe-area-inset-right)) + 128px); display: flex; flex-direction: column; gap: 6px; }
+#hudSide { position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); display: flex; flex-direction: column; gap: 6px; }
 .sideBtn { width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.35); display: flex; align-items: center; justify-content: center; pointer-events: auto; }
 .sideBtn .ico { width: 18px; height: 18px; }
 #fps { position: absolute; top: 120px; left: 14px; font-size: 11px; background: rgba(0,0,0,.5); padding: 1px 5px; }
@@ -141,7 +141,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 #hurtArrow { position: absolute; left: 50%; top: 50%; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-bottom: 22px solid rgba(255,40,30,.85); opacity: 0; }
 #handHint { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); padding: 4px 18px; font-size: 13px; letter-spacing: .5px; white-space: nowrap; background: var(--panel); border: 1px solid var(--line); opacity: 0; }
 #handHint.show { opacity: 1; }
-#killfeed { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 172px); right: max(12px, env(safe-area-inset-right)); display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+#killfeed { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 96px); right: max(12px, env(safe-area-inset-right)); display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .kf { display: flex; align-items: center; gap: 5px; font-size: 12px; background: rgba(0,0,0,.45); padding: 1px 8px; border-radius: 2px; animation: noteIn .2s; }
 .kf .ico { width: 13px; height: 13px; color: #ff8a7a; } .kf span { color: var(--yellow); }
 #dmgLayer { position: absolute; inset: 0; overflow: hidden; }
@@ -169,7 +169,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 #inspTag { position: absolute; left: 50%; bottom: 24%; transform: translateX(-50%); padding: 6px 16px; border-radius: 6px; background: linear-gradient(90deg, transparent, rgba(0,0,0,.55) 20%, rgba(0,0,0,.55) 80%, transparent); color: #fff; font: 800 15px/1.2 var(--font, sans-serif); letter-spacing: .12em; text-align: center; pointer-events: none; opacity: 0; transition: opacity .25s; }
 #inspTag.show { opacity: 1; } #inspTag small { display: block; font-size: 10px; font-weight: 700; letter-spacing: .2em; opacity: .75; }
 #reloadBar { position: absolute; left: 0; right: 0; top: -6px; height: 3px; background: var(--yellow); transform-origin: left; transform: scaleX(0); }
-#useBtn { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px 18px; font-size: 15px; font-weight: 600;
+#useBtn { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px 18px; font-size: 15px; font-weight: 600;
   background: var(--panel); border: 2px solid var(--yellow); border-radius: 4px; pointer-events: auto; white-space: nowrap; }
 #useBtn .ico { width: 20px; height: 20px; color: var(--yellow); }
 #keysHint { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); font-size: 10px; color: var(--muted); white-space: nowrap; opacity: .8; }
@@ -380,7 +380,7 @@ body.hud-editing #joyBase { opacity: .9; }
   #hpBar { width: 34vw; }
   #notifs { top: 140px; }
   .note { min-width: 0; }
-  #hudSide { right: calc(max(12px, env(safe-area-inset-right)) + 104px); top: 130px; flex-direction: row; }
+  #hudSide { right: max(12px, env(safe-area-inset-right)); top: max(8px, env(safe-area-inset-top)); }
   #mmWrap { width: 96px; height: 96px; }
   #killfeed { top: 160px; }
   #weaponBar { bottom: 6px; transform: translateX(-50%) scale(.82); transform-origin: bottom center; }
@@ -645,7 +645,7 @@ body.hud-editing #joyBase { opacity: .9; }
 /* ---------- Contra Squad ---------- */
 .csScore { display: none; }
 #hud.cs .csScore { display: flex; position: absolute; top: max(6px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); align-items: stretch; gap: 0; filter: drop-shadow(0 2px 6px rgba(0,0,0,.45)); }
-#hud.cs #compass, #hud.cs #topStatus, #hud.cs .aliveRow, #hud.cs .zoneInfo, #hud.cs #zoneText, #hud.cs #prep { display: none !important; }
+#hud.cs #compass, #hud.cs #topStatus, #hud.cs #ffCount, #hud.cs .zoneInfo, #hud.cs #zoneText, #hud.cs #prep { display: none !important; }
 .csT { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 74px; padding: 2px 10px; }
 .csT b { font-family: var(--logo); font-weight: 400; font-size: 28px; line-height: 1; }
 .csT.blue { background: linear-gradient(90deg, rgba(20,70,170,.9), rgba(40,110,230,.85)); border-radius: 4px 0 0 4px; }
@@ -767,10 +767,36 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 .srvOff div { display: flex; flex-direction: column; gap: 3px; } .srvOff span { color: #ffd2c8; } .srvOff small { opacity: .85; line-height: 1.35; }
 #btnRun { right: calc(max(16px, env(safe-area-inset-right)) + 186px * var(--btn)); bottom: 18px; width: calc(46px * var(--btn)); height: calc(46px * var(--btn)); }
 #btnRun.on { background: rgba(255,200,60,.35); border-color: #ffd23c; } #btnRun.on .ico { color: #ffe27a; }
-#vaultBtn { position: absolute; left: 50%; bottom: 128px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 9px 20px; font-size: 15px; font-weight: 800; letter-spacing: .06em;
+#vaultBtn { position: absolute; left: 50%; bottom: 168px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 9px 20px; font-size: 15px; font-weight: 800; letter-spacing: .06em;
   color: #fff; background: rgba(10,20,34,.78); border: 2px solid #ffd23c; border-radius: 26px; pointer-events: auto; cursor: pointer; animation: dlgPop .18s ease-out; }
 #vaultBtn .ico { width: 20px; height: 20px; color: #ffd23c; } #vaultBtn.hidden { display: none; }
 @media (max-aspect-ratio: 1/1) { #btnRun { bottom: 70px; } }
+
+/* contadores como no Free Fire (vivos e abates), canto direito */
+#ffCount { position: absolute; top: max(8px, env(safe-area-inset-top)); right: calc(max(12px, env(safe-area-inset-right)) + 52px); display: flex; gap: 4px; }
+#ffCount .fc { display: flex; align-items: center; gap: 4px; min-width: 52px; height: 30px; padding: 0 9px; border-radius: 4px; font-size: 17px; font-weight: 800;
+  background: linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.4)); border: 1px solid rgba(255,255,255,.18); }
+#ffCount .fc .ico { width: 17px; height: 17px; } #ffCount .alive .ico { color: #ffd23c; } #ffCount .kills .ico { color: #ff6b5a; }
+#teamBox { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 38px); right: calc(max(12px, env(safe-area-inset-right)) + 52px); }
+#hud:not(.team) #teamBox { display: none; }
+#hud.team #killfeed { top: calc(max(8px, env(safe-area-inset-top)) + 190px); }
+/* gel: botão do HUD (segura, arrasta para girar/afastar, solta) */
+#btnGel { right: calc(max(16px, env(safe-area-inset-right)) + 252px * var(--btn)); bottom: calc(34px + 4px * var(--btn)); width: calc(52px * var(--btn)); height: calc(52px * var(--btn)); border-color: rgba(150,215,255,.85); flex-direction: column; gap: 0; }
+#btnGel .ico { color: #bfe9ff; width: 24px; height: 24px; } #btnGel b { font-size: 11px; line-height: 1; }
+#btnGel.aiming { background: rgba(80,170,255,.4); transform: scale(1.12); }
+#gelHint { position: absolute; left: 50%; bottom: 34%; transform: translateX(-50%); padding: 4px 12px; border-radius: 12px; background: rgba(0,0,0,.55); font-size: 12px; pointer-events: none; }
+/* marcação no mapa */
+#mkPin { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; pointer-events: none; transform: translate(-50%, -100%); }
+#mkPin i { width: 18px; height: 18px; background: #ffd23c; border: 2px solid #3a2a00; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 0 8px rgba(255,210,60,.7); }
+#mkPin b { margin-top: 3px; font-size: 11px; font-weight: 800; color: #ffe27a; text-shadow: 0 1px 2px #000; }
+#mkPin.hidden { display: none; }
+.lg.mark { background: #ffd23c; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
+#fullMap { cursor: crosshair; touch-action: none; }
+.invAct { margin-top: 4px; padding: 2px 8px; font-size: 10px; font-weight: 800; letter-spacing: .06em; color: #ffd2c8; background: rgba(255,80,60,.22); border: 1px solid rgba(255,100,80,.6); border-radius: 4px; cursor: pointer; pointer-events: auto; }
+.invAct:hover { background: rgba(255,80,60,.4); }
+.invFull { grid-column: 1 / -1; color: #ffb36b; font-size: 12px; }
+@media (max-aspect-ratio: 1/1) { #hudTL { bottom: 120px; } #ffCount { right: calc(max(12px, env(safe-area-inset-right)) + 52px); } }
+.invBtns { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
 
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
@@ -784,9 +810,11 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   <div id="hudTL">
     <div class="hpRow"><span data-icon="heart" class="hpIco"></span><div id="hpBar"><div id="hpFill" class="hp-g"></div><div id="healRing"></div></div><b id="hpNum">200</b></div>
     <div class="armorRow"><span id="vestBadge" class="badge"></span><span id="helmBadge" class="badge"></span></div>
-    <div class="aliveRow"><span data-icon="person"></span><b id="aliveNum">25</b><span data-icon="skull" class="sk"></span><b id="killNum">0</b></div>
-    <div id="teamBox" class="teamBox hidden"></div>
   </div>
+  <!-- como no Free Fire: vivos e abates no canto direito; painel do time embaixo -->
+  <div id="ffCount"><div class="fc alive"><span data-icon="person"></span><b id="aliveNum">25</b></div><div class="fc kills"><span data-icon="skull"></span><b id="killNum">0</b></div></div>
+  <div id="teamBox" class="teamBox hidden"></div>
+  <div id="mkPin" class="hidden"><i></i><b></b></div>
   <div id="compass"><div id="compassStrip"></div><div class="compassMark"></div><div id="compassNum">0</div></div>
   <div id="topStatus" class="hidden"></div>
   <div id="notifs"></div>
@@ -835,14 +863,14 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <button class="wb sec" id="wb2"></button>
     <button class="wb it" id="wbNade" aria-label="Granada"></button>
     <button class="wb it" id="wbKit" aria-label="Kit médico"></button>
-    <button class="wb it" id="wbGel" aria-label="Gel"></button>
     <button class="wb it" id="wbInsp" aria-label="Inspecionar arma"></button>
     <div id="reloadBar"></div>
   </div>
   <div id="inspTag"></div>
+  <div id="gelHint" class="hidden">Arraste para girar e afastar · solte para colocar o gel</div>
   <button id="vaultBtn" class="hidden"><span data-icon="jump"></span>PULAR JANELA</button>
   <button id="useBtn" class="hidden"></button>
-  <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha · R recarrega · E pegar · Q granada · G gel · I inspeciona a arma · Shift corre · Espaço perto da janela pula a janela · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · roda do mouse troca a arma · Esc pausa</div>
+  <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha · R recarrega · E pegar · Q granada · G gel (segure, mire e solte) · I inspeciona a arma · Shift corre · Espaço perto da janela pula a janela · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · roda do mouse troca a arma · Esc pausa</div>
   <div id="fps" class="hidden"></div>
 </div>
 <!-- luneta: fica embaixo dos botões de toque (que continuam visíveis e clicáveis) -->
@@ -878,6 +906,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   <button class="tbtn g" id="btnInv" data-icon="bag" aria-label="Inventário rápido"></button>
   <button class="tbtn g" id="btnEmote" data-icon="smile" aria-label="Emotes"></button>
   <button class="tbtn g" id="btnRun" data-icon="run" aria-label="Correr"></button>
+  <button class="tbtn g" id="btnGel" aria-label="Gel: segure, arraste para escolher o lugar e solte"></button>
   <button class="tbtn pill big p" id="btnSaltar">SALTAR</button>
   <button class="tbtn pill big f" id="btnChute" data-icon="chute">PARAQUEDAS</button>
   <button class="tbtn pill f" id="btnBoard" data-icon="board">SOLTAR PRANCHA</button>
@@ -927,7 +956,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   </div>
   <div id="squadBar" class="squadBar"><small>SEU GRUPO</small><div id="squadSlots"></div></div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v3.3</div>
+  <div class="ver">v3.4</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1070,7 +1099,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <div class="mapWrap"><div class="mapBox"><canvas id="fullMap"></canvas></div>
       <ul class="legend">
         <li><i class="lg you"></i>Você</li><li><i class="lg foe"></i>Inimigo (tiros)</li><li><i class="lg zone"></i>Zona segura</li><li><i class="lg next"></i>Próxima zona</li>
-        <li><i class="lg drop"></i>Suprimento</li><li><i class="lg house"></i>Construções</li><li><i class="lg route"></i>Rota do avião</li>
+        <li><i class="lg drop"></i>Suprimento</li><li><i class="lg mark"></i>Sua marcação (toque no mapa)</li><li><i class="lg house"></i>Construções</li><li><i class="lg route"></i>Rota do avião</li>
       </ul>
     </div>
   </div>
@@ -1173,7 +1202,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v3.3 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v3.4 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -6307,16 +6336,17 @@ function drawCrack(g, x, y, ang, len, width, depth) {
   g.stroke();
 }
 
-function deployWall(owner, towardYaw, fromNet) {
+function deployWall(owner, towardYaw, fromNet, dist) {
   if (owner.gel <= 0 || owner.wallCd > 0 || !owner.alive || owner.phase !== 'ground') return false;
   owner.gel--; owner.wallCd = 0.8;
+  const D = U.clamp(dist || 2.4, 1.2, 6.5);
   if (NET.live && !fromNet && (owner === G.player || NET.isHost())) {
-    const m = { t: 'wall', i: G.actors.indexOf(owner), x: owner.pos.x, y: owner.pos.y, z: owner.pos.z, yaw: towardYaw };
+    const m = { t: 'wall', i: G.actors.indexOf(owner), x: owner.pos.x, y: owner.pos.y, z: owner.pos.z, yaw: towardYaw, d: +D.toFixed(2) };
     if (NET.isHost()) NET.bcast(m); else NET.send(m);
   }
   if (!wallGeo) buildWallGeo();
   const fx = -Math.sin(towardYaw), fz = -Math.cos(towardYaw);
-  const px = owner.pos.x + fx * 2.4, pz = owner.pos.z + fz * 2.4;
+  const px = owner.pos.x + fx * D, pz = owner.pos.z + fz * D;
   const cx = px - fx * WALL_R, cz = pz - fz * WALL_R;
   const base = Math.min(W.height(px, pz), W.height(px + fz * 1.5, pz - fx * 1.5), W.height(px - fz * 1.5, pz + fx * 1.5), owner.pos.y);
   const phi0 = Math.atan2(fx, fz);
@@ -6661,13 +6691,20 @@ function lootUseful(a, it) {
   if (t.indexOf('vest') === 0) return +t.slice(-1) > a.armor;
   if (t.indexOf('helm') === 0) return +t.slice(-1) > a.helmet;
   if (t === 'kit') return a.kits < 5;
-  if (t === 'ammo') return a.slots.some(x => x);
+  if (t === 'ammo') return a.slots.some(x => x && x.reserve < ammoCap(x.id));
   if (t === 'gel') return a.gel < 8;
   if (t === 'gren') return a.nades < 4;
   return false;
 }
 
 // itens que não são arma entram sozinhos ao passar por cima
+// mochila: limite de munição guardada por arma (2 vezes a reserva inicial)
+const ammoCap = (id) => WEAPONS[id].res * 2;
+function bagFull(a) {
+  if (!a.isPlayer || G.time - (G.fullT || -9) < 4) return;
+  G.fullT = G.time;
+  notify('info', 'Mochila cheia! Abra a mochila e largue o que não quer');
+}
 function takeLoot(a, it) {
   const t = it.type;
   if (it.isWeapon) {
@@ -6684,16 +6721,21 @@ function takeLoot(a, it) {
     const lvl = +t.slice(-1); if (lvl <= a.helmet) return false;
     a.helmet = lvl; if (a.isPlayer) toast('Capacete Nv. ' + lvl + ' Equipado');
   } else if (t === 'kit') {
-    if (a.kits >= 5) return false; a.kits++; if (a.isPlayer) toast('+1 Kit Médico');
+    if (a.kits >= 5) { bagFull(a); return false; } a.kits++; if (a.isPlayer) toast('+1 Kit Médico');
   } else if (t === 'ammo') {
     let any = false;
-    for (const s of a.slots) if (s) { s.reserve += Math.max(WEAPONS[s.id].mag, Math.round(WEAPONS[s.id].res / 3)); any = true; }
-    if (!any) return false;
+    const ex = it.extra;
+    if (ex && ex.n) {
+      // munição largada por alguém: volta a quantidade exata, para a mesma arma (ou a que estiver na mão)
+      const s = a.slots.find(x => x && x.id === ex.id) || a.slots.find(x => x);
+      if (s && s.reserve < ammoCap(s.id)) { s.reserve = Math.min(ammoCap(s.id), s.reserve + ex.n); any = true; }
+    } else for (const s of a.slots) if (s && s.reserve < ammoCap(s.id)) { s.reserve = Math.min(ammoCap(s.id), s.reserve + Math.max(WEAPONS[s.id].mag, Math.round(WEAPONS[s.id].res / 3))); any = true; }
+    if (!any) { if (a.slots.some(x => x)) bagFull(a); return false; }
     if (a.isPlayer) toast('+ Munição');
   } else if (t === 'gel') {
-    if (a.gel >= 8) return false; a.gel = Math.min(8, a.gel + 2); if (a.isPlayer) toast('+2 Gel');
+    if (a.gel >= 8) { bagFull(a); return false; } const n = (it.extra && it.extra.n) || 2; a.gel = Math.min(8, a.gel + n); if (a.isPlayer) toast('+' + n + ' Gel');
   } else if (t === 'gren') {
-    if (a.nades >= 4) return false; a.nades++; if (a.isPlayer) toast('+1 Granada');
+    if (a.nades >= 4) { bagFull(a); return false; } a.nades++; if (a.isPlayer) toast('+1 Granada');
   }
   if (a.isPlayer) SND.play('pick');
   return true;
@@ -6732,14 +6774,18 @@ function playerPickup() {
 
 function updateLoot(dt) {
   const px = G.player.pos.x, pz = G.player.pos.z;
+  for (const a of G.actors) if (a.dropAt && Math.hypot(a.pos.x - a.dropAt.x, a.pos.z - a.dropAt.z) > 3.5) a.dropAt = null;
   for (let i = G.loot.length - 1; i >= 0; i--) {
     const it = G.loot[i];
     it.t += dt;
     if (G.wait) continue; // na sala de espera ninguém pega os itens do mapa
     for (const a of G.actors) {
       if (!a.alive || a.phase !== 'ground' || a.remote) continue;
+      if (it.byHuman && !a.isPlayer && !a.human) continue; // bots não pegam o que um jogador largou
       const dx = a.pos.x - it.x, dz = a.pos.z - it.z;
       if (dx * dx + dz * dz < 1.5 * 1.5 && Math.abs(a.pos.y - it.y) < 1.5) {
+        // o que a pessoa largou só volta para a mochila depois que ela sai de perto e volta
+        if (a.dropAt && Math.hypot(it.x - a.dropAt.x, it.z - a.dropAt.z) < 3) continue;
         if (NET.isClient()) { if (a === G.player && lootUseful(a, it)) NET.requestTake(it); continue; }
         if (takeLoot(a, it)) { removeLoot(it); break; }
       }
@@ -7214,6 +7260,79 @@ function aimAssist(p, dt) {
   return isTouch ? 0.55 + bestS * 0.3 : 0.8;
 }
 
+// ---------- gel com mira (como no Free Fire) ----------
+// segura o botão (ou G): aparece a parede transparente; arrastando gira em volta e afasta/aproxima; soltando, o gel sai
+let gelGhost = null;
+function gelSpot(p, off, dist) {
+  const yaw = G.yaw + off, fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+  const px = p.pos.x + fx * dist, pz = p.pos.z + fz * dist;
+  const base = Math.min(W.height(px, pz), W.height(px + fz * 1.5, pz - fx * 1.5), W.height(px - fz * 1.5, pz + fx * 1.5), p.pos.y);
+  return { x: px - fx * WALL_R, z: pz - fz * WALL_R, base: base, phi: Math.atan2(fx, fz) };
+}
+function startGelAim(sx, sy) {
+  const p = G.player;
+  if (!p || !p.alive || p.phase !== 'ground' || G.state !== 'play' || G.gelAim) return;
+  if (p.gel <= 0) { toast('Sem Gel'); return; }
+  G.gelAim = { off: 0, dist: 2.4, sx: sx || 0, sy: sy || 0 };
+  const b = $('btnGel'); if (b) b.classList.add('aiming');
+  $('gelHint').classList.remove('hidden');
+}
+function moveGelAim(x, y) {
+  const a = G.gelAim; if (!a) return;
+  a.off = U.clamp((x - a.sx) * 0.007, -1.5, 1.5);
+  a.dist = U.clamp(2.4 + (a.sy - y) * 0.016, 1.4, 6);
+}
+function releaseGelAim(cancel) {
+  const a = G.gelAim;
+  G.gelAim = null;
+  const b = $('btnGel'); if (b) b.classList.remove('aiming');
+  $('gelHint').classList.add('hidden');
+  if (gelGhost) gelGhost.visible = false;
+  if (!a || cancel || !G.player) return;
+  if (!deployWall(G.player, G.yaw + a.off, false, a.dist) && G.player.gel <= 0) toast('Sem Gel');
+}
+function updateGelAim(p) {
+  if (!G.gelAim) { if (gelGhost) gelGhost.visible = false; return; }
+  if (!p.alive || p.phase !== 'ground') { releaseGelAim(true); return; }
+  if (!gelGhost) {
+    gelGhost = wallMesh(new THREE.MeshBasicMaterial({ color: 0x8fd6ff, transparent: true, opacity: 0.38, depthWrite: false }));
+    scene.add(gelGhost);
+  }
+  const s = gelSpot(p, G.gelAim.off, G.gelAim.dist);
+  gelGhost.position.set(s.x, s.base, s.z); gelGhost.rotation.y = s.phi;
+  gelGhost.children[0].material.color.setHex(p.wallCd > 0 ? 0xff8a7a : 0x8fd6ff);
+  gelGhost.visible = true;
+}
+
+// ---------- mochila: largar o que não quer ----------
+function dropLoot(p, type, extra) {
+  const k = 0.9 + Math.random() * 0.5, an = p.face + (Math.random() - 0.5) * 1.2;
+  const x = p.pos.x + Math.sin(an) * k, z = p.pos.z + Math.cos(an) * k;
+  if (NET.isClient()) NET.send({ t: 'drop', ty: type, ex: extra || null, x: +x.toFixed(2), z: +z.toFixed(2), y: +p.pos.y.toFixed(2) });
+  else spawnLoot(type, x, z, extra || null, undefined, p.pos.y).byHuman = true;
+}
+function dropItem(what) {
+  const p = G.player;
+  if (!p || !p.alive || p.phase !== 'ground' || G.wait) { toast('Só dá para largar itens no chão, depois do salto'); return; }
+  if (what.indexOf('w:') === 0) {
+    const i = +what.slice(2), s = p.slots[i]; if (!s) return;
+    p.slots[i] = null;
+    if (p.cur === i) { p.cur = p.slots[0] ? 0 : p.slots[1] ? 1 : p.slots[2] ? 2 : 3; p.reloadT = 0; }
+    refreshGuns(p);
+    dropLoot(p, 'w:' + s.id, { mag: s.mag, reserve: s.reserve });
+    toast(WEAPONS[s.id].name + ' largada');
+  } else if (what.indexOf('a:') === 0) {
+    const s = p.slots[+what.slice(2)]; if (!s || s.reserve <= 0) return;
+    const n = s.reserve; s.reserve = 0;
+    dropLoot(p, 'ammo', { n: n, id: s.id });
+    toast(n + ' balas largadas');
+  } else if (what === 'kit' && p.kits > 0) { p.kits--; dropLoot(p, 'kit'); toast('Kit médico largado'); }
+  else if (what === 'gren' && p.nades > 0) { p.nades--; if (!p.nades && p.nadeHand) { p.nadeHand = false; refreshGuns(p); } dropLoot(p, 'gren'); toast('Granada largada'); }
+  else if (what === 'gel' && p.gel > 0) { const n = Math.min(2, p.gel); p.gel -= n; dropLoot(p, 'gel', { n: n }); toast(n + ' Gel largado'); }
+  // pegar de volta só depois de se afastar (senão o item volta na hora)
+  p.dropAt = { x: p.pos.x, z: p.pos.z };
+}
+
 // ---------- pular a janela ----------
 // janela por perto, de frente para ela e com o chão abaixo do peitoril
 function nearWindow(p) {
@@ -7325,7 +7444,7 @@ function updatePlayer(dt) {
 
   // ações
   p.wallCd -= dt;
-  if (consume('wall', 'KeyG')) { if (!deployWall(p, G.yaw) && p.gel <= 0) toast('Sem Gel'); }
+  updateGelAim(p);
   if (consume('heal', 'Digit5')) startHeal(p);
   if (consume('use', 'KeyE') || consume('pick', 'KeyF')) {
     if (canOpenAirdrop()) openAirdrop(p); else playerPickup();
@@ -8363,7 +8482,17 @@ NET.hostRecv = function (c, d) {
     }
     case 'take': NET.hostTake(a, pl, d.id); break;
     case 'drop': spawnLoot(d.ty, d.x, d.z, d.ex); break;
-    case 'wall': NET.remoteWall(a, d); NET.bcast({ t: 'wall', i: idx, x: d.x, y: d.y, z: d.z, yaw: d.yaw }, c); break;
+    case 'wall': NET.remoteWall(a, d); NET.bcast({ t: 'wall', i: idx, x: d.x, y: d.y, z: d.z, yaw: d.yaw, d: d.d }, c); break;
+    // item largado pela mochila do cliente: o anfitrião cria e avisa todos
+    case 'drop': {
+      const ty = String(d.ty || '');
+      if (!/^(w:[A-Z]+|ammo|kit|gren|gel)$/.test(ty) || (ty.indexOf('w:') === 0 && !WEAPONS[ty.slice(2)])) break;
+      if (Math.hypot((d.x || 0) - a.pos.x, (d.z || 0) - a.pos.z) > 4) break;
+      spawnLoot(ty, +d.x, +d.z, d.ex && typeof d.ex === 'object' ? { mag: d.ex.mag | 0, reserve: d.ex.reserve | 0, n: d.ex.n | 0, id: WEAPONS[d.ex.id] ? d.ex.id : undefined } : null, undefined, +d.y).byHuman = true;
+      break;
+    }
+    // marcação no mapa: repassa para todos (só o time mostra)
+    case 'mk': NET.bcast({ t: 'mk', i: idx, x: d.x, z: d.z }, c); NET.recvMark(a, d); break;
     case 'nade': NET.remoteNade(a, d); NET.bcast({ t: 'nade', i: idx, p: d.p, v: d.v }, c); break;
     case 'heal': if (a.alive) a.hp = Math.min(a.maxHp, a.hp + 75); break;
     case 'rsp':
@@ -8491,6 +8620,7 @@ NET.clientRecv = function (d) {
     case 'got': NET.clientGot(d); break;
     case 'nogot': if (G.pending) delete G.pending[d.id]; break;
     case 'wall': { const a = G.actors[d.i]; if (a) NET.remoteWall(a, d); break; }
+    case 'mk': { const a = G.actors[d.i]; if (a && a !== G.player) NET.recvMark(a, d); break; }
     case 'nade': { const a = G.actors[d.i]; if (a) NET.remoteNade(a, d); break; }
     case 'opened': openAirdropGoods(G.player); break;
     case 'cs': CS.recv(d); break;
@@ -8555,11 +8685,18 @@ NET.remoteShot = function (a, d) {
   if (pd < 90) SND.play('shotFar', U.clamp(1 - pd / 90, 0.05, 0.6));
 };
 
+// marcação de um colega no mapa
+NET.recvMark = function (a, d) { a.mark = typeof d.x === 'number' ? { x: d.x, z: d.z } : null; };
+NET.sendMark = function (m) {
+  if (!NET.live || !G.player) return;
+  const msg = { t: 'mk', i: G.actors.indexOf(G.player), x: m ? m.x : null, z: m ? m.z : null };
+  if (NET.isHost()) NET.bcast(msg); else NET.send(msg);
+};
 NET.remoteWall = function (a, d) {
   const px = a.pos.x, py = a.pos.y, pz = a.pos.z;
   a.pos.set(d.x, d.y, d.z);
   a.gel++; a.wallCd = 0;
-  deployWall(a, d.yaw, true);
+  deployWall(a, d.yaw, true, d.d);
   a.pos.set(px, py, pz);
 };
 NET.remoteNade = function (a, d) {
@@ -11171,7 +11308,7 @@ function initHUD() {
   document.querySelectorAll('[data-icon]').forEach(el => { el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)); });
   ['hud', 'touch', 'hpFill', 'hpNum', 'vestBadge', 'helmBadge', 'aliveNum', 'killNum', 'compassStrip', 'compassNum', 'notifs', 'areaBanner', 'areaName',
     'killBanner', 'kbCount', 'kbName', 'minimap', 'zoneTime', 'zoneText', 'topStatus', 'prep', 'prepNum', 'bigText', 'jumpHint', 'diveStats', 'diveHint', 'altMark',
-    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'wbGel', 'wbInsp', 'inspTag', 'vaultBtn',
+    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'btnGel', 'wbInsp', 'inspTag', 'vaultBtn', 'mkPin',
     'healRing', 'reloadBar'].forEach(id => { H[id] = $(id); });
   H.scopeWrap = H.scope.querySelector('.sWrap');
   H.mm = H.minimap.getContext('2d');
@@ -11235,7 +11372,8 @@ function updateHUD(dt) {
   }
   setHTML(H.wbNade, 'wbn', icon('grenade') + '<b>' + p.nades + '</b>');
   setHTML(H.wbKit, 'wbk', icon('medkit') + '<b>' + p.kits + '</b>');
-  setHTML(H.wbGel, 'wbg', icon('gel') + '<b>' + p.gel + '</b>');
+  setHTML(H.btnGel, 'wbg', icon('gel') + '<b>' + p.gel + '</b>');
+  updateMarkPin(p);
   setHTML(H.wbInsp, 'wbi', icon('eye'));
   setClass(H.wbInsp, 'wbiOn', 'on', !!p.inspect);
   // nome da arma (e da skin) enquanto inspeciona
@@ -11364,6 +11502,17 @@ function drawMapLayer(g, S, cx, cz, scale, rotate, full) {
     if (!b.alive || b.phase !== 'ground' || CS.ally(b, p) || G.time - b.lastFire > 2.5 || b.pos.distanceTo(p.pos) > 90) continue;
     g.beginPath(); g.arc(b.pos.x * scale, b.pos.z * scale, full ? 4 : 3, 0, 7); g.fill();
   }
+  // marcações: a sua (amarela) e a dos colegas (com o número deles)
+  const pin = (x, z, col, txt) => {
+    const k = full ? 1.4 : 1, X = x * scale, Z = z * scale;
+    g.save(); g.translate(X, Z); if (rotate) g.rotate(-G.yaw);
+    g.fillStyle = col; g.strokeStyle = '#2a1e00'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(-7 * k, -9 * k, -6 * k, -17 * k, 0, -17 * k); g.bezierCurveTo(6 * k, -17 * k, 7 * k, -9 * k, 0, 0); g.fill(); g.stroke();
+    if (txt) { g.fillStyle = '#000'; g.font = '700 ' + Math.round(8 * k) + 'px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(txt, 0, -9 * k); }
+    g.restore();
+  };
+  if (G.marker) pin(G.marker.x, G.marker.z, '#ffd23c', '');
+  for (const t of (TEAM.on() ? TEAM.tags : [])) if (t.a.mark) pin(t.a.mark.x, t.a.mark.z, '#7fe3ff', String(t.n));
   // colegas de time: bolinha amarela com o número
   if (TEAM.on()) {
     g.font = '700 ' + (full ? 11 : 9) + 'px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -11393,6 +11542,20 @@ function drawMapLayer(g, S, cx, cz, scale, rotate, full) {
   g.restore();
 }
 
+// marcação na tela: alfinete em cima do ponto, com a distância (preso na borda quando fica fora da tela)
+const _mk = new THREE.Vector3();
+function updateMarkPin(p) {
+  const el = H.mkPin, m = G.marker;
+  if (!m || !p.alive) { if (!el.classList.contains('hidden')) el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  _mk.set(m.x, W.height(m.x, m.z) + 2.5, m.z).project(camera);
+  const Wd = window.innerWidth, Ht = window.innerHeight;
+  let x = (_mk.x + 1) / 2 * Wd, y = (1 - _mk.y) / 2 * Ht;
+  if (_mk.z > 1) { x = Wd - x; y = Ht * 0.12; } // atrás da câmera: vai para a borda
+  x = U.clamp(x, 40, Wd - 40); y = U.clamp(y, 70, Ht - 120);
+  el.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px) translate(-50%,-100%)';
+  setText(el.querySelector('b'), 'mkd', Math.round(Math.hypot(m.x - p.pos.x, m.z - p.pos.z)) + ' m');
+}
 function drawMinimap() {
   const g = H.mm, S = 160, p = G.player;
   const pp = p.phase === 'plane' ? G.drop.pos : p.pos;
@@ -11460,6 +11623,7 @@ function goMenu() {
   if (G.state === 'play' || G.state === 'pause' || G.state === 'end') clearMatch();
   G.ads = false; G.nearWin = null; G.sprint = false;
   H.scope.classList.remove('show'); H.reticle.innerHTML = ''; H.cache.sight = '';
+  if (G.gelAim) releaseGelAim(true);
   G.state = 'menu';
   H.hud.classList.add('hidden'); H.touch.classList.add('hidden');
   setupShowcase();
@@ -11528,6 +11692,7 @@ function startMatch(msg) {
   H.hud.classList.toggle('cs', G.mode === 'cs');
   G.teamSize = 1; G.teamCount = 0; TEAM.tags = []; TEAM.spec = null;
   G.sprint = false; G.nearWin = null; $('btnRun').classList.remove('on');
+  G.marker = null; G.gelAim = null;
   H.hud.classList.remove('team'); $('teamBox').classList.add('hidden');
   if (LOB.clearParty) LOB.clearParty();
   if (G.mode === 'cs') {
@@ -11691,17 +11856,21 @@ function renderInventory(force) {
   const slot = (s, i) => {
     if (!s) return '<div class="islot w empty"><span class="n">' + (i + 1) + '</span><span>' + (i === 2 ? 'Secundária' : 'Arma principal') + '</span></div>';
     const w = WEAPONS[s.id], r = WPN.RARITY[w.rarity];
-    return '<div class="islot w' + (p.cur === i ? ' on' : '') + '" data-slot="' + i + '" style="--rc:' + r.color + '"><span class="n">' + (i + 1) + '</span><img alt="" src="' + thumbs[s.id] + '"><b>' + w.name + '</b><span class="am">' + s.mag + ' / ' + s.reserve + '</span></div>';
+    return '<div class="islot w' + (p.cur === i ? ' on' : '') + '" data-slot="' + i + '" style="--rc:' + r.color + '"><span class="n">' + (i + 1) + '</span><img alt="" src="' + thumbs[s.id] + '"><b>' + w.name + '</b><span class="am">' + s.mag + ' / ' + s.reserve + '</span>' +
+      '<span class="invBtns"><button class="invAct" data-drop="w:' + i + '">LARGAR</button>' + (s.reserve > 0 ? '<button class="invAct" data-drop="a:' + i + '">LARGAR MUNIÇÃO</button>' : '') + '</span></div>';
   };
-  const item = (ic, label, n, extra) => '<div class="islot it' + (n ? '' : ' dim') + '">' + icon(ic) + '<b>' + label + '</b><span class="cnt">' + (extra || n) + '</span></div>';
+  // botão LARGAR nos itens que dá para jogar fora
+  const item = (ic, label, n, extra, drop) => '<div class="islot it' + (n ? '' : ' dim') + '">' + icon(ic) + '<b>' + label + '</b><span class="cnt">' + (extra || n) + '</span>' + (drop && n ? '<button class="invAct" data-drop="' + drop + '">LARGAR</button>' : '') + '</div>';
   box.innerHTML = '<div class="invGrid">' +
     '<div class="invChar">' + icon('user') + '<b>' + G.settings.name + '</b></div>' +
     '<div class="invW">' + (p ? p.slots.map(slot).join('') : '<p class="hint">As armas que você pegar na partida aparecem aqui. Veja todas no ARSENAL.</p>') + '</div>' +
     '<div class="invI">' + (p ? item('helmet', 'Capacete', p.helmet, p.helmet ? 'Nv.' + p.helmet : '—') + item('vest', 'Colete', p.armor, p.armor ? 'Nv.' + p.armor : '—') +
-      item('bag', 'Mochila', 1, 'Nv.1') + item('grenade', 'Granada', p.nades) + item('medkit', 'Kit médico', p.kits) + item('gel', 'Gel', p.gel) +
+      item('bag', 'Mochila', 1, 'Nv.1') + item('grenade', 'Granada', p.nades, null, 'gren') + item('medkit', 'Kit médico', p.kits, null, 'kit') + item('gel', 'Gel', p.gel, null, 'gel') +
       item('ammo', 'Munição', 1, p.slots.reduce((t, s) => t + (s ? s.reserve : 0), 0)) : '') +
-      '<div class="islot lock">' + icon('lock') + '</div><div class="islot lock">' + icon('lock') + '</div></div></div>';
+      '<div class="islot lock">' + icon('lock') + '</div><div class="islot lock">' + icon('lock') + '</div>' +
+      (p && (p.kits >= 5 || p.nades >= 4 || p.gel >= 8 || p.slots.some(x => x && x.reserve >= ammoCap(x.id))) ? '<p class="invFull">' + icon('warn') + ' Mochila cheia em algum item: largue o que não quer para pegar mais.</p>' : '') + '</div></div>';
   box.querySelectorAll('[data-slot]').forEach(el => el.addEventListener('click', () => { selectSlot(G.player, +el.dataset.slot); renderInventory(true); }));
+  box.querySelectorAll('[data-drop]').forEach(el => el.addEventListener('click', (e) => { e.stopPropagation(); dropItem(el.dataset.drop); renderInventory(true); }));
 }
 
 // fotos das armas para o arsenal/inventário e das skins para a loja (desenhadas uma vez num renderer pequeno)
@@ -11858,7 +12027,7 @@ function renderSettings() {
   }
 }
 // ---------- editor de HUD: arrastar e redimensionar os botões; salva em G.settings.hud ----------
-const HUD_EDIT = ['btnFire', 'btnFireL', 'btnAim', 'btnJump', 'btnCrouch', 'btnReload', 'btnInv', 'btnEmote', 'btnRun', 'joyBase', 'weaponBar', 'hudTR', 'hudTL'];
+const HUD_EDIT = ['btnFire', 'btnFireL', 'btnAim', 'btnJump', 'btnCrouch', 'btnReload', 'btnInv', 'btnEmote', 'btnRun', 'btnGel', 'ffCount', 'joyBase', 'weaponBar', 'hudTR', 'hudTL'];
 let heWork = null, heSel = null, heFrom = null;
 function applyHudLayout() {
   const L = G.settings.hud || {};
@@ -11973,10 +12142,11 @@ function initInput() {
     if (e.code === 'KeyM' && G.state === 'play') { UI.screen === 'map' ? showScreen(null) : openMap(); }
     if (e.code === 'KeyB' && G.state === 'play') openEmoteWheel();
     if (e.code === 'KeyI' && G.state === 'play') input.inspect = true;
+    if (e.code === 'KeyG' && G.state === 'play' && !e.repeat) startGelAim(0, 0);
     if (e.code === 'Backquote' && document.exitPointerLock) document.exitPointerLock();
     if (G.state === 'play' && (e.code === 'Space' || e.code.indexOf('Arrow') === 0)) e.preventDefault();
   });
-  window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+  window.addEventListener('keyup', (e) => { keys[e.code] = false; if (e.code === 'KeyG') releaseGelAim(false); });
   const canvas = $('c');
   canvas.addEventListener('mousedown', (e) => {
     if (G.state !== 'play' || isTouchEvent(e)) return;
@@ -12081,11 +12251,26 @@ function initInput() {
   holdBtn($('wb2'), () => { input.slot = 2; });
   holdBtn($('wbNade'), () => { input.nade = true; });
   holdBtn($('wbKit'), () => { input.heal = true; });
-  holdBtn($('wbGel'), () => { input.wall = true; });
   holdBtn($('wbInsp'), () => { input.inspect = true; });
   holdBtn($('btnPause'), () => { pauseGame(); });
   holdBtn($('btnMap'), () => { openMap(); });
   holdBtn($('mmWrap'), () => { openMap(); });
+  // gel: segurar, arrastar para escolher o lugar e soltar
+  const gb = $('btnGel');
+  gb.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); try { gb.setPointerCapture(e.pointerId); } catch (er) { /* ok */ } startGelAim(e.clientX, e.clientY); });
+  gb.addEventListener('pointermove', (e) => { if (G.gelAim) { e.preventDefault(); moveGelAim(e.clientX, e.clientY); } });
+  gb.addEventListener('pointerup', (e) => { e.preventDefault(); releaseGelAim(false); });
+  gb.addEventListener('pointercancel', () => releaseGelAim(true));
+  // marcar um ponto no mapa (toque de novo em cima para tirar)
+  $('fullMap').addEventListener('pointerdown', (e) => {
+    if (G.state !== 'play' && G.state !== 'pause') return;
+    const cv = $('fullMap'), r = cv.getBoundingClientRect(), S = cv.width, sc = S / 440;
+    const px = (e.clientX - r.left) * S / r.width, py = (e.clientY - r.top) * S / r.height;
+    const x = (px - S / 2) / sc, z = (py - S / 2) / sc;
+    G.marker = G.marker && Math.hypot(G.marker.x - x, G.marker.z - z) < 14 ? null : { x: x, z: z };
+    NET.sendMark(G.marker);
+    drawFullMap();
+  });
 }
 function isTouchEvent(e) { return e.pointerType === 'touch' || (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents); }
 

@@ -20,6 +20,8 @@ CH.AV = {
   soldada: {},
   // personagem feito a partir de outro modelo (sem arquivo novo): roupa gasta e escura, pele pálida e máscara 3D
   carrasco: { base: 'jeans', grade: 'grim', mask: true },
+  // jogador de futebol original: camisa amarela com detalhes verdes, calção azul, número 10 e nome CRAQUE
+  craque: { base: 'bone', kit: { cell: 'm022_body', name: 'CRAQUE', num: '10', sleeve: [0.42, 0.86], cuff: 0.79, front: [0.56, 0.56], back: [0.5, 0.31, 0.2] } },
 };
 CH.PLAYER_PAL = 'heroi';
 CH.BOT_PALS = ['swat', 'soldado', 'bone', 'camisa', 'soldado2', 'jeans', 'soldada', 'swat', 'bone', 'soldado'];
@@ -142,9 +144,50 @@ CH.grade = function (tex, kind) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.flipY = tex.flipY;
   return t;
 };
+// uniforme pintado em cima da textura da camiseta: as regiões são as do mapa UV do modelo "camisa"
+CH.kitTex = function (tex, cell, kit) {
+  const im = tex.image, c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+  const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+  const X = cell.x, Y = cell.y, S = cell.s;
+  const d = g.getImageData(X, Y, S, S), a = d.data;
+  const tint = (i, r, gg, b, k) => { a[i] = Math.min(255, r * k); a[i + 1] = Math.min(255, gg * k); a[i + 2] = Math.min(255, b * k); };
+  const sv = kit.sleeve;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const u = x / S, v = y / S, i = (y * S + x) * 4, R = a[i], Gc = a[i + 1], B = a[i + 2];
+    const l = R * 0.3 + Gc * 0.59 + B * 0.11, skin = R > Gc + 18 && R > B + 30 && l > 70;
+    const shirt = u > 0.31 && u < 0.69 && v < 0.9 && !skin, sleeve = (u < 0.31 || u > 0.69) && v > sv[0] && v < sv[1] && !skin;
+    const pants = (u < 0.3 || u > 0.7) && v < sv[0] - 0.01;
+    if (shirt || sleeve) {
+      // cor lisa (some o desenho da roupa original), só com um pouco das dobras do tecido
+      const k = 0.78 + Math.min(1, l / 255) * 0.3;
+      if (sleeve && v > kit.cuff) tint(i, 0, 150, 90, k); else tint(i, 250, 214, 30, k);
+    } else if (pants) {
+      const k = 0.55 + Math.min(1, l / 150) * 0.6;
+      tint(i, 32, 72, 205, k);
+    }
+  }
+  g.putImageData(d, 0, 0);
+  // número e nome em azul com contorno verde; nas costas o desenho do molde fica de cabeça para baixo, então gira 180°
+  const txt = (s, cx, cy, size, rot) => {
+    g.save(); g.translate(X + cx * S, Y + cy * S); if (rot) g.rotate(Math.PI);
+    g.font = '900 ' + Math.round(size * S) + 'px Arial Black, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = Math.max(2, S * 0.006); g.strokeStyle = '#0a7a4a'; g.fillStyle = '#1636a8';
+    g.strokeText(s, 0, 0); g.fillText(s, 0, 0); g.restore();
+  };
+  txt(kit.num, kit.front[0], kit.front[1], 0.075, false);
+  txt(kit.name, kit.back[0], kit.back[1], 0.045, true);
+  txt(kit.num, kit.back[0], kit.back[2], 0.13, true);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.flipY = tex.flipY;
+  return t;
+};
 CH.variant = function (key, cfg) {
   const src = CH.data[cfg.base];
-  const mats = src.mats.map(m => { const c = m.clone(); if (m.map && m.map.image) c.map = CH.grade(m.map, cfg.grade); c.name = key + '_' + m.name; return c; });
+  const kitCell = cfg.kit && src.cellOf && src.cellOf[cfg.kit.cell];
+  const mats = src.mats.map((m, mi) => {
+    const c = m.clone();
+    if (m.map && m.map.image) c.map = kitCell && mi === 0 ? CH.kitTex(m.map, kitCell, cfg.kit) : cfg.grade ? CH.grade(m.map, cfg.grade) : m.map;
+    c.name = key + '_' + m.name; return c;
+  });
   const av = Object.assign({}, src, { key: key, mats: mats, mask: !!cfg.mask });
   if (cfg.mask) {
     // posição da máscara no osso da cabeça, medida no esqueleto em repouso
@@ -224,6 +267,9 @@ CH.atlas = function (av, cfg, maps, nmaps) {
     const m0 = mk(o); m0.name = av.key + '_atlas';
     mats.push(m0);
     const done = new Uint8Array(uv.count);
+    // onde cada textura ficou no atlas (usado pelos personagens derivados que pintam a roupa)
+    av.cellOf = {};
+    cells.forEach((mi, n) => { av.cellOf[names[mi]] = { x: (n % cols) * cs, y: Math.floor(n / cols) * cs, s: cs }; });
     cells.forEach((mi, n) => {
       remap[mi] = 0;
       const cx = n % cols, cy = Math.floor(n / cols);

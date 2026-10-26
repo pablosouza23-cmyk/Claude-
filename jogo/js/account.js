@@ -53,6 +53,8 @@ const SHOP = {
     soldado: { price: ['gold', 1500], rare: 'epico' }, soldado2: { price: ['gems', 60], rare: 'epico' },
     soldada: { price: ['gems', 90], rare: 'lendario' }, swat: { price: ['gems', 150], rare: 'lendario' },
     carrasco: { price: ['gems', 199], rare: 'lendario' },
+    // exclusiva: não está à venda, só com código de resgate
+    craque: { price: null, rare: 'diamante', excl: true },
   },
   emotes: {
     wave: { price: null, rare: 'comum' }, clap: { price: null, rare: 'comum' }, shrug: { price: null, rare: 'comum' }, dance: { price: null, rare: 'comum' },
@@ -132,6 +134,8 @@ ACC.getSession = function () {
   return u || CLOUD.session || null;
 };
 ACC.hashPass = (salt, pass) => { let h = salt + ':' + pass; for (let i = 0; i < 500; i++) h = SHA.hex(h + salt); return h; };
+// nível do selo da conta: o dourado/supremo vem do servidor (p.badge); o azul é o verificado de sempre
+ACC.tier = (p) => (p && (p.badge === 'supremo' || p.badge === 'dourado') ? p.badge : p && p.verified ? 'azul' : '');
 ACC.validUser = (u) => /^[a-z0-9_.]{3,16}$/.test(u);
 // IDs especiais definidos pelo dono do jogo (ID antigo → ID novo); valem em qualquer aparelho
 ACC.ID_REMAP = { '3423471011': '0' };
@@ -403,7 +407,8 @@ CLOUD.watch = function (user) {
 const SRV = { url: '/api/contas', on: false, tok: null, user: null, KEY: 'battleIsland.srv', last: '', busy: false, status: 'off' };
 const SRV_ERR = { bad_user: 'Usuário: 3 a 16 letras minúsculas, números, _ ou .', short_pass: 'A senha precisa de pelo menos 4 caracteres.', exists: 'Esse usuário já existe. Toque em ENTRAR.',
   not_found: 'Usuário não encontrado. Confira o nome ou crie a conta.', bad_pass: 'Senha incorreta. Toque no olho para ver o que está digitando. Esqueceu? Peça ao dono do jogo para trocar.',
-  session: 'Sua sessão expirou. Entre de novo.', bad_profile: 'Conta grande demais para salvar.', owner: 'Código do dono errado.', google: 'O Google não confirmou o login. Tente de novo.', google_used: 'Essa conta Google já está ligada a outra conta do jogo.', no_google: 'Login com Google não está ligado no servidor.', id_taken: 'Já existe uma conta com esse ID.', bad_id: 'O ID precisa ter de 1 a 10 números.' };
+  session: 'Sua sessão expirou. Entre de novo.', code_expired: 'Esse código já venceu.', not_allowed: 'Este código é exclusivo de uma conta autorizada pelo dono do jogo. Sua conta não tem permissão para resgatá-lo.', bad_role: 'Cargo inválido.', bad_code: 'Código inválido. Confira as letras e os números.', code_used: 'Você já resgatou esse código.',
+  code_out: 'Esse código já foi resgatado pelo número máximo de pessoas.', code_exists: 'Já existe um código igual.', bad_item: 'Escolha o prêmio do código.', bad_profile: 'Conta grande demais para salvar.', owner: 'Código do dono errado.', google: 'O Google não confirmou o login. Tente de novo.', google_used: 'Essa conta Google já está ligada a outra conta do jogo.', no_google: 'Login com Google não está ligado no servidor.', id_taken: 'Já existe uma conta com esse ID.', bad_id: 'O ID precisa ter de 1 a 10 números.' };
 SRV.WHY = {
   arquivo: 'o jogo foi aberto pelo arquivo HTML baixado. O servidor só existe no site da Netlify.',
   claude: 'o jogo está aberto pelo link do claude.ai. O servidor das contas é o do site da Netlify.',
@@ -548,7 +553,7 @@ SRV.applyInbox = function (items) {
   if (!items || !items.length || !ACC.p) return;
   const done = [];
   for (const it of items) {
-    if (it.kind === 'patch') { if (it.set && typeof it.set === 'object') { if ('verified' in it.set) ACC.p.verified = !!it.set.verified; if ('id' in it.set) ACC.p.id = String(it.set.id); } }
+    if (it.kind === 'patch') { if (it.set && typeof it.set === 'object') { if ('verified' in it.set) ACC.p.verified = !!it.set.verified; if ('badge' in it.set) ACC.p.badge = String(it.set.badge || ''); if ('id' in it.set) ACC.p.id = String(it.set.id); } }
     else if (!ACC.p.mail.some(m => m.mid === it.mid)) ACC.p.mail.unshift({ mid: it.mid, from: it.from, title: it.title, text: it.text, items: it.items || [], t: it.t, read: false, got: false });
     done.push(it.mid);
   }
@@ -566,6 +571,18 @@ SRV.applyPaid = function (list) {
   }
   if (n && typeof notify === 'function') notify('ok', 'Pix confirmado! +' + n + ' gemas');
   return n;
+};
+// resgatar código: o servidor confere, conta o limite de pessoas e entrega o prêmio
+SRV.redeem = async function (code) {
+  const j = await SRV.call({ op: 'redeem', u: SRV.user, tok: SRV.tok, code: code });
+  const it = j.item || {};
+  if (it.k === 'skin' && ACC.p.owned.skins.indexOf(it.id) < 0) ACC.p.owned.skins.push(it.id);
+  // selo: vale o que o servidor gravou
+  if (it.k === 'badge') { ACC.p.verified = !!j.p.verified; ACC.p.badge = j.p.badge || ''; for (const s of j.p.owned.skins || []) if (ACC.p.owned.skins.indexOf(s) < 0) ACC.p.owned.skins.push(s); }
+  if (it.k === 'gems') ACC.p.gems = j.p.gems;
+  if (it.k === 'gold') ACC.p.gold = j.p.gold;
+  SRV.last = ''; ACC.emit();
+  return j;
 };
 SRV.pixNew = (pack) => SRV.call({ op: 'pixNew', u: SRV.user, tok: SRV.tok, pack: pack });
 SRV.pixCheck = (id) => SRV.call({ op: 'pixCheck', u: SRV.user, tok: SRV.tok, id: id });
@@ -648,7 +665,7 @@ ACC.equipSkin = function (id, kind) {
 ACC.skinOn = (id, kind) => (kind === 'walls' ? ACC.wallSkin() === id : ACC.gunSkins()[WPN.SKINS[id].gun] === id);
 // ranking feito a partir de uma lista de perfis (no servidor, ou com as contas deste aparelho)
 ACC.rankFrom = function (profiles) {
-  const players = profiles.filter(p => p && p.stats).map(p => ({ n: p.name, id: p.id, vf: !!p.verified, lvl: p.level || 1, k: p.stats.kills || 0, w: p.stats.wins || 0, wk: p.stats.wk || {} }));
+  const players = profiles.filter(p => p && p.stats).map(p => ({ n: p.name, id: p.id, vf: ACC.tier(p), lvl: p.level || 1, k: p.stats.kills || 0, w: p.stats.wins || 0, wk: p.stats.wk || {} }));
   const top = players.slice().sort((a, b) => b.k - a.k || b.w - a.w).slice(0, 100).map(p => ({ n: p.n, id: p.id, vf: p.vf, lvl: p.lvl, k: p.k, w: p.w }));
   const byWeapon = {};
   for (const p of players) for (const w in p.wk) (byWeapon[w] = byWeapon[w] || []).push({ n: p.n, id: p.id, vf: p.vf, k: p.wk[w] });
@@ -767,7 +784,7 @@ ACC.grant = function (p, it) {
   else if (it.k === 'gems') p.gems += it.n;
   else if (it.k === 'skin') add('skins', it.id);
   else if (it.k === 'emote') add('emotes', it.id);
-  else if (it.k === 'allSkins') for (const id in SHOP.skins) add('skins', id);
+  else if (it.k === 'allSkins') { for (const id in SHOP.skins) if (!SHOP.skins[id].excl) add('skins', id); }
   else if (it.k === 'allEmotes') for (const id in SHOP.emotes) add('emotes', id);
   else if (it.k === 'allGuns') { for (const id in SHOP.guns) add('guns', id); for (const id in SHOP.walls) add('walls', id); }
   else if (it.k === 'verified') p.verified = true;

@@ -3,14 +3,23 @@
 // perfil com código de transferência, escolha de mapa, palco 3D (plataforma no mar com a ilha ao fundo)
 // e a tela de carregamento.
 const LOB = { stage: null, yaw: 0, drag: null, shift: 0, shiftCur: 0, preview: null, sh: { kind: 'skins', sel: null, title: 'LOJA' }, newsI: 0, thumbs: {} };
-const RARE = { comum: ['COMUM', '#8fa3b8', 0x3a4a5e], raro: ['RARO', '#3d9bff', 0x1d4f8f], epico: ['ÉPICO', '#b56bff', 0x4f2390], lendario: ['LENDÁRIO', '#ffb21a', 0x8a5208] };
+const RARE = { comum: ['COMUM', '#8fa3b8', 0x3a4a5e], raro: ['RARO', '#3d9bff', 0x1d4f8f], epico: ['ÉPICO', '#b56bff', 0x4f2390], lendario: ['LENDÁRIO', '#ffb21a', 0x8a5208], diamante: ['DIAMANTE', '#7fe8ff', 0x0b4a66] };
 const SKIN_INFO = { heroi: 'Moletom com capuz e cabelo cacheado', camisa: 'Visual leve para o calor da ilha', jeans: 'Jaqueta e calça jeans', bone: 'Boné e roupa casual',
   soldado: 'Uniforme camuflado de combate', soldado2: 'Sargento com equipamento completo', soldada: 'Soldada das forças especiais', swat: 'Tropa de elite com colete tático',
+  craque: 'Craque 10: camisa amarela com gola verde, calção azul e o 10 nas costas. Para quem joga bonito.',
   carrasco: 'Carrasco do Pântano: máscara costurada, jaqueta encardida e pele pálida. Visual de terror.' };
 const GEM_SVG = '<svg class="gemI" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 13L2 9z" fill="url(#gmG)" stroke="#1b1450" stroke-width="1.2"/><path d="M2 9h20M8.5 3 12 9l3.5-6M12 9v13M7 9l5 13 5-13" fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".8"/></svg>';
 const COIN_SVG = '<svg class="coinI" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="url(#cnG)" stroke="#6b3d00" stroke-width="1.3"/><circle cx="12" cy="12" r="7" fill="none" stroke="#a65f00" stroke-width="1"/><path d="m12 6.8 1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff6c8" stroke="#a65f00" stroke-width=".6"/></svg>';
 // selo de verificado (assets/verified.png): troque o arquivo para mudar o desenho
 const VERIFIED_SVG = '<img class="vfI" src="' + CH.url('assets/verified.png') + '" alt="verificado" draggable="false">';
+// selos por nível: azul (o de sempre), dourado (dono) e supremo (administrador); aceita true/1 do sistema antigo como azul
+const BADGES = {
+  azul: { name: 'VERIFICADO', html: VERIFIED_SVG },
+  dourado: { name: 'VERIFICADO DOURADO', html: '<img class="vfI vfGold" src="' + CH.url('assets/badge_dourado.png') + '" alt="verificado dourado" draggable="false">' },
+  supremo: { name: 'VERIFICADO SUPREMO', html: '<img class="vfI vfSup" src="' + CH.url('assets/badge_supremo.png') + '" alt="verificado supremo" draggable="false">' },
+};
+const tierKey = (v) => (v === 'dourado' || v === 'supremo' || v === 'azul' ? v : v ? 'azul' : '');
+LOB.vf = (v) => { const k = tierKey(v); return k ? BADGES[k].html : ''; };
 const cur = (k) => k === 'gems' ? GEM_SVG : COIN_SVG;
 const fmtN = (n) => Math.round(n).toLocaleString('pt-BR');
 const NEWS = [
@@ -108,11 +117,11 @@ LOB.syncParty = function () {
     a.ch.skins = (p.lk && p.lk.g) || {};
     a.phase = 'ground'; a.ch.root.visible = true;
     giveWeapon(a, 'FUZIL');
-    LOB.party.push({ key: key(p), pid: p.pid, a: a, name: p.name, vf: !!p.vf, host: p.pid === 0, t0: Math.random() * 6 });
+    LOB.party.push({ key: key(p), pid: p.pid, a: a, name: p.name, vf: tierKey(p.vf), host: p.pid === 0, t0: Math.random() * 6 });
   }
   LOB.party.sort((x, y) => x.pid - y.pid);
   const tags = $('partyTags');
-  tags.innerHTML = LOB.party.map(m => '<div class="pTag">' + (m.host ? icon('crown') : '') + escapeHTML(m.name) + (m.vf ? VERIFIED_SVG : '') + '</div>').join('');
+  tags.innerHTML = LOB.party.map(m => '<div class="pTag">' + (m.host ? icon('crown') : '') + escapeHTML(m.name) + LOB.vf(m.vf) + '</div>').join('');
   LOB.party.forEach((m, i) => { m.el = tags.children[i]; });
 };
 const _pv = new THREE.Vector3();
@@ -163,7 +172,7 @@ LOB.renderCur = function () {
 };
 LOB.renderTop = function () {
   const p = ACC.p; if (!p) return;
-  $('lbName').innerHTML = escapeHTML(p.name) + (p.verified ? VERIFIED_SVG : '');
+  $('lbName').innerHTML = escapeHTML(p.name) + LOB.vf(ACC.tier(p));
   $('lbId').textContent = 'ID ' + p.id;
   const n = ACC.unread();
   $('lbMailN').textContent = n > 9 ? '9+' : n;
@@ -330,7 +339,7 @@ LOB.renderShop = function () {
     const art = gear ? (th ? '<img class="skThumb" src="' + th + '" alt="">' : '<i class="ph">' + icon(kind === 'walls' ? 'shield' : 'bullet') + '</i>') :
       kind === 'skins' ? (LOB.thumbs[o.id] ? '<img src="' + LOB.thumbs[o.id] + '" alt="">' : '<i class="ph">' + icon('person') + '</i>') : '<i class="emo">' + o.icon + '</i>';
     return '<button class="card' + (S.sel === o.id ? ' sel' : '') + '" data-id="' + o.id + '" style="--rc:' + r[1] + '">' + art +
-      '<span class="nm">' + o.name + '</span>' + (eq ? '<em class="tagEq">EQUIPADO</em>' : own ? '<em class="tagOwn">' + icon('check') + '</em>' : '<span class="pr">' + LOB.priceHTML(o.it.price) + '</span>') + '</button>';
+      '<span class="nm">' + o.name + '</span>' + (eq ? '<em class="tagEq">EQUIPADO</em>' : own ? '<em class="tagOwn">' + icon('check') + '</em>' : o.it.excl ? '<span class="pr excl">EXCLUSIVA</span>' : '<span class="pr">' + LOB.priceHTML(o.it.price) + '</span>') + '</button>';
   }).join('');
   $('shGrid').querySelectorAll('.card').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.select(b.dataset.id); }));
   LOB.renderDetail();
@@ -353,7 +362,8 @@ LOB.renderDetail = function () {
     const on = own && ACC.skinOn(id, kind);
     btn = own ? '<button class="mBtn ' + (on ? 'ok' : 'primary') + '" id="shAct">' + (on ? icon('check') + 'EQUIPADA' : 'EQUIPAR') + '</button>' :
       '<button class="mBtn primary buy" id="shAct">COMPRAR ' + LOB.priceHTML(o.it.price) + '</button>' + (o.it.alt ? '<button class="mBtn primary buy alt" id="shAlt">COMPRAR ' + LOB.priceHTML(o.it.alt) + '</button>' : '');
-  } else if (kind === 'skins') btn = eq ? '<button class="mBtn ok" disabled>' + icon('check') + 'EQUIPADO</button>' : own ? '<button class="mBtn primary" id="shAct">EQUIPAR</button>' :
+  } else if (kind === 'skins' && o.it.excl && !own) btn = '<button class="mBtn primary" id="shAct">' + icon('gift') + 'RESGATAR CÓDIGO</button><small class="hint">Skin exclusiva: só com código de resgate, para poucas pessoas.</small>';
+  else if (kind === 'skins') btn = eq ? '<button class="mBtn ok" disabled>' + icon('check') + 'EQUIPADO</button>' : own ? '<button class="mBtn primary" id="shAct">EQUIPAR</button>' :
     '<button class="mBtn primary buy" id="shAct">COMPRAR ' + LOB.priceHTML(o.it.price) + '</button>';
   else btn = own ? '<button class="mBtn ok" id="shAct">' + icon('play') + 'TESTAR</button>' : '<button class="mBtn primary buy" id="shAct">COMPRAR ' + LOB.priceHTML(o.it.price) + '</button>';
   $('shDetail').innerHTML = '<span class="rare" style="--rc:' + r[1] + '">' + r[0] + '</span><b class="dn">' + o.name + '</b><p>' +
@@ -369,6 +379,7 @@ LOB.renderDetail = function () {
 LOB.act = function (useAlt) {
   const S = LOB.sh, kind = S.kind, id = S.sel, it = SHOP[kind][id];
   if (kind === 'guns' || kind === 'walls') { LOB.actGun(id, it, useAlt, kind); return; }
+  if (it.excl && !ACC.owns(kind, id)) { LOB.redeem(); return; }
   if (ACC.owns(kind, id)) {
     if (kind === 'skins') { ACC.p.skin = id; ACC.emit(); LOB.preview = null; LOB.applyProfile(); swapShowcase(); notify('ok', 'Personagem equipado'); if (NET.on()) NET.setAvatar(id); }
     else showEmote(id);
@@ -469,7 +480,7 @@ LOB.renderRank = function () {
   const body = $('rkBody'), d = LOB.rank, me = ACC.p && ACC.p.id;
   if (!d) { body.innerHTML = '<p class="hint rkNote">Carregando o ranking…</p>'; return; }
   const row = (r, i, val, unit) => '<div class="rkRow' + (r.id === me ? ' me' : '') + '"><b class="rkPos" style="' + (i < 3 ? 'color:' + MEDAL[i] : '') + '">' + (i < 3 ? icon('crown') : '') + (i + 1) + '</b>' +
-    '<div class="rkId"><b>' + escapeHTML(r.n) + (r.vf ? VERIFIED_SVG : '') + '</b><small>ID ' + r.id + (r.lvl ? ' · NV ' + r.lvl : '') + (r.w !== undefined ? ' · ' + r.w + ' vitória(s)' : '') + '</small></div><span class="rkVal"><b>' + fmtN(val) + '</b>' + unit + '</span></div>';
+    '<div class="rkId"><b>' + escapeHTML(r.n) + LOB.vf(r.vf) + '</b><small>ID ' + r.id + (r.lvl ? ' · NV ' + r.lvl : '') + (r.w !== undefined ? ' · ' + r.w + ' vitória(s)' : '') + '</small></div><span class="rkVal"><b>' + fmtN(val) + '</b>' + unit + '</span></div>';
   const note = '<p class="hint rkNote">' + icon('info') + d.total + ' jogador(es) · ' + (LOB.rankWhere === 'servidor' ? 'ranking global do servidor (atualiza a cada minuto)' : 'contas salvas neste aparelho (o ranking global aparece no site com servidor)') + '</p>';
   if (LOB.rkTab === 'geral') {
     body.innerHTML = note + (d.top.length ? d.top.map((r, i) => row(r, i, r.k, ' abates')).join('') : '<p class="hint">Ninguém no ranking ainda. Jogue uma partida!</p>');
@@ -612,15 +623,15 @@ LOB.renderProfile = function () {
   const kd = st.matches ? (st.kills / Math.max(1, st.matches - st.wins)).toFixed(2) : '0.00';
   $('pfBody').innerHTML =
     '<div class="pfTop"><div class="pfAv" style="background-image:url(' + (LOB.thumbs[p.skin] || '') + ')"></div><div class="pfId">' +
-    '<label class="fld inline"><span>Apelido</span><input id="pfName" maxlength="14" value="' + escapeHTML(p.name) + '">' + (p.verified ? VERIFIED_SVG : '') + '</label>' +
-    '<div class="pfIdRow"><button id="pfIdBtn" class="idTag" aria-label="Copiar ID">ID <b>' + p.id + '</b>' + icon('copy') + '</button>' + (p.verified ? '<span class="vfTag">' + VERIFIED_SVG + 'VERIFICADO</span>' : '') + (p.owner ? '<span class="vfTag own">' + icon('crown') + 'DONO</span>' : '') + '</div>' +
+    '<label class="fld inline"><span>Apelido</span><input id="pfName" maxlength="14" value="' + escapeHTML(p.name) + '">' + LOB.vf(ACC.tier(p)) + '</label>' +
+    '<div class="pfIdRow"><button id="pfIdBtn" class="idTag" aria-label="Copiar ID">ID <b>' + p.id + '</b>' + icon('copy') + '</button>' + (ACC.tier(p) ? '<span class="vfTag t-' + ACC.tier(p) + '">' + LOB.vf(ACC.tier(p)) + BADGES[ACC.tier(p)].name + '</span>' : '') + (p.owner ? '<span class="vfTag own">' + icon('crown') + 'DONO</span>' : '') + '</div>' +
     '<div class="pfAcc">' + (guest ? icon('warn') + 'Convidado: crie uma conta para não perder o progresso' : icon('user') + 'Conta: <b>' + escapeHTML(ACC.user) + '</b> · ' +
       (SRV.on && SRV.user === ACC.user ? (SRV.status === 'error' ? 'erro ao salvar no servidor, tentando de novo' : SRV.status === 'session' ? 'sessão expirada: saia e entre de novo' : 'salva no servidor') : CLOUD.status === 'on' ? 'salva on-line' : CLOUD.status === 'readonly' ? 'sem permissão para salvar on-line' : CLOUD.status === 'error' ? 'erro ao salvar on-line, tentando de novo' : 'salva neste aparelho')) + '</div>' +
     '<div class="pfLvl"><b>NÍVEL ' + p.level + '</b><div class="xpBar"><div style="width:' + Math.min(100, p.xp / ACC.need(p.level) * 100) + '%"></div></div><small>' + fmtN(p.xp) + ' / ' + fmtN(ACC.need(p.level)) + ' XP</small></div></div></div>' +
     '<div class="pfStats">' + [['PARTIDAS', st.matches], ['VITÓRIAS', st.wins], ['TOP 5', st.top5], ['ABATES', st.kills], ['K/D', kd], ['MAIS ABATES', st.best], ['DANO TOTAL', fmtN(st.dmg)], ['PERSONAGENS', p.owned.skins.length + '/' + SKINS.length]]
       .map(s => '<div><small>' + s[0] + '</small><b>' + s[1] + '</b></div>').join('') + '</div>' +
     '<div class="pfBtns">' + (p.owner ? '<button class="chip hot" id="pfAdmin">' + icon('shield') + 'PAINEL DO DONO</button>' : '') + (guest ? '<button class="chip hot" id="pfNew">' + icon('user') + 'CRIAR CONTA</button>' : '') +
-    '<button class="chip" id="pfCode">' + icon('copy') + 'CÓDIGO DE TRANSFERÊNCIA</button><button class="chip" id="pfOut">' + icon('exit') + (guest ? 'ENTRAR EM OUTRA CONTA' : 'SAIR DA CONTA') + '</button>' +
+    '<button class="chip" id="pfVf">' + icon('check') + 'RESGATAR VERIFICADO</button><button class="chip" id="pfCode">' + icon('copy') + 'CÓDIGO DE TRANSFERÊNCIA</button><button class="chip" id="pfOut">' + icon('exit') + (guest ? 'ENTRAR EM OUTRA CONTA' : 'SAIR DA CONTA') + '</button>' +
     (guest ? '' : '<button class="chip danger" id="pfDel">APAGAR CONTA</button>') + '</div>' +
     (!guest && SRV.on && SRV.gid && SRV.user === ACC.user ? (p.google ? '<p class="pfG">' + icon('check') + 'Conta Google ligada: <b>' + escapeHTML(p.google) + '</b></p>' :
       '<div class="pfG"><small>Ligue sua conta Google para entrar sem senha em qualquer aparelho:</small><div id="pfGBtn"></div></div>') : '');
@@ -633,6 +644,7 @@ LOB.renderProfile = function () {
   const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', () => { SND.play('ui'); fn(); }); };
   on('pfNew', () => LOB.showAuth('new'));
   on('pfAdmin', () => LOB.openAdmin('hoje'));
+  on('pfVf', () => LOB.openVerify());
   // copiar o ID; tocar 5 vezes seguidas abre o código do dono
   on('pfIdBtn', () => {
     LOB.idTaps = (Date.now() - (LOB.idTapT || 0) < 1500 ? (LOB.idTaps || 0) : 0) + 1; LOB.idTapT = Date.now();
@@ -652,6 +664,61 @@ LOB.setName = function (v) {
   if (!n || !ACC.p) return;
   ACC.p.name = n; ACC.emit(); LOB.applyProfile();
   if (G.show) G.show.name = n;
+};
+
+// ---------- resgatar código ----------
+LOB.redeem = function () {
+  if (!SRV.on || SRV.user !== ACC.user) {
+    LOB.dialog('RESGATAR CÓDIGO', SRV.on ? 'Entre com sua conta (usuário e senha) para resgatar códigos.' : 'O resgate de códigos funciona no site oficial do jogo, com o servidor das contas ligado.', [['OK', null, true]]);
+    return;
+  }
+  LOB.dialog('RESGATAR CÓDIGO', 'Digite o código que você recebeu:<input id="rdCode" class="codeIn" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="EX.: ABCD-1234">', [['RESGATAR', () => {
+    const code = $('rdCode').value.trim();
+    if (!code) return false;
+    SRV.redeem(code).then(j => {
+      const it = j.item || {}, sk = it.k === 'skin' ? (SKINS.find(x => x[0] === it.id) || [])[1] || it.id : '';
+      SND.play('pick');
+      if (it.k === 'skin') { ACC.p.skin = it.id; ACC.emit(); LOB.applyProfile(); swapShowcase(); showEmote('cheer2'); }
+      LOB.dialog('CÓDIGO RESGATADO!', it.k === 'skin' ? 'Você ganhou a skin <b>' + escapeHTML(sk) + '</b>' + (SHOP.skins[it.id] && SHOP.skins[it.id].rare === 'diamante' ? ' <span class="rare" style="--rc:#7fe8ff">DIAMANTE</span>' : '') + '. Ela já está equipada!' :
+        'Você ganhou <b>' + fmtN(it.n) + '</b> ' + (it.k === 'gems' ? 'gemas' : 'de ouro') + '!', [['OK', null, true]]);
+      if (UI.screen === 'shopScr') LOB.renderShop();
+    }, e => LOB.dialog('NÃO DEU', SRV.msg(e), [['OK', null, true]]));
+  }, true], ['CANCELAR']]);
+  const el = $('rdCode'); el.addEventListener('keydown', e => e.stopPropagation()); setTimeout(() => el.focus(), 50);
+};
+
+// ---------- resgatar verificado ----------
+LOB.openVerify = function () {
+  LOB.vfFrom = UI.screen;
+  showScreen('vfScr');
+  document.querySelectorAll('#vfScr [data-badge]').forEach(im => { im.src = BADGES[im.dataset.badge].html.match(/src="([^"]+)"/)[1]; });
+  $('vfCode').value = ''; $('vfMsg').textContent = ''; $('vfMsg').className = 'vfMsg';
+  LOB.renderVerifyNow();
+};
+LOB.renderVerifyNow = function () {
+  const t = ACC.tier(ACC.p);
+  $('vfNow').innerHTML = t ? 'Seu selo: ' + LOB.vf(t) + '<b class="t-' + t + '">' + BADGES[t].name + '</b>' : 'Sua conta ainda não tem selo de verificado.';
+  document.querySelectorAll('#vfScr .vfT').forEach(el => el.classList.toggle('have', el.classList.contains('t-' + t)));
+};
+LOB.vfRedeem = async function () {
+  const code = $('vfCode').value.trim(), msg = $('vfMsg');
+  const say = (ok, t) => { msg.className = 'vfMsg ' + (ok ? 'ok' : 'err'); msg.innerHTML = icon(ok ? 'check' : 'warn') + t; };
+  if (!code) { say(false, 'Digite o código.'); return; }
+  if (!SRV.on) { say(false, 'O resgate precisa do servidor das contas (o site oficial do jogo na Netlify). ' + (SRV.WHY[SRV.why] || '')); return; }
+  if (SRV.user !== ACC.user) { say(false, 'Entre com sua conta (usuário e senha) para resgatar.'); return; }
+  if (LOB.vfBusy) return;
+  LOB.vfBusy = true; $('vfGo').disabled = true; $('vfSpin').classList.remove('hidden'); msg.textContent = '';
+  try {
+    const j = await SRV.redeem(code), it = j.item || {};
+    if (it.k === 'badge') {
+      const t = ACC.tier(ACC.p);
+      say(true, 'Resgatado! Agora você tem o ' + LOB.vf(t) + '<b>' + BADGES[t].name + '</b>. Ele aparece junto do seu nome no perfil, no lobby, no ranking, nas salas e para os amigos.');
+      SND.play('pick');
+    } else say(true, 'Código resgatado! ' + (it.k === 'skin' ? 'Você ganhou uma skin.' : 'Você ganhou ' + fmtN(it.n) + (it.k === 'gems' ? ' gemas.' : ' de ouro.')));
+    $('vfCode').value = '';
+    LOB.applyProfile(); LOB.renderTop(); LOB.renderVerifyNow();
+  } catch (e) { say(false, SRV.msg(e)); }
+  LOB.vfBusy = false; $('vfGo').disabled = false; $('vfSpin').classList.add('hidden');
 };
 
 // ---------- correio ----------
@@ -723,6 +790,40 @@ LOB.renderAdmin = function () {
   const tab = LOB.adTab;
   document.querySelectorAll('#adTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
   const body = $('adBody');
+  if (tab === 'codigos') {
+    if (!SRV.on) { body.innerHTML = '<p class="hint adNote">' + icon('warn') + 'Os códigos de resgate precisam do servidor das contas ligado.</p>'; return; }
+    const opts = '<option value="badge:azul">Verificado azul (influenciador)</option>' + SKINS.map(s => '<option value="skin:' + s[0] + '">Skin ' + s[1] + '</option>').join('') + '<option value="gems">Gemas</option><option value="gold">Ouro</option>';
+    body.innerHTML = '<div class="adForm"><label class="fld"><span>Código (letras, números e -)</span><input id="cdCode" spellcheck="false" style="text-transform:uppercase" placeholder="EX.: PROMO-2026"></label>' +
+      '<label class="fld"><span>Prêmio</span><select id="cdItem">' + opts + '</select></label><label class="fld"><span>Quantidade (gemas/ouro)</span><input id="cdN" type="number" min="1" value="100"></label>' +
+      '<label class="fld"><span>Limite de pessoas</span><input id="cdMax" type="number" min="1" value="15"></label><label class="fld"><span>Validade em dias (0 = sem validade)</span><input id="cdDays" type="number" min="0" value="30"></label><button class="mBtn primary" id="cdMake">' + icon('gift') + 'CRIAR CÓDIGO</button></div><div id="cdList"><p class="hint">Carregando…</p></div>' +
+      '<h4 class="adH">CARGOS AUTORIZADOS</h4><p class="hint">O código de verificado <b>dourado</b> só funciona para quem está como <b>dono</b>, e o <b>supremo</b> só para quem está como <b>administrador</b>. Coloque o usuário (login) da conta.</p>' +
+      '<div class="adForm row"><input id="rlUser" placeholder="usuário da conta" spellcheck="false"><select id="rlRole"><option value="owner">Dono (dourado)</option><option value="admin">Administrador (supremo)</option></select><button class="chip hot" id="rlAdd">AUTORIZAR</button></div><div id="rlList"></div>' +
+      '<h4 class="adH">AUDITORIA DOS RESGATES</h4><div id="auList"><p class="hint">Carregando…</p></div>';
+    body.querySelectorAll('input, select').forEach(el => el.addEventListener('keydown', e => e.stopPropagation()));
+    $('cdMake').addEventListener('click', () => {
+      const v = $('cdItem').value, item = v === 'badge:azul' ? { k: 'badge', tier: 'azul' } : v.indexOf('skin:') === 0 ? { k: 'skin', id: v.slice(5) } : { k: v, n: +$('cdN').value | 0 };
+      SRV.admin('mkCode', { newCode: $('cdCode').value, item: item, max: +$('cdMax').value | 0, days: +$('cdDays').value | 0 }).then(() => { notify('ok', 'Código criado'); LOB.renderAdmin(); }, e => notify('info', SRV.msg(e)));
+    });
+    SRV.admin('codes').then(j => {
+      const el = $('cdList'); if (!el) return;
+      el.innerHTML = '<table class="adTable"><thead><tr><th>CÓDIGO</th><th>PRÊMIO</th><th>USADO</th><th>QUEM RESGATOU</th></tr></thead><tbody>' + j.rows.map(r =>
+        '<tr><td class="mono">' + escapeHTML(r.code) + (r.label ? '<small>' + escapeHTML(r.label) + '</small>' : '') + (r.exp ? '<small>vale até ' + new Date(r.exp).toLocaleDateString('pt-BR') + '</small>' : '') + (r.require ? '<small>só ' + (r.require === 'owner' ? 'dono' : 'administradores') + '</small>' : '') + '</td><td>' + (r.item.k === 'badge' ? LOB.vf(r.item.tier) + ' Verificado ' + r.item.tier : r.item.k === 'skin' ? 'Skin ' + escapeHTML(r.item.id) : fmtN(r.item.n) + ' ' + (r.item.k === 'gems' ? 'gemas' : 'ouro')) + '</td><td><b>' + r.used + '</b> / ' + r.max + '</td><td><small>' + r.who.map(escapeHTML).join(', ') + '</small></td></tr>').join('') + '</tbody></table>';
+    }, e => { const el = $('cdList'); if (el) el.innerHTML = '<p class="hint">' + SRV.msg(e) + '</p>'; });
+    const roleRow = (u, role) => '<span class="chip">' + escapeHTML(u) + ' · ' + (role === 'owner' ? 'dono' : 'admin') + ' <button class="rlDel" data-u="' + escapeHTML(u) + '" data-r="' + role + '" aria-label="Tirar">×</button></span>';
+    const loadRoles = () => SRV.admin('roles').then(j => {
+      const el = $('rlList'); if (!el) return;
+      el.innerHTML = (j.owner.map(u => roleRow(u, 'owner')).join('') + j.admin.map(u => roleRow(u, 'admin')).join('')) || '<p class="hint">Ninguém autorizado ainda.</p>';
+      el.querySelectorAll('.rlDel').forEach(b => b.addEventListener('click', () => SRV.admin('setRole', { user: b.dataset.u, role: b.dataset.r, on: false }).then(loadRoles, e => notify('info', SRV.msg(e)))));
+    }, () => {});
+    loadRoles();
+    $('rlAdd').addEventListener('click', () => SRV.admin('setRole', { user: LOB.cleanUser($('rlUser').value), role: $('rlRole').value, on: true }).then(() => { notify('ok', 'Conta autorizada'); $('rlUser').value = ''; loadRoles(); }, e => notify('info', SRV.msg(e))));
+    SRV.admin('audit').then(j => {
+      const el = $('auList'); if (!el) return;
+      el.innerHTML = j.items.length ? '<table class="adTable"><thead><tr><th>QUANDO</th><th>CONTA</th><th>CÓDIGO</th><th>RESULTADO</th></tr></thead><tbody>' + j.items.map(x =>
+        '<tr><td>' + fmtDate(x.t) + '</td><td>' + escapeHTML(x.u || '') + (x.id ? '<small>ID ' + escapeHTML(String(x.id)) + '</small>' : '') + '</td><td>' + escapeHTML(x.code || '') + '</td><td>' + (x.ok ? '<b class="okT">OK</b>' : '<b class="errT">' + escapeHTML(SRV_ERR[x.err] ? x.err : x.err || 'erro') + '</b>') + '</td></tr>').join('') + '</tbody></table>' : '<p class="hint">Nenhum resgate ainda.</p>';
+    }, () => {});
+    return;
+  }
   if (tab === 'enviar') {
     body.innerHTML = '<div class="adForm">' +
       '<label class="fld"><span>Para (ID do jogador ou "todos")</span><input id="adTo" value="' + (LOB.adTo || 'todos') + '" spellcheck="false"></label>' +
@@ -769,7 +870,7 @@ LOB.renderAdmin = function () {
       ' só neste aparelho: o banco on-line não está ligado aqui (abra pelo link do claude.ai, logado como dono).') +
     (SRV.on ? '' : ' Contas criadas no arquivo HTML, no GitHub Pages ou por quem só pode ver o link ficam no celular de cada pessoa.') + '</p>' +
     (rows.length ? '<table class="adTable"><thead><tr><th>JOGADOR</th><th>ID</th><th>NV</th><th>CRIADA</th><th>VISTO</th><th>VERIFICADO</th><th></th></tr></thead><tbody>' + rows.map(r =>
-      '<tr><td><b>' + escapeHTML(r.name) + '</b>' + (r.verified ? VERIFIED_SVG : '') + (r.owner ? ' ' + icon('crown') : '') + '<small>' + (r.guest ? 'convidado' : escapeHTML(r.user)) + '</small></td><td class="mono">' + r.id + '</td><td>' + r.level + '</td><td>' + fmtDate(r.t) + '</td><td>' + ago(r.seen) + '</td>' +
+      '<tr><td><b>' + escapeHTML(r.name) + '</b>' + LOB.vf(r.badge || r.verified) + (r.owner ? ' ' + icon('crown') : '') + '<small>' + (r.guest ? 'convidado' : escapeHTML(r.user)) + '</small></td><td class="mono">' + r.id + '</td><td>' + r.level + '</td><td>' + fmtDate(r.t) + '</td><td>' + ago(r.seen) + '</td>' +
       '<td><button class="tog' + (r.verified ? ' on' : '') + '" data-vf="' + r.id + '" aria-pressed="' + r.verified + '"><i></i></button></td><td class="adAct"><button class="chip" data-to="' + r.id + '" aria-label="Enviar presente">' + icon('gift') + '</button>' +
       (r.id !== ACC.p.id && !FR.isFriend(r.id) ? '<button class="chip" data-fr="' + r.id + '" aria-label="Adicionar amigo">' + icon('users') + '</button>' : '') + '<button class="chip" data-cid="' + r.id + '">ID</button>' + (SRV.on ? '<button class="chip" data-pw="' + escapeHTML(r.user) + '">SENHA</button>' : '') + '</td></tr>').join('') + '</tbody></table>' : '<p class="hint">Nenhuma conta criada hoje ainda.</p>');
   // adicionar como amigo direto da lista
@@ -1003,8 +1104,13 @@ LOB.init = function () {
     else if (k === 'profile') LOB.openProfile();
     else if (k === 'friends') FR.openScr();
     else if (k === 'rank') LOB.openRank();
+    else if (k === 'code') LOB.redeem();
+    else if (k === 'verify') LOB.openVerify();
   }));
   click('shBack', () => LOB.closeShop());
+  click('vfClose', () => { if (LOB.vfFrom === 'profileScr') LOB.openProfile(); else goMenu(); });
+  click('vfGo', () => LOB.vfRedeem());
+  $('vfCode').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') LOB.vfRedeem(); });
   document.querySelectorAll('#shTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.sh.kind = b.dataset.t; LOB.sh.sel = b.dataset.t === 'skins' ? ACC.p.skin : null; if (LOB.preview) { LOB.preview = null; swapShowcase(); } LOB.setDisplay(null); LOB.renderShop(); }));
   click('rcClose', () => LOB.closeRecharge());
   click('rcEx', () => LOB.exchange());

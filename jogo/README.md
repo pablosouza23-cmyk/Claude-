@@ -82,6 +82,53 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v3.5
+### Verificado em 3 níveis (resgate por código, conferido no servidor)
+- **Níveis:**
+  - **Azul:** o verificado de sempre, para influenciadores parceiros. Libera as skins dos lançamentos (hoje, o Carrasco).
+  - **Dourado:** selo do proprietário oficial, com coroa e brilho dourado animado.
+  - **Supremo:** administradores autorizados, com coroa, asas e pulso preto e dourado.
+- **Tela "Resgatar verificado":**
+  - Abre pelo menu (**VERIFICADO**) ou pelo perfil (**RESGATAR VERIFICADO**).
+  - Tem o campo do código, o botão **RESGATAR**, o "Conferindo no servidor…" e as mensagens de sucesso ou erro.
+- **Onde o selo aparece:** perfil, topo do lobby, ranking, lista da sala, nomes do grupo no palco, convites, lista de amigos e painel do dono. O jogo não tem chat; se um dia tiver, ele usa a mesma função `LOB.vf`.
+- **Como funciona por dentro** (`server/contas-core.mjs`, Netlify Functions + Netlify Blobs, o mesmo servidor das contas):
+  - **Códigos:** no programa fica só o hash SHA-256 do código, nunca o código. O servidor confere o código e grava o resgate na conta logada (token de sessão).
+  - **Regras de cada código:** tem validade (`exp`) e limite de pessoas (`max`), e a mesma conta não resgata duas vezes.
+  - **Auditoria:** cada tentativa fica registrada, com acerto ou erro, em `audit:redeem` (as últimas 1000).
+  - **Cargos:**
+    - O **dourado** só é aceito para contas com cargo de **dono** e o **supremo** só para contas com cargo de **administrador**.
+    - Só quem tem o código do dono (painel) dá os cargos. Saber o código de verificado não basta.
+    - Tirar o cargo tira o selo.
+  - **O selo é do servidor:**
+    - Fica gravado na conta e continua ao sair e entrar de novo.
+    - Se o celular tentar se dar selo (dourado, supremo ou azul) ao salvar, o servidor desfaz.
+    - O azul continua vindo do painel do dono (VERIFICADO), do presente pelo correio ou de um código azul.
+  - **Multiplayer e amigos:** o selo que aparece para os outros na sala e na lista de amigos é o que o celular da pessoa manda (as salas são de celular para celular). O que é conferido pelo servidor é o selo no perfil, no ranking e no painel do dono.
+- **Códigos iniciais** (já cadastrados no servidor, válidos até 31/12/2027):
+  - `D0WN-GOLD-7X9K`: verificado **dourado**, 1 uso, só para a conta do **dono**.
+  - `SUPR-ADM-9Q2X`: verificado **supremo**, até 10 contas, só para **administradores**.
+- **Como cadastrar e testar** (precisa do servidor ligado, ou seja, do site publicado pelo GitHub):
+  1. Entre no jogo com a **sua conta** (usuário e senha).
+  2. Abra o **Painel do dono** (perfil, 5 toques no ID e o código do dono) e vá na aba **CÓDIGOS**.
+  3. Em **CARGOS AUTORIZADOS**, escreva o seu usuário, escolha **Dono (dourado)** e toque em **AUTORIZAR**. Faça o mesmo com os administradores, em **Administrador (supremo)**.
+     - Também dá para usar variáveis na Netlify: `OWNER_USERS=seuusuario` e `ADMIN_USERS=adm1,adm2`, separados por vírgula.
+  4. Teste o **dourado**: em **VERIFICADO**, digite `D0WN-GOLD-7X9K` e toque em RESGATAR. Ele aparece no lobby, no perfil e no ranking. Saia e entre de novo: o selo continua.
+  5. Teste o **supremo**: entre numa conta autorizada como administrador e resgate `SUPR-ADM-9Q2X`.
+  6. Teste a **segurança**: numa conta sem cargo, os dois códigos dão "Sua conta não tem permissão". Repetir o código dá "Você já resgatou".
+  7. Teste o **azul**: na aba CÓDIGOS, crie um código com prêmio "Verificado azul", limite de pessoas e validade em dias, e resgate numa conta qualquer.
+  8. Veja a **AUDITORIA DOS RESGATES** na mesma aba, com data, conta, código e resultado.
+- **Para trocar os códigos iniciais:** gere o hash com `node -e "console.log(require('crypto').createHash('sha256').update('battle-code:' + 'NOVO-CODIGO').digest('hex'))"` e troque a chave em `DEFAULT_CODES`.
+
+### Craque 10 (skin exclusiva, raridade DIAMANTE)
+- Personagem original: camisa amarela, punhos verdes, calça azul e "CRAQUE 10" nas costas.
+- Não aparece à venda: só por código de resgate, para **15 pessoas**, contadas pelo servidor. O servidor tira a skin de quem tentar colocá-la na conta sem resgatar.
+- O código fica só com o dono (no programa vai apenas o hash).
+
+### Outros
+- Botão **CÓDIGO** no menu, para resgatar códigos de skin, gemas e ouro criados no painel do dono (aba CÓDIGOS, com limite e validade).
+- **Trailer do jogo:** `marketing/trailer.mp4` (16 s, 1280x720), para a Play Store e as redes sociais.
+
 ## Novidades da v3.4
 - **Mochila: largar o que não quer.**
   - Botão **LARGAR** em cada arma e **LARGAR MUNIÇÃO** para jogar fora as balas guardadas daquela arma.

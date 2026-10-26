@@ -64,6 +64,42 @@ async function checkPix(rec, opts) {
   }
   return changed;
 }
+// ---------- códigos de resgate ----------
+// No programa fica só o hash do código (o código em si só o dono sabe). O limite de usos é contado aqui no servidor.
+const codeHash = (c) => createHash('sha256').update('battle-code:' + String(c || '').trim().toUpperCase().replace(/\s+/g, '')).digest('hex');
+export const DEFAULT_CODES = {
+  // skin exclusiva Craque 10 (raridade diamante) para as 15 primeiras pessoas
+  b3727d71720bc466fcc57290184505917e4e67b39d87ef79f7a3a6695bd0fada: { item: { k: 'skin', id: 'craque' }, max: 15, label: 'Craque 10 (exclusiva)' },
+  // verificados: só funcionam para contas que o dono autorizou antes (cargo no servidor), com validade e limite
+  '67cac02d78f1e0c90e5725ee79b2c7086cbbb624769f35831044b888999833a8': { item: { k: 'badge', tier: 'dourado' }, max: 1, require: 'owner', exp: Date.UTC(2027, 11, 31), label: 'Verificado dourado' },
+  '4996f5906ad6cebfaf239e62f526389f9b12dd9ab32d06feb6668a55c27705c5': { item: { k: 'badge', tier: 'supremo' }, max: 10, require: 'admin', exp: Date.UTC(2027, 11, 31), label: 'Verificado supremo' },
+};
+// ---------- cargos e selos ----------
+// selo: azul (p.verified, o sistema que já existia), dourado (dono) e supremo (administrador); quem decide é o servidor
+export const TIERS = ['azul', 'dourado', 'supremo'];
+const tierOf = (rec) => (rec && rec.badge) || (rec && rec.p && rec.p.verified ? 'azul' : '');
+const csv = (s) => String(s || '').split(',').map(x => cleanUser(x)).filter(Boolean);
+// cargos: os que o dono autorizou pelo painel (guardados no banco) + os das variáveis OWNER_USERS / ADMIN_USERS da Netlify
+async function roles(store, opts) {
+  const r = (await store.get('cfg:roles', { type: 'json' })) || { owner: [], admin: [] };
+  return { owner: [...new Set(r.owner.concat(csv(opts && opts.ownerUsers)))], admin: [...new Set(r.admin.concat(csv(opts && opts.adminUsers)))] };
+}
+// registro de auditoria dos resgates (últimos 1000)
+async function audit(store, e) {
+  const log = (await store.get('audit:redeem', { type: 'json' })) || { items: [] };
+  log.items.push(Object.assign({ t: Date.now() }, e));
+  if (log.items.length > 1000) log.items = log.items.slice(-1000);
+  await store.setJSON('audit:redeem', log);
+}
+// skins que só existem por código: o servidor tira de quem não resgatou
+export const EXCLUSIVE = ['craque'];
+function stripExclusive(p, granted) {
+  if (!p || !p.owned || !Array.isArray(p.owned.skins)) return;
+  p.owned.skins = p.owned.skins.filter(id => EXCLUSIVE.indexOf(id) < 0 || (granted || []).indexOf(id) >= 0);
+  if (EXCLUSIVE.indexOf(p.skin) >= 0 && p.owned.skins.indexOf(p.skin) < 0) p.skin = 'heroi';
+}
+async function findCode(store, h) { return DEFAULT_CODES[h] || await store.get('cd:' + h, { type: 'json' }); }
+
 const mailGems = (items) => (items || []).reduce((s, it) => s + (it && it.k === 'gems' ? Math.max(0, it.n | 0) : 0), 0);
 
 async function getRec(store, u) { return u ? await store.get('u:' + u, { type: 'json' }) : null; }
@@ -136,7 +172,7 @@ export async function handle(body, store, opts) {
         if (!/^\d{1,10}$/.test(String(p.id || '')) || await idTaken(store, String(p.id), u)) p.id = newId();
         const salt = randomBytes(16).toString('hex'), now = Date.now();
         // senha aleatória que ninguém sabe: essa conta entra pelo Google (o dono pode definir uma senha pelo painel)
-        p.gems = 0;
+        p.gems = 0; stripExclusive(p, []); p.verified = false; p.badge = '';
         rec = { u, salt, hash: hashPass(salt, randomBytes(24).toString('hex')), p, t: now, upd: now, toks: [], gAllow: Math.min(100, mailGems((p.mail || []).filter(m => !m.got).flatMap(m => m.items || []))) };
         created = true;
       }
@@ -158,8 +194,8 @@ export async function handle(body, store, opts) {
       if (await getRec(store, u)) return fail(409, 'exists');
       const p = body.p;
       if (!/^\d{1,10}$/.test(String(p.id || '')) || await idTaken(store, String(p.id), u)) p.id = newId();
-      // conta nova começa sem gemas (só as do correio de boas-vindas, que ainda vão ser resgatadas)
-      p.gems = 0;
+      // conta nova começa sem gemas (só as do correio de boas-vindas, que ainda vão ser resgatadas) e sem skins exclusivas
+      p.gems = 0; stripExclusive(p, []); p.verified = false; p.badge = '';
       const gAllow = Math.min(100, mailGems((p.mail || []).filter(m => !m.got).flatMap(m => m.items || [])));
       const salt = randomBytes(16).toString('hex'), tk = newToken(), now = Date.now();
       await store.setJSON('u:' + u, { u, salt, hash: hashPass(salt, String(body.pass).trim()), p, t: now, upd: now, toks: [{ tk, t: now }], gAllow });
@@ -203,6 +239,11 @@ export async function handle(body, store, opts) {
       if (g > oldG + allow) g = oldG + allow;
       a.rec.gAllow = Math.max(0, (a.rec.gAllow | 0) - Math.max(0, g - oldG - lvl));
       p.gems = g;
+      stripExclusive(p, a.rec.grants);
+      // selos não vêm do celular: o azul só com o painel do dono, código ou presente do dono; dourado e supremo só por código
+      if (p.verified && !a.rec.p.verified && !a.rec.vfAllow) p.verified = false;
+      if (p.verified && !a.rec.p.verified) a.rec.vfAllow = false;
+      p.badge = a.rec.badge || '';
       // Pix que o celular já somou (aparece em p.buys com o token pix-<id>)
       for (const [id, x] of Object.entries(a.rec.pix || {})) if (x.status === 'approved' && !x.done && (p.buys || []).some(b => b && b.token === 'pix-' + id)) x.done = 1;
       a.rec.p = p; a.rec.upd = Date.now(); a.rec.seen = a.rec.upd;
@@ -232,6 +273,43 @@ export async function handle(body, store, opts) {
       await store.delete('u:' + a.u); await store.delete('in:' + a.u);
       if (a.rec.google) await store.delete('g:' + a.rec.google);
       return ok({});
+    }
+
+    // resgatar um código (skin ou gemas), com limite de pessoas por código
+    case 'redeem': {
+      const a = await auth(store, body);
+      if (!a) return fail(401, 'session');
+      const h = codeHash(body.code), def = await findCode(store, h);
+      const label = def ? (def.label || def.code || 'código') : 'código inválido';
+      const no = async (status, err) => { await audit(store, { u: a.u, id: a.rec.p && a.rec.p.id, code: label, ok: false, err }); return fail(status, err); };
+      if (!def || def.off) return no(404, 'bad_code');
+      if (def.exp && Date.now() > def.exp) return no(410, 'code_expired');
+      // dourado só para a conta do dono autorizada; supremo só para administradores autorizados
+      if (def.require) {
+        const R = await roles(store, opts);
+        if ((R[def.require] || []).indexOf(a.u) < 0) return no(403, 'not_allowed');
+      }
+      const used = (await store.get('rd:' + h, { type: 'json' })) || { users: [] };
+      if (used.users.indexOf(a.u) >= 0) return no(409, 'code_used');
+      if (used.users.length >= (def.max | 0)) return no(410, 'code_out');
+      used.users.push(a.u);
+      await store.setJSON('rd:' + h, used);
+      const it = def.item || {}, p = a.rec.p;
+      if (it.k === 'badge' && TIERS.indexOf(it.tier) >= 0) {
+        // o selo mais alto fica (supremo > dourado > azul); o azul é o verificado de sempre e libera as skins de lançamento
+        if (it.tier === 'azul') { p.verified = true; for (const s of it.skins || []) if (p.owned && p.owned.skins && p.owned.skins.indexOf(s) < 0) p.owned.skins.push(s); }
+        else if (TIERS.indexOf(it.tier) > TIERS.indexOf(a.rec.badge || '')) a.rec.badge = it.tier;
+        p.badge = a.rec.badge || '';
+      } else if (it.k === 'skin') {
+        a.rec.grants = (a.rec.grants || []).concat([it.id]);
+        p.owned = p.owned || {}; p.owned.skins = p.owned.skins || [];
+        if (p.owned.skins.indexOf(it.id) < 0) p.owned.skins.push(it.id);
+      } else if (it.k === 'gems') { a.rec.gAllow = (a.rec.gAllow | 0) + (it.n | 0); p.gems = (p.gems | 0) + (it.n | 0); }
+      else if (it.k === 'gold') p.gold = (p.gold | 0) + (it.n | 0);
+      a.rec.upd = Date.now();
+      await store.setJSON('u:' + a.u, a.rec);
+      await audit(store, { u: a.u, id: p.id, code: label, ok: true, item: it });
+      return ok({ item: it, left: (def.max | 0) - used.users.length, p: p, upd: a.rec.upd, tier: tierOf(a.rec) });
     }
 
     // cria a cobrança Pix (QR Code e copia-e-cola) de um pacote de gemas
@@ -273,7 +351,7 @@ export async function handle(body, store, opts) {
       for (const u of await allUsers(store)) {
         const r = await getRec(store, u);
         if (!r || !r.p || !r.p.stats) continue;
-        players.push({ n: String(r.p.name || u).slice(0, 14), id: r.p.id, vf: !!r.p.verified, lvl: r.p.level | 0, k: r.p.stats.kills | 0, w: r.p.stats.wins | 0, wk: r.p.stats.wk || {} });
+        players.push({ n: String(r.p.name || u).slice(0, 14), id: r.p.id, vf: tierOf(r), lvl: r.p.level | 0, k: r.p.stats.kills | 0, w: r.p.stats.wins | 0, wk: r.p.stats.wk || {} });
       }
       const top = players.slice().sort((a, b) => b.k - a.k || b.w - a.w).slice(0, 100).map(({ wk, ...p }) => p);
       const byWeapon = {};
@@ -287,13 +365,13 @@ export async function handle(body, store, opts) {
     case 'admin': {
       const code = String(body.code || '').trim().toUpperCase();
       if (createHash('sha256').update('battle-dono:' + code).digest('hex') !== ownerHash) return fail(403, 'owner');
-      return admin(body, store);
+      return admin(body, store, opts);
     }
   }
   return fail(400, 'bad_op');
 }
 
-async function admin(body, store) {
+async function admin(body, store, opts) {
   const users = await allUsers(store);
   const recs = [];
   for (const u of users) { const r = await getRec(store, u); if (r && r.p) recs.push(r); }
@@ -301,7 +379,7 @@ async function admin(body, store) {
   switch (body.cmd) {
     case 'list': {
       const now = new Date(), since = body.today ? new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - (body.tz || 0) * 60000 : 0;
-      const rows = recs.filter(r => r.t >= since).map(r => ({ user: r.u, name: r.p.name, id: r.p.id, level: r.p.level, verified: !!r.p.verified, owner: !!r.p.owner,
+      const rows = recs.filter(r => r.t >= since).map(r => ({ user: r.u, name: r.p.name, id: r.p.id, level: r.p.level, verified: !!r.p.verified, badge: r.badge || '', owner: !!r.p.owner,
         t: r.t, seen: r.seen || r.upd || r.t, matches: (r.p.stats && r.p.stats.matches) || 0, skins: (r.p.owned && r.p.owned.skins && r.p.owned.skins.length) || 0 }));
       rows.sort((a, b) => b.t - a.t);
       return ok({ rows, total: recs.length });
@@ -311,6 +389,8 @@ async function admin(body, store) {
       const targets = to === 'todos' ? recs : byId(to);
       const letter = body.letter || {};
       const gm = mailGems(letter.items);
+      // presente de verificado (azul) pelo correio: o servidor aceita quando a pessoa resgatar
+      if ((letter.items || []).some(it => it && it.k === 'verified')) for (const r of targets) { r.vfAllow = true; await store.setJSON('u:' + r.u, r); }
       for (const r of targets) if (gm) { r.gAllow = (r.gAllow | 0) + gm; await store.setJSON('u:' + r.u, r); }
       for (const r of targets) await pushInbox(store, r.u, { mid: mid(), from: String(letter.from || 'Equipe').slice(0, 40), title: String(letter.title || 'Mensagem').slice(0, 60),
         text: String(letter.text || '').slice(0, 400), items: Array.isArray(letter.items) ? letter.items.slice(0, 10) : [], t: Date.now(), read: false, got: false });
@@ -336,6 +416,50 @@ async function admin(body, store) {
         await pushInbox(store, r.u, { mid: mid(), kind: 'patch', set: { id: nid }, t: Date.now() });
       }
       return ok({ n: targets.length });
+    }
+    // códigos de resgate do dono: criar, listar e desligar
+    case 'mkCode': {
+      // (body.code é o código do dono; o código novo vem em newCode)
+      const code = String(body.newCode || '').trim().toUpperCase().replace(/\s+/g, '');
+      if (!/^[A-Z0-9-]{4,32}$/.test(code)) return fail(400, 'bad_code');
+      const it = body.item || {};
+      // pelo painel dá para criar códigos de skin, gemas, ouro e de verificado AZUL (dourado e supremo não: são de cargo)
+      if (!((it.k === 'skin' && /^[a-z0-9]{2,20}$/.test(it.id)) || ((it.k === 'gems' || it.k === 'gold') && (it.n | 0) > 0) || (it.k === 'badge' && it.tier === 'azul'))) return fail(400, 'bad_item');
+      const h = codeHash(code);
+      if (await findCode(store, h)) return fail(409, 'code_exists');
+      const days = Math.max(0, Math.min(3650, body.days | 0));
+      const item = it.k === 'badge' ? { k: 'badge', tier: 'azul', skins: ['carrasco'] } : { k: it.k, id: it.id, n: it.n | 0 };
+      await store.setJSON('cd:' + h, { code, item, max: Math.max(1, Math.min(100000, body.max | 0)), exp: days ? Date.now() + days * 86400000 : 0, t: Date.now() });
+      return ok({});
+    }
+    // cargos (dono e administradores) que podem resgatar os códigos de verificado dourado e supremo
+    case 'roles': {
+      const R = await roles(store, opts);
+      return ok({ owner: R.owner, admin: R.admin });
+    }
+    case 'setRole': {
+      const u = cleanUser(body.user), role = body.role;
+      if (role !== 'owner' && role !== 'admin') return fail(400, 'bad_role');
+      if (!recs.some(r => r.u === u)) return fail(404, 'not_found');
+      const r = (await store.get('cfg:roles', { type: 'json' })) || { owner: [], admin: [] };
+      r[role] = r[role].filter(x => x !== u);
+      if (body.on) r[role].push(u);
+      await store.setJSON('cfg:roles', r);
+      // tirou o cargo: o selo daquele cargo sai junto
+      if (!body.on) { const rec = recs.find(x => x.u === u); const t = role === 'owner' ? 'dourado' : 'supremo'; if (rec.badge === t) { rec.badge = ''; rec.p.badge = ''; await store.setJSON('u:' + u, rec); await pushInbox(store, u, { mid: mid(), kind: 'patch', set: { badge: '' }, t: Date.now() }); } }
+      await audit(store, { u: 'dono', code: 'cargo ' + role + (body.on ? ' +' : ' -') + u, ok: true });
+      return ok({});
+    }
+    case 'audit': {
+      const log = (await store.get('audit:redeem', { type: 'json' })) || { items: [] };
+      return ok({ items: log.items.slice(-200).reverse() });
+    }
+    case 'codes': {
+      const res = await store.list({ prefix: 'cd:' }), rows = [];
+      const all = Object.entries(DEFAULT_CODES).map(([h, d]) => [h, Object.assign({ code: '(código do jogo)', fixed: true }, d)]);
+      for (const b of res.blobs) { const d = await store.get(b.key, { type: 'json' }); if (d) all.push([b.key.slice(3), d]); }
+      for (const [h, d] of all) { const u = (await store.get('rd:' + h, { type: 'json' })) || { users: [] }; rows.push({ code: d.code, label: d.label || '', item: d.item, max: d.max, exp: d.exp || 0, require: d.require || '', used: u.users.length, who: u.users.slice(-20), off: !!d.off, fixed: !!d.fixed }); }
+      return ok({ rows });
     }
     case 'resetPass': {
       const r = recs.find(x => x.u === cleanUser(body.user));

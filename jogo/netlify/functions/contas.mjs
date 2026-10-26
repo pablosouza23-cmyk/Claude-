@@ -8,7 +8,7 @@ export default async (req) => {
   try { body = await req.json(); } catch (e) { return Response.json({ ok: false, error: 'bad_json' }, { status: 400 }); }
   try {
     const store = getStore({ name: 'contas', consistency: 'strong' });
-    const res = await handle(body, store, { ownerHash: process.env.OWNER_HASH, googleClientId: process.env.GOOGLE_CLIENT_ID, mpToken: process.env.MP_ACCESS_TOKEN });
+    const res = await handle(body, store, { ownerHash: process.env.OWNER_HASH, googleClientId: process.env.GOOGLE_CLIENT_ID, mpToken: process.env.MP_ACCESS_TOKEN, ownerUsers: process.env.OWNER_USERS, adminUsers: process.env.ADMIN_USERS });
     return Response.json(res.body, { status: res.status, headers: { 'cache-control': 'no-store' } });
   } catch (e) {
     console.error(e);

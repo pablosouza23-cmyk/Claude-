@@ -4,7 +4,7 @@
 // Limite: pedidos e convites só chegam se o amigo estiver com o jogo aberto.
 const FR = { peer: null, open: false, online: {}, pend: {}, tab: 'amigos', myId: null };
 FR.pid = (id) => NET.PREFIX + 'u' + id;
-FR.info = () => ({ id: ACC.p.id, name: ACC.p.name, lvl: ACC.p.level, vf: !!ACC.p.verified, skin: ACC.p.skin });
+FR.info = () => ({ id: ACC.p.id, name: ACC.p.name, lvl: ACC.p.level, vf: ACC.tier(ACC.p), skin: ACC.p.skin });
 FR.list = () => ACC.p.friends;
 FR.isFriend = (id) => !!ACC.p && ACC.p.friends.some(f => f.id === id);
 
@@ -60,7 +60,7 @@ FR.send = function (id, msg) {
 FR.touch = function (info) {
   const f = ACC.p && ACC.p.friends.find(x => x.id === info.id);
   if (!f) return;
-  f.name = String(info.name || f.name).slice(0, 14); f.lvl = info.lvl | 0; f.vf = !!info.vf; f.skin = info.skin || f.skin;
+  f.name = String(info.name || f.name).slice(0, 14); f.lvl = info.lvl | 0; f.vf = tierKey(info.vf); f.skin = info.skin || f.skin;
 };
 FR.recv = function (c, d) {
   if (!ACC.p || !d || !d.from || !d.from.id) return;
@@ -99,7 +99,7 @@ FR.addFriend = function (info) {
   const p = ACC.p;
   p.fsent = p.fsent.filter(x => x !== info.id);
   p.freq = p.freq.filter(r => r.id !== info.id);
-  if (!p.friends.some(f => f.id === info.id)) p.friends.push({ id: info.id, name: String(info.name || 'Amigo').slice(0, 14), lvl: info.lvl | 0, vf: !!info.vf, skin: info.skin || 'heroi', since: Date.now() });
+  if (!p.friends.some(f => f.id === info.id)) p.friends.push({ id: info.id, name: String(info.name || 'Amigo').slice(0, 14), lvl: info.lvl | 0, vf: tierKey(info.vf), skin: info.skin || 'heroi', since: Date.now() });
   FR.online[info.id] = { t: Date.now() };
   ACC.emit();
 };
@@ -164,7 +164,7 @@ FR.invited = function (from, d) {
   const mode = d.gm === 'cs' ? 'Contra Squad ' + (d.gs || 4) + 'x' + (d.gs || 4) : 'Battle Royale · ' + TEAM.label(TEAM.size(d.bt || 1));
   if (G.state === 'play') { notify('info', from.name + ' te convidou para a sala ' + d.code); return; }
   SND.play('pick');
-  LOB.dialog('CONVITE', '<b>' + escapeHTML(from.name) + '</b>' + (from.vf ? VERIFIED_SVG : '') + ' te chamou para jogar<br><small>' + mode + ' · sala ' + escapeHTML(d.code) + '</small>',
+  LOB.dialog('CONVITE', '<b>' + escapeHTML(from.name) + '</b>' + LOB.vf(from.vf) + ' te chamou para jogar<br><small>' + mode + ' · sala ' + escapeHTML(d.code) + '</small>',
     [['ENTRAR NA SALA', () => { if (NET.on()) NET.leave(); LOB.joinLink(d.code); }, true], ['AGORA NÃO']]);
 };
 
@@ -196,14 +196,14 @@ FR.render = function () {
     body.innerHTML = list.length ? list.map(f => {
       const o = FR.online[f.id] || {}, on = FR.isOnline(f.id);
       const st = o.checking && !on ? 'verificando…' : on ? (o.busy ? 'em partida' : o.room ? 'na sala ' + o.room : 'on-line') : 'off-line';
-      return '<div class="frRow">' + avatar(f) + '<div class="frId"><b>' + escapeHTML(f.name) + (f.vf ? VERIFIED_SVG : '') + '</b><small>NV ' + (f.lvl || 1) + ' · ID ' + f.id + '</small></div>' +
+      return '<div class="frRow">' + avatar(f) + '<div class="frId"><b>' + escapeHTML(f.name) + LOB.vf(f.vf) + '</b><small>NV ' + (f.lvl || 1) + ' · ID ' + f.id + '</small></div>' +
         '<span class="frSt ' + (on ? 'on' : '') + '"><i></i>' + st + '</span>' +
         (on && o.room && !NET.on() ? '<button class="chip" data-join="' + o.room + '">ENTRAR</button>' : '') +
         '<button class="chip hot" data-inv="' + f.id + '"' + (on ? '' : ' disabled') + '>' + icon('users') + 'CONVIDAR</button>' +
         '<button class="chip" data-rm="' + f.id + '" aria-label="Remover amigo">' + icon('trash') + '</button></div>';
     }).join('') : '<p class="hint frEmpty">Você ainda não tem amigos aqui. Toque em ADICIONAR e digite o ID de um amigo.</p>';
   } else if (tab === 'pedidos') {
-    body.innerHTML = (p.freq.length ? p.freq.map(r => '<div class="frRow">' + avatar(r) + '<div class="frId"><b>' + escapeHTML(r.name) + (r.vf ? VERIFIED_SVG : '') + '</b><small>NV ' + (r.lvl || 1) + ' · ID ' + r.id + '</small></div>' +
+    body.innerHTML = (p.freq.length ? p.freq.map(r => '<div class="frRow">' + avatar(r) + '<div class="frId"><b>' + escapeHTML(r.name) + LOB.vf(r.vf) + '</b><small>NV ' + (r.lvl || 1) + ' · ID ' + r.id + '</small></div>' +
       '<button class="chip hot" data-acc="' + r.id + '">ACEITAR</button><button class="chip" data-dec="' + r.id + '">RECUSAR</button></div>').join('') : '<p class="hint frEmpty">Nenhum pedido de amizade.</p>') +
       (p.fsent.length ? '<p class="hint">Pedidos enviados, esperando resposta: ' + p.fsent.join(', ') + '</p>' : '');
   } else {

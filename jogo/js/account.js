@@ -68,9 +68,24 @@ const SHOP = {
     { id: 'gemas_1300', brl: 100, gems: 1000, bonus: 300, tag: 'MELHOR VALOR' },
   ],
   exchange: { gems: 10, gold: 800 },
-  // armas douradas: mesmo dano, visual de ouro; dá para pagar com gemas ou com ouro
+  // skins de arma (o visual fica em WPN.SKINS): mesmo dano, só aparência; dá para pagar com gemas ou com ouro
   guns: {
-    FUZIL_OURO: { gun: 'FUZIL', name: 'Fuzil Dourado', price: ['gems', 120], alt: ['gold', 6000], rare: 'lendario', desc: 'Fuzil de Assalto todo em ouro polido. Mesmo dano, visual lendário na mão e nas costas.' },
+    ak_ouro: { price: ['gems', 150], alt: ['gold', 8000], rare: 'lendario', desc: 'AK-47 banhada a ouro com arabescos gravados à mão e coronha de laca preta com veios dourados.' },
+    ak_dragao: { price: ['gems', 180], alt: ['gold', 9500], rare: 'lendario', desc: 'Escamas de dragão que brilham como brasa e pulsam enquanto você joga.' },
+    ak_gelo: { price: ['gems', 130], alt: ['gold', 7000], rare: 'lendario', desc: 'Cristal de gelo translúcido com rachaduras que brilham em azul.' },
+    m4_neon: { price: ['gems', 90], alt: ['gold', 5000], rare: 'epico', desc: 'Circuitos neon ciano e rosa correndo pela carabina.' },
+    smg_gelo: { price: ['gems', 80], alt: ['gold', 4500], rare: 'epico', desc: 'A SMG congelada: gelo ártico com brilho azul.' },
+    des_ouro: { price: ['gems', 60], alt: ['gold', 3500], rare: 'epico', desc: 'Pistola de ouro polido com gravação.' },
+    esc_carbono: { price: ['gems', 50], alt: ['gold', 3000], rare: 'raro', desc: 'Fibra de carbono trançada com verniz brilhante.' },
+    awm_camo: { price: ['gems', 40], alt: ['gold', 2500], rare: 'raro', desc: 'Camuflagem de selva para o fuzil de precisão.' },
+  },
+  // skins da parede de gel
+  walls: {
+    gelo: { price: ['gems', 60], alt: ['gold', 3500], rare: 'epico', desc: 'Parede de gelo cristalino que brilha em azul.' },
+    ouro: { price: ['gems', 90], alt: ['gold', 5000], rare: 'lendario', desc: 'Parede de ouro com gravação real.' },
+    neon: { price: ['gems', 70], alt: ['gold', 4000], rare: 'epico', desc: 'Grade de neon que pulsa.' },
+    lava: { price: ['gems', 80], alt: ['gold', 4500], rare: 'lendario', desc: 'Rocha vulcânica com lava escorrendo.' },
+    arco: { price: ['gems', 50], alt: ['gold', 3000], rare: 'raro', desc: 'Gel arco-íris furta-cor.' },
   },
 };
 
@@ -82,7 +97,7 @@ ACC.SESSION = 'battleIsland.session';
 ACC.newId = () => String(Math.floor(1e9 + Math.random() * 9e9));
 ACC.newProfile = function (name) {
   return { name: name || 'Jogador', id: ACC.newId(), verified: false, owner: false, level: 1, xp: 0, gold: 500, gems: 0,
-    owned: { skins: ['heroi', 'camisa'], emotes: ['wave', 'clap', 'shrug', 'dance'], guns: [] }, skin: 'heroi',
+    owned: { skins: ['heroi', 'camisa'], emotes: ['wave', 'clap', 'shrug', 'dance'], guns: [], walls: [] }, skin: 'heroi', gunSkin: {}, wallSkin: '',
     stats: { matches: 0, wins: 0, kills: 0, top5: 0, dmg: 0, best: 0, wk: {} }, buys: [], daily: '', created: Date.now(), goldOff: [],
     friends: [], freq: [], fsent: [],
     mail: [ACC.letter('Equipe Battle Island', 'Bem-vindo à ilha!', 'Valeu por jogar! Aqui vai um presente para começar. Ganhe ouro nas partidas e confira a loja.', [{ k: 'gold', n: 300 }, { k: 'gems', n: 10 }])] };
@@ -126,7 +141,17 @@ ACC.fix = function (p) {
   if (ACC.ID_REMAP[p.id] !== undefined) { p.idOrig = p.id; p.id = ACC.ID_REMAP[p.id]; }
   for (const k in d.stats) if (p.stats[k] === undefined) p.stats[k] = k === 'wk' ? {} : 0;
   if (!p.owned.guns) p.owned.guns = [];
+  if (!p.owned.walls) p.owned.walls = [];
   if (!p.goldOff) p.goldOff = [];
+  if (!p.gunSkin || typeof p.gunSkin !== 'object') p.gunSkin = {};
+  // o antigo Fuzil Dourado virou a skin AK-47 Dourada
+  const oldG = p.owned.guns.indexOf('FUZIL_OURO');
+  if (oldG >= 0) {
+    p.owned.guns.splice(oldG, 1);
+    if (p.owned.guns.indexOf('ak_ouro') < 0) p.owned.guns.push('ak_ouro');
+    if (p.goldOff.indexOf('FUZIL_OURO') < 0 && !p.gunSkin.FUZIL) p.gunSkin.FUZIL = 'ak_ouro';
+    p.goldOff = [];
+  }
   for (const s of d.owned.skins) if (p.owned.skins.indexOf(s) < 0) p.owned.skins.push(s);
   for (const s of d.owned.emotes) if (p.owned.emotes.indexOf(s) < 0) p.owned.emotes.push(s);
   return p;
@@ -229,7 +254,8 @@ ACC.deleteAccount = function () {
 // código de transferência: leva a conta (com a senha protegida) para outro aparelho
 ACC.exportCode = function () {
   const db = ACC.db(), u = db.users[ACC.user];
-  const json = JSON.stringify({ v: 1, u: ACC.user, s: u.salt, h: u.hash, p: ACC.p });
+  // com o servidor do jogo, o código também leva a sessão: o outro aparelho entra direto na conta do servidor
+  const json = JSON.stringify({ v: 1, u: ACC.user, s: u.salt, h: u.hash, p: ACC.p, t: SRV.on && SRV.user === ACC.user ? SRV.tok : undefined });
   const b64 = btoa(unescape(encodeURIComponent(json)));
   return 'BI1-' + b64 + '-' + SHA.hex(b64).slice(0, 6);
 };
@@ -241,10 +267,34 @@ ACC.importCode = function (code) {
   try { d = JSON.parse(decodeURIComponent(escape(atob(m[1])))); } catch (e) { return 'Código inválido.'; }
   if (!d || !d.u || !d.p) return 'Código inválido.';
   const db = ACC.db();
-  db.users[d.u] = { salt: d.s || '', hash: d.h || '', p: d.p };
+  // se este aparelho já tinha a conta, fica com o que tiver mais progresso (nada se perde)
+  const had = db.users[d.u] && db.users[d.u].p;
+  const p = had ? ACC.mergeProfiles(had, d.p) : d.p;
+  db.users[d.u] = Object.assign(db.users[d.u] || {}, { salt: d.s || (had ? db.users[d.u].salt : ''), hash: d.h || (had ? db.users[d.u].hash : ''), p: p, imp: 1 });
   ACC.writeDb(db);
-  ACC.use(d.u, d.p);
+  ACC.use(d.u, p);
+  if (d.t && SRV.on) SRV.claim(d.u, d.t);
   return null;
+};
+
+// junta duas cópias da mesma conta sem perder progresso: a base é a que jogou mais (nível, XP, partidas);
+// itens comprados e cartas do correio das duas cópias ficam todos; ID e verificado vêm de "a" (o servidor)
+ACC.progress = (p) => [p.level || 1, p.xp || 0, (p.stats && p.stats.matches) || 0, (p.stats && p.stats.kills) || 0];
+ACC.ahead = (x, y) => { const a = ACC.progress(x), b = ACC.progress(y); for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] > b[i]; return false; };
+ACC.mergeProfiles = function (a, b) {
+  if (!a) return b; if (!b) return a;
+  const bAhead = ACC.ahead(b, a);
+  const out = ACC.fix(JSON.parse(JSON.stringify(bAhead ? b : a))), o2 = ACC.fix(JSON.parse(JSON.stringify(bAhead ? a : b)));
+  for (const k of ['skins', 'emotes', 'guns', 'walls']) for (const id of o2.owned[k] || []) if (out.owned[k].indexOf(id) < 0) out.owned[k].push(id);
+  for (const k in o2.stats) if (typeof o2.stats[k] === 'number') out.stats[k] = Math.max(out.stats[k] || 0, o2.stats[k]);
+  for (const w in o2.stats.wk || {}) out.stats.wk[w] = Math.max(out.stats.wk[w] || 0, o2.stats.wk[w] || 0);
+  const mids = {};
+  for (const m of out.mail) mids[m.mid] = m;
+  for (const m of o2.mail) { const x = mids[m.mid]; if (!x) out.mail.push(m); else { x.got = x.got || m.got; x.read = x.read || m.read; } }
+  out.mail.sort((x, y) => (y.t || 0) - (x.t || 0));
+  out.id = a.id; out.verified = !!a.verified; if (a.idOrig) out.idOrig = a.idOrig;
+  out.owner = !!(a.owner || b.owner);
+  return out;
 };
 
 // ---------- banco de dados on-line ----------
@@ -352,7 +402,7 @@ CLOUD.watch = function (user) {
 const SRV = { url: '/api/contas', on: false, tok: null, user: null, KEY: 'battleIsland.srv', last: '', busy: false, status: 'off' };
 const SRV_ERR = { bad_user: 'Usuário: 3 a 16 letras minúsculas, números, _ ou .', short_pass: 'A senha precisa de pelo menos 4 caracteres.', exists: 'Esse usuário já existe. Toque em ENTRAR.',
   not_found: 'Usuário não encontrado. Confira o nome ou crie a conta.', bad_pass: 'Senha incorreta. Toque no olho para ver o que está digitando. Esqueceu? Peça ao dono do jogo para trocar.',
-  session: 'Sua sessão expirou. Entre de novo.', bad_profile: 'Conta grande demais para salvar.', owner: 'Código do dono errado.', id_taken: 'Já existe uma conta com esse ID.', bad_id: 'O ID precisa ter de 1 a 10 números.' };
+  session: 'Sua sessão expirou. Entre de novo.', bad_profile: 'Conta grande demais para salvar.', owner: 'Código do dono errado.', google: 'O Google não confirmou o login. Tente de novo.', google_used: 'Essa conta Google já está ligada a outra conta do jogo.', no_google: 'Login com Google não está ligado no servidor.', id_taken: 'Já existe uma conta com esse ID.', bad_id: 'O ID precisa ter de 1 a 10 números.' };
 SRV.msg = (e) => SRV_ERR[e && e.code] || 'Sem conexão com o servidor do jogo. Tente de novo.';
 SRV.call = async function (body, ms) {
   const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -372,6 +422,7 @@ SRV.init = async function () {
     try { const j = await SRV.call({ op: 'ping' }, 15000); SRV.on = j.app === 'battle-island'; } catch (e) { if (e && e.status === 404) break; SRV.on = false; }
   }
   SRV.status = SRV.on ? 'on' : 'off';
+  if (SRV.on) try { SRV.gid = (await SRV.call({ op: 'config' }, 10000)).google || ''; } catch (e) { SRV.gid = ''; }
   if (SRV.on) setInterval(() => { if (typeof G === 'undefined' || G.state !== 'play') SRV.poll(); }, 30000);
   return SRV.on;
 };
@@ -382,7 +433,11 @@ SRV.session = function (u, tok) {
 // guarda a conta do servidor na memória local e entra nela
 SRV.adopt = function (u, j) {
   const mem = ACC.db();
-  mem.users[u] = Object.assign(mem.users[u] || { salt: '', hash: '' }, { p: j.p, t: j.t || (j.p && j.p.created) || Date.now(), upd: j.upd || 0, srv: 1 });
+  // a cópia deste aparelho pode ter progresso que ainda não subiu: junta as duas (e o resultado sobe para o servidor)
+  // (só cópias que vieram do servidor ou de um código de transferência dessa conta)
+  const lr = mem.users[u], loc = lr && (lr.srv || lr.imp) ? lr.p : null;
+  const p = loc ? ACC.mergeProfiles(j.p, loc) : j.p;
+  mem.users[u] = Object.assign(mem.users[u] || { salt: '', hash: '' }, { p: p, t: j.t || (j.p && j.p.created) || Date.now(), upd: j.upd || 0, srv: 1 });
   SRV.last = JSON.stringify(j.p);
   ACC.mem = mem;
   try { localStorage.setItem(ACC.KEY, JSON.stringify(mem)); } catch (e) { /* ignora */ }
@@ -394,8 +449,35 @@ SRV.restore = async function () {
   try { s = JSON.parse(localStorage.getItem(SRV.KEY) || 'null'); } catch (e) { /* ignora */ }
   if (!SRV.on || !s || !s.u || !s.tok) return false;
   try { const j = await SRV.call({ op: 'me', u: s.u, tok: s.tok }); SRV.session(s.u, s.tok); SRV.adopt(s.u, j); return true; }
-  catch (e) { if (e.code === 'session') SRV.session(null); return false; }
+  catch (e) {
+    if (e.code === 'session') { SRV.session(null); return false; }
+    // sem rede agora: entra com a cópia do aparelho e continua salvando no servidor quando a conexão voltar
+    const l = ACC.db().users[s.u];
+    if (l && l.p) { SRV.session(s.u, s.tok); ACC.use(s.u, l.p); SRV.status = 'error'; return true; }
+    return false;
+  }
 };
+// código de transferência com sessão do servidor: entra na conta do servidor e junta o progresso
+SRV.claim = async function (u, tok) {
+  try {
+    const j = await SRV.call({ op: 'me', u: u, tok: tok });
+    SRV.session(u, tok); SRV.adopt(u, j); SRV.push();
+    if (typeof notify === 'function') notify('ok', 'Conta conectada ao servidor: o progresso fica salvo em todos os aparelhos.');
+  } catch (e) {
+    if (typeof notify === 'function') notify('info', 'Conta importada neste aparelho. Entre com usuário e senha para ela voltar a salvar no servidor.');
+  }
+};
+// fechou o app ou trocou de tela: manda o progresso na hora (keepalive termina o envio mesmo com a página saindo)
+SRV.flushNow = function () {
+  if (!SRV.on || !SRV.tok || !ACC.p || ACC.user !== SRV.user) return;
+  const js = JSON.stringify(ACC.p);
+  if (js === SRV.last) return;
+  try { fetch(SRV.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'save', u: SRV.user, tok: SRV.tok, p: ACC.p }), keepalive: js.length < 60000 }).then(r => { if (r.ok) SRV.last = js; }, () => {}); } catch (e) { /* tenta de novo depois */ }
+};
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') SRV.flushNow(); });
+  window.addEventListener('pagehide', () => SRV.flushNow());
+}
 SRV.login = async function (u, pass) {
   try {
     const j = await SRV.call({ op: 'login', u: u, pass: pass });
@@ -415,6 +497,39 @@ SRV.register = async function (u, pass, profile) {
     SRV.session(u, j.tok); SRV.adopt(u, j); return null;
   } catch (e) { return SRV.msg(e); }
 };
+// Entrar com Google (credencial do botão do Google; link = ligar à conta em que já está logado)
+SRV.google = async function (cred, link) {
+  try {
+    const body = { op: 'google', cred: cred, p: ACC.newProfile('Jogador') };
+    if (link) Object.assign(body, { link: 1, u: SRV.user, tok: SRV.tok });
+    const j = await SRV.call(body);
+    SRV.session(j.u, j.tok); SRV.adopt(j.u, j);
+    return { created: j.created };
+  } catch (e) { return { err: SRV.msg(e) }; }
+};
+// carrega o botão oficial do Google (só quando o servidor tem o login com Google ligado)
+const GOOG = { p: null };
+GOOG.load = function () {
+  if (GOOG.p) return GOOG.p;
+  GOOG.p = new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
+    sc.onload = () => res(window.google); sc.onerror = () => { GOOG.p = null; rej(new Error('gsi')); };
+    document.head.appendChild(sc);
+  });
+  return GOOG.p;
+};
+GOOG.button = async function (el, onCred) {
+  if (!SRV.gid || !el) return false;
+  try {
+    const g = await GOOG.load();
+    g.accounts.id.initialize({ client_id: SRV.gid, callback: (r) => onCred(r.credential), ux_mode: 'popup', auto_select: false, cancel_on_tap_outside: true });
+    el.innerHTML = '';
+    g.accounts.id.renderButton(el, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'continue_with', locale: 'pt-BR', width: Math.min(300, el.clientWidth || 300) });
+    return true;
+  } catch (e) { return false; }
+};
+
 // correio e ajustes do dono que chegaram pelo servidor
 SRV.applyInbox = function (items) {
   if (!items || !items.length || !ACC.p) return;
@@ -472,28 +587,35 @@ ACC.buy = function (kind, id) {
   ACC.emit();
   return null;
 };
-// armas douradas: compra com a moeda escolhida (gemas ou ouro) e liga/desliga o visual
-ACC.goldGuns = function () {
+// skins de arma e de parede de gel: compra com a moeda escolhida (gemas ou ouro) e equipa
+ACC.gunSkins = function () {
   const out = {};
   if (!ACC.p) return out;
-  for (const id of ACC.p.owned.guns) { const g = SHOP.guns[id]; if (g && ACC.p.goldOff.indexOf(id) < 0) out[g.gun] = true; }
+  for (const g in ACC.p.gunSkin) { const id = ACC.p.gunSkin[g]; if (WPN.SKINS[id] && WPN.SKINS[id].gun === g && ACC.owns('guns', id)) out[g] = id; }
   return out;
 };
-ACC.buyGun = function (id, useAlt) {
-  const it = SHOP.guns[id];
-  if (!it || ACC.owns('guns', id)) return 'Você já tem essa arma.';
+ACC.wallSkin = () => (ACC.p && ACC.p.wallSkin && ACC.owns('walls', ACC.p.wallSkin) ? ACC.p.wallSkin : '');
+// o visual que os outros jogadores veem (vai junto nas mensagens da sala)
+ACC.look = () => ({ g: ACC.gunSkins(), w: ACC.wallSkin() });
+ACC.buyGun = function (id, useAlt, kind) {
+  kind = kind || 'guns';
+  const it = SHOP[kind][id];
+  if (!it || ACC.owns(kind, id)) return 'Você já tem essa skin.';
   const pr = useAlt && it.alt ? it.alt : it.price;
   if (!ACC.canPay(pr)) return pr[0] === 'gold' ? 'Ouro insuficiente.' : 'Gemas insuficientes. Faça uma recarga.';
   ACC.p[pr[0]] -= pr[1];
-  ACC.p.owned.guns.push(id);
+  ACC.p.owned[kind].push(id);
+  if (kind === 'guns') ACC.p.gunSkin[WPN.SKINS[id].gun] = id; else ACC.p.wallSkin = id;
   ACC.emit();
   return null;
 };
-ACC.toggleGold = function (id) {
-  const i = ACC.p.goldOff.indexOf(id);
-  if (i >= 0) ACC.p.goldOff.splice(i, 1); else ACC.p.goldOff.push(id);
+// toca de novo numa skin equipada para voltar ao visual padrão
+ACC.equipSkin = function (id, kind) {
+  if (kind === 'walls') ACC.p.wallSkin = ACC.p.wallSkin === id ? '' : id;
+  else { const g = WPN.SKINS[id].gun; if (ACC.p.gunSkin[g] === id) delete ACC.p.gunSkin[g]; else ACC.p.gunSkin[g] = id; }
   ACC.emit();
 };
+ACC.skinOn = (id, kind) => (kind === 'walls' ? ACC.wallSkin() === id : ACC.gunSkins()[WPN.SKINS[id].gun] === id);
 // ranking feito a partir de uma lista de perfis (no servidor, ou com as contas deste aparelho)
 ACC.rankFrom = function (profiles) {
   const players = profiles.filter(p => p && p.stats).map(p => ({ n: p.name, id: p.id, vf: !!p.verified, lvl: p.level || 1, k: p.stats.kills || 0, w: p.stats.wins || 0, wk: p.stats.wk || {} }));
@@ -605,7 +727,7 @@ ACC.itemText = function (it) {
   const sk = (id) => (typeof SKINS !== 'undefined' && (SKINS.find(x => x[0] === id) || [])[1]) || id;
   const em = (id) => (typeof EMOTES !== 'undefined' && (EMOTES.find(x => x[0] === id) || [])[1]) || id;
   return it.k === 'gold' ? it.n + ' de ouro' : it.k === 'gems' ? it.n + ' gemas' : it.k === 'skin' ? 'Personagem ' + sk(it.id) : it.k === 'emote' ? 'Emote ' + em(it.id) :
-    it.k === 'allSkins' ? 'Todos os personagens' : it.k === 'allEmotes' ? 'Todos os emotes' : it.k === 'verified' ? 'Selo de verificado' : it.k;
+    it.k === 'allSkins' ? 'Todos os personagens' : it.k === 'allEmotes' ? 'Todos os emotes' : it.k === 'allGuns' ? 'Todas as skins de arma e de gel' : it.k === 'verified' ? 'Selo de verificado' : it.k;
 };
 ACC.grant = function (p, it) {
   const add = (kind, id) => { if (p.owned[kind].indexOf(id) < 0) p.owned[kind].push(id); };
@@ -615,6 +737,7 @@ ACC.grant = function (p, it) {
   else if (it.k === 'emote') add('emotes', it.id);
   else if (it.k === 'allSkins') for (const id in SHOP.skins) add('skins', id);
   else if (it.k === 'allEmotes') for (const id in SHOP.emotes) add('emotes', id);
+  else if (it.k === 'allGuns') { for (const id in SHOP.guns) add('guns', id); for (const id in SHOP.walls) add('walls', id); }
   else if (it.k === 'verified') p.verified = true;
 };
 ACC.claim = function (mid) {
@@ -653,7 +776,7 @@ ACC.unlockOwner = function (code) {
   try { localStorage.setItem('battleIsland.own', String(code).trim().toUpperCase()); } catch (e) { /* ignora */ }
   const first = !ACC.p.owner;
   ACC.p.owner = true; ACC.p.verified = true;
-  if (first) ACC.p.mail.unshift(ACC.letter('Sistema', 'Pacote do dono', 'Painel do dono liberado nesta conta. Aqui estão todos os personagens e emotes.', [{ k: 'allSkins' }, { k: 'allEmotes' }, { k: 'verified' }]));
+  if (first) ACC.p.mail.unshift(ACC.letter('Sistema', 'Pacote do dono', 'Painel do dono liberado nesta conta. Aqui estão todos os personagens, emotes e skins.', [{ k: 'allSkins' }, { k: 'allEmotes' }, { k: 'allGuns' }, { k: 'verified' }]));
   ACC.emit();
   return null;
 };

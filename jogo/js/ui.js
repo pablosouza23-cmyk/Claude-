@@ -81,17 +81,35 @@ const icon = (n, cls) => '<svg class="ico ' + (cls || '') + '" viewBox="0 0 24 2
 
 // retículas de cada mira (ADS), como nas referências
 const RETICLE = {
-  reddot: '<circle cx="50" cy="50" r="3.2" fill="#ff2a2a"/><circle cx="50" cy="50" r="7" fill="#ff2a2a" opacity=".25"/>',
-  greendot: '<circle cx="50" cy="50" r="12" fill="none" stroke="#3dff8a" stroke-width="2"/><circle cx="50" cy="50" r="2.2" fill="#3dff8a"/><path d="M50 32v8M50 60v8M32 50h8M60 50h8" stroke="#3dff8a" stroke-width="2"/>',
-  cyan: '<circle cx="50" cy="50" r="14" fill="none" stroke="#39e0ff" stroke-width="2"/><circle cx="50" cy="50" r="2.4" fill="#39e0ff"/><path d="M50 36v5M50 59v5M36 50h5M59 50h5" stroke="#39e0ff" stroke-width="2"/>',
-  diamond: '<path d="M50 32 68 50 50 68 32 50z" fill="none" stroke="#3aa0ff" stroke-width="2.4"/><path d="M50 43 57 50 50 57 43 50z" fill="none" stroke="#7fc8ff" stroke-width="1.6"/><circle cx="50" cy="50" r="2" fill="#bfe4ff"/>',
-  orange: '<circle cx="50" cy="50" r="14" fill="none" stroke="#ff9a1c" stroke-width="2.4"/><circle cx="50" cy="50" r="2.6" fill="#ff9a1c"/><path d="M50 30v9M50 61v9M30 50h9M61 50h9" stroke="#ff9a1c" stroke-width="2"/>',
-  brackets: '<path d="M34 40v-6h6M60 34h6v6M66 60v6h-6M40 66h-6v-6" fill="none" stroke="#ff2a2a" stroke-width="2.6"/><circle cx="50" cy="50" r="2.4" fill="#ff2a2a"/>',
-  iron: '<path d="M50 36v8M50 56v8M36 50h8M56 50h8" stroke="#fff" stroke-width="2.4"/><circle cx="50" cy="50" r="1.6" fill="#ffd23c"/>',
-  pistol: '<path d="M50 40v5M50 55v5M40 50h5M55 50h5" stroke="#fff" stroke-width="2"/><circle cx="50" cy="50" r="1.8" fill="#fff"/>',
-  iron2: '<path d="M50 38v4M50 46v2M50 52v2M50 58v4M38 50h4M46 50h2M52 50h2M58 50h4" stroke="#fff" stroke-width="2"/>',
+  reddot: '<circle cx="50" cy="50" r="6" fill="#ff2a2a" opacity=".18"/><circle cx="50" cy="50" r="3.4" fill="#ff3a2a" opacity=".55"/><circle cx="50" cy="50" r="2.1" fill="#ff6a5a"/>',
+  greendot: '<circle cx="50" cy="50" r="13" fill="none" stroke="#3dff8a" stroke-width="1.6"/><circle cx="50" cy="50" r="13" fill="none" stroke="#3dff8a" stroke-width="5" opacity=".12"/><circle cx="50" cy="50" r="1.9" fill="#b8ffd4"/><path d="M50 31v7M50 62v7M31 50h7M62 50h7" stroke="#3dff8a" stroke-width="1.8" stroke-linecap="round"/>',
+  cyan: '<path d="M50 36 64 58H36z" fill="none" stroke="#39e0ff" stroke-width="1.6" stroke-linejoin="round"/><circle cx="50" cy="50" r="15" fill="none" stroke="#39e0ff" stroke-width="1.2" stroke-dasharray="4 3"/><circle cx="50" cy="50" r="1.9" fill="#c4f6ff"/>',
+  diamond: '<path d="M50 32 68 50 50 68 32 50z" fill="none" stroke="#3aa0ff" stroke-width="1.8"/><path d="M50 32 68 50 50 68 32 50z" fill="none" stroke="#3aa0ff" stroke-width="5" opacity=".12"/><path d="M50 44 56 50 50 56 44 50z" fill="none" stroke="#9fd6ff" stroke-width="1.3"/><circle cx="50" cy="50" r="1.6" fill="#e0f3ff"/>',
+  orange: '<path d="M50 50 38 62M50 50 62 62" stroke="#ff9a1c" stroke-width="2" stroke-linecap="round"/><circle cx="50" cy="50" r="15" fill="none" stroke="#ff9a1c" stroke-width="1.4"/><path d="M50 29v8M29 50h8M63 50h8" stroke="#ff9a1c" stroke-width="1.6" stroke-linecap="round"/><circle cx="50" cy="50" r="1.8" fill="#ffd08a"/>',
+  brackets: '<path d="M35 41v-6h6M59 35h6v6M65 59v6h-6M41 65h-6v-6" fill="none" stroke="#ff2a2a" stroke-width="2" stroke-linecap="round"/><circle cx="50" cy="50" r="5" fill="#ff2a2a" opacity=".18"/><circle cx="50" cy="50" r="2" fill="#ff5a4a"/>',
+  iron: '<path d="M38 56h8l4-6 4 6h8" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" opacity=".9"/><circle cx="50" cy="50" r="1.5" fill="#ffd23c"/>',
+  pistol: '<path d="M41 54h6v-4h6v4h6" fill="none" stroke="#fff" stroke-width="1.6" opacity=".9"/><circle cx="50" cy="50" r="1.4" fill="#7dff9a"/>',
+  iron2: '<circle cx="50" cy="50" r="9" fill="none" stroke="#fff" stroke-width="1.4" opacity=".85"/><path d="M50 41v5M50 54v5M41 50h5M54 50h5" stroke="#fff" stroke-width="1.4"/><circle cx="50" cy="50" r="1.3" fill="#ffd23c"/>',
   scope: '',
 };
+// mira de cintura: abre andando, pulando e atirando; fica vermelha em cima de um inimigo
+const CROSS_COL = { branco: '#ffffff', verde: '#3dff8a', ciano: '#39e0ff', amarelo: '#ffe14a', rosa: '#ff5ad1' };
+function updateCrosshair(p, w, dt) {
+  const base = !w ? 6 : { pistol: 6, smg: 9, shotgun: 16, lmg: 10, sniper: 7 }[w.type] || 7;
+  const hs = Math.hypot(p.vel.x, p.vel.z);
+  let sp = base + Math.min(10, hs * 1.1) + (p.onGround ? 0 : 9) - (p.crouch ? 2 : 0);
+  const since = G.time - p.lastFire;
+  if (since < 0.3) sp += 7 * (1 - since / 0.3);
+  G.chSp = G.chSp === undefined ? sp : G.chSp + (sp - G.chSp) * Math.min(1, dt * 14);
+  const v = Math.round(G.chSp * 2) / 2;
+  if (H.cache.chSp !== v) { H.cache.chSp = v; H.crosshair.style.setProperty('--sp', v + 'px'); }
+  const st = G.settings.crossStyle || 'cruz', col = CROSS_COL[G.settings.crossCol] || '#fff';
+  if (H.cache.chSt !== st + col) {
+    H.cache.chSt = st + col;
+    H.crosshair.classList.remove('st-cruz', 'st-ponto', 'st-circulo'); H.crosshair.classList.add('st-' + st);
+    H.crosshair.style.setProperty('--ccBase', col);
+  }
+}
 const reticleSVG = (t) => '<svg viewBox="0 0 100 100">' + (RETICLE[t] || RETICLE.reddot) + '</svg>';
 
 // ------------------------------------------------------------------ câmera
@@ -123,13 +141,13 @@ function buildFP() {
 }
 
 function setFPWeapon(id) {
-  const gold = !!(G.player && G.player.ch.gold && G.player.ch.gold[id]);
-  if (fpGun.userData.id === id && fpGun.userData.gold === gold) return;
-  fpGun.userData.id = id; fpGun.userData.gold = gold;
+  const skin = (G.player && G.player.ch.skins && G.player.ch.skins[id]) || '';
+  if (fpGun.userData.id === id && fpGun.userData.skin === skin) return;
+  fpGun.userData.id = id; fpGun.userData.skin = skin;
   const h = fpGun.userData.holder;
   while (h.children.length) h.remove(h.children[0]);
   const gm = WPN.mesh(id, 0.006);
-  if (gold) gm.userData.main.material = WPN.goldMat();
+  if (skin) gm.userData.main.material = WPN.skinMat(skin);
   h.add(gm);
   const p = WPN.build(id);
   fpGun.userData.sightY = p.sightY; fpGun.userData.sightZ = p.sightZ;
@@ -185,7 +203,10 @@ function updateCamera(dt) {
     let dist = U.lerp(portrait ? 4.3 : 3.25, portrait ? 3.2 : 2.45, k);
     let sh = U.lerp(portrait ? 0.45 : 0.7, portrait ? 0.5 : 0.78, k);
     if (inside) { dist = Math.min(dist, 2.3); sh *= 0.75; fov += 6; }
-    const head = _m.set(p.pos.x, p.pos.y + (p.crouch ? 1.15 : 1.6), p.pos.z);
+    // inspecionando: câmera chega perto da arma
+    G.inspK = U.damp(G.inspK || 0, p.inspect ? 1 : 0, 5, dt);
+    if (G.inspK > 0.01) { dist = U.lerp(dist, 1.45, G.inspK); sh = U.lerp(sh, 0.42, G.inspK); fov -= 8 * G.inspK; }
+    const head = _m.set(p.pos.x, p.pos.y + (p.crouch ? 1.15 : 1.6) - 0.22 * (G.inspK || 0), p.pos.z);
     const hs = W.raycast(head, _r, sh + 0.25, true);
     if (hs) sh = Math.max(0, hs.t - 0.25);
     const pivot = _o.copy(head).addScaledVector(_r, sh);
@@ -313,6 +334,7 @@ function menuCamera(dt) {
   CH.animate(s.ch, dt, { mode: 'ground', speed: 0, aim: 0, pitch: 0, armed: false, emote: em });
   LOB.stage.visible = true;
   LOB.animStage(dt, G.menuT);
+  LOB.updateDisplay(dt, G.menuT);
   const portrait = camera.aspect < 1;
   const fx = Math.sin(out), fz = Math.cos(out), dist = portrait ? 6.4 : 4.6, sway = Math.sin(G.menuT * 0.25) * 0.25;
   camera.position.set(s.pos.x + fx * dist + fz * sway, s.pos.y + (portrait ? 1.4 : 1.2), s.pos.z + fz * dist - fx * sway);
@@ -345,8 +367,9 @@ function initHUD() {
   document.querySelectorAll('[data-icon]').forEach(el => { el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)); });
   ['hud', 'touch', 'hpFill', 'hpNum', 'vestBadge', 'helmBadge', 'aliveNum', 'killNum', 'compassStrip', 'compassNum', 'notifs', 'areaBanner', 'areaName',
     'killBanner', 'kbCount', 'kbName', 'minimap', 'zoneTime', 'zoneText', 'topStatus', 'prep', 'prepNum', 'bigText', 'jumpHint', 'diveStats', 'diveHint', 'altMark',
-    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'wbGel',
+    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'wbGel', 'wbInsp', 'inspTag',
     'healRing', 'reloadBar'].forEach(id => { H[id] = $(id); });
+  H.scopeWrap = H.scope.querySelector('.sWrap');
   H.mm = H.minimap.getContext('2d');
   // bússola: N 15 30 NE 60 75 L ...
   const PX = 3.2, names = { 0: 'N', 45: 'NE', 90: 'L', 135: 'SE', 180: 'S', 225: 'SO', 270: 'O', 315: 'NO' };
@@ -409,6 +432,12 @@ function updateHUD(dt) {
   setHTML(H.wbNade, 'wbn', icon('grenade') + '<b>' + p.nades + '</b>');
   setHTML(H.wbKit, 'wbk', icon('medkit') + '<b>' + p.kits + '</b>');
   setHTML(H.wbGel, 'wbg', icon('gel') + '<b>' + p.gel + '</b>');
+  setHTML(H.wbInsp, 'wbi', icon('eye'));
+  setClass(H.wbInsp, 'wbiOn', 'on', !!p.inspect);
+  // nome da arma (e da skin) enquanto inspeciona
+  const ins = p.inspect && curSlot(p);
+  setHTML(H.inspTag, 'insT', ins ? '<small>INSPECIONANDO</small>' + escapeHTML((p.ch.skins && WPN.SKINS[p.ch.skins[ins.id]] ? WPN.SKINS[p.ch.skins[ins.id]].name : WPN.DEF[ins.id].name).toUpperCase()) : '');
+  setClass(H.inspTag, 'insS', 'show', !!ins);
   setClass(H.wbNade, 'wbna', 'active', p.nadeHand);
   H.healRing.style.transform = 'scaleX(' + (p.healT > 0 ? 1 - p.healT / 2.4 : 0) + ')';
   const cs = curSlot(p);
@@ -441,12 +470,19 @@ function updateHUD(dt) {
   // mira
   const w = curW(p), ads = G.ads;
   setClass(H.crosshair, 'chOff', 'off', mode !== 'ground' || ads);
-  setClass(H.crosshair, 'chW', 'wide', !!w && (w.type === 'shotgun' || w.type === 'smg' || w.type === 'lmg'));
+  setClass(H.crosshair, 'chW', 'wide', !!w && w.type === 'shotgun');
+  setClass(H.crosshair, 'chT', 'tgt', !!(G.aaTarget && G.aaSee));
+  updateCrosshair(p, w, dt);
   const sightType = ads && w ? w.sight : '';
   if (H.cache.sight !== sightType) {
     H.cache.sight = sightType;
     H.reticle.innerHTML = sightType && sightType !== 'scope' ? reticleSVG(sightType) : '';
     H.scope.classList.toggle('show', sightType === 'scope');
+  }
+  // respiração na luneta (mais firme agachado)
+  if (sightType === 'scope') {
+    const k = p.crouch ? 0.4 : 1, t = G.time;
+    H.scopeWrap.style.transform = 'translate(' + (Math.sin(t * 0.9) * 3 * k).toFixed(1) + 'px,' + (Math.sin(t * 1.7) * 2.2 * k).toFixed(1) + 'px)';
   }
   G.vignette = Math.max(0, G.vignette - dt * 0.9);
   H.vignette.style.opacity = G.vignette.toFixed(2);
@@ -836,37 +872,82 @@ function renderInventory(force) {
   box.querySelectorAll('[data-slot]').forEach(el => el.addEventListener('click', () => { selectSlot(G.player, +el.dataset.slot); renderInventory(true); }));
 }
 
-// fotos das armas para o arsenal/inventário (desenhadas uma vez num renderer pequeno)
-let thumbCache = null;
-function weaponThumbs() {
-  if (thumbCache) return thumbCache;
-  thumbCache = {};
+// fotos das armas para o arsenal/inventário e das skins para a loja (desenhadas uma vez num renderer pequeno)
+function renderThumbs(entries) {
+  const out = {};
   try {
     const cv = document.createElement('canvas'); cv.width = 320; cv.height = 140;
     const r = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, preserveDrawingBuffer: true });
     const sc = new THREE.Scene();
     sc.add(new THREE.HemisphereLight(0xdde8ff, 0x445566, 1.6));
     const dl = new THREE.DirectionalLight(0xffffff, 2.2); dl.position.set(2, 3, 2); sc.add(dl);
-    const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 20);
-    for (const id of WPN.ORDER) {
-      const m = WPN.mesh(id, 0.008);
-      m.rotation.set(0.12, -Math.PI / 2, 0);
+    const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 40);
+    for (const [key, make] of entries) {
+      const m = make();
       sc.add(m);
       m.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(m), c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
       const halfW = Math.max(sz.x, sz.z) / 2 * 1.08, halfH = Math.max(halfW * 140 / 320, sz.y / 2 * 1.1);
       const hw = Math.max(halfW, halfH * 320 / 140);
       cam.left = -hw; cam.right = hw; cam.top = hw * 140 / 320; cam.bottom = -hw * 140 / 320; cam.updateProjectionMatrix();
-      cam.position.set(c.x, c.y + 0.05, c.z + 3); cam.lookAt(c.x, c.y, c.z);
+      cam.position.set(c.x, c.y + 0.05, c.z + 10); cam.lookAt(c.x, c.y, c.z);
       r.setClearColor(0x000000, 0);
       r.render(sc, cam);
-      thumbCache[id] = cv.toDataURL('image/png');
+      out[key] = cv.toDataURL('image/png');
       sc.remove(m);
     }
     r.dispose();
     if (r.forceContextLoss) r.forceContextLoss();
-  } catch (e) { for (const id of WPN.ORDER) thumbCache[id] = ''; }
+  } catch (e) { for (const [key] of entries) out[key] = out[key] || ''; }
+  return out;
+}
+const gunShot = (id, skin) => () => {
+  const m = WPN.mesh(id, 0.008);
+  if (skin) m.userData.main.material = WPN.skinMat(skin);
+  m.rotation.set(0.12, -Math.PI / 2, 0);
+  return m;
+};
+let thumbCache = null, skinThumbCache = null;
+function weaponThumbs() {
+  if (!thumbCache) thumbCache = renderThumbs(WPN.ORDER.map(id => [id, gunShot(id)]));
   return thumbCache;
+}
+// as skins são fotografadas com o próprio renderer do jogo (com o reflexo do céu, que faz o ouro e o gelo brilharem)
+function skinThumbs() {
+  if (skinThumbCache) return skinThumbCache;
+  skinThumbCache = {};
+  const list = Object.keys(WPN.SKINS).map(id => [id, gunShot(WPN.SKINS[id].gun, id), SHOP.guns[id]]);
+  for (const id in WALL_SKINS) list.push([id, () => { const w = wallMesh(makeWallMat(id).mat); w.position.z = -WALL_R; const g = new THREE.Group(); g.add(w); g.rotation.x = 0.12; return g; }, SHOP.walls[id]]);
+  try {
+    const sc = new THREE.Scene();
+    sc.environment = scene.environment;
+    sc.add(new THREE.HemisphereLight(0xe6efff, 0x3a4250, 1.2));
+    const dl = new THREE.DirectionalLight(0xffffff, 2.6); dl.position.set(2, 4, 5); sc.add(dl);
+    const rim = new THREE.DirectionalLight(0x9fd8ff, 1.4); rim.position.set(-3, 2, -4); sc.add(rim);
+    const el = renderer.domElement, Wd = el.width, Ht = el.height;
+    const cam = new THREE.PerspectiveCamera(20, Wd / Ht, 0.05, 200);
+    const out = document.createElement('canvas'); out.width = 320; out.height = 140;
+    const g2 = out.getContext('2d');
+    const view = camera.view && camera.view.enabled;
+    for (const [key, make, it] of list) {
+      const m = make();
+      sc.add(m); m.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(m), c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+      // enquadra a peça na faixa central (proporção do cartão)
+      const sh = Math.min(Ht, Wd * 140 / 320), sw = sh * 320 / 140;
+      const halfV = Math.max(sz.y / 2, Math.max(sz.x, sz.z) / 2 * 140 / 320) * 1.18 * Ht / sh;
+      const dist = halfV / Math.tan(THREE.MathUtils.degToRad(10)) + sz.z / 2;
+      cam.position.set(c.x + dist * 0.12, c.y + dist * 0.06, c.z + dist); cam.lookAt(c);
+      sc.background = new THREE.Color(RARE[(it && it.rare) || 'raro'][2]);
+      renderer.setRenderTarget(null);
+      renderer.render(sc, cam);
+      g2.drawImage(el, (Wd - sw) / 2, (Ht - sh) / 2, sw, sh, 0, 0, 320, 140);
+      skinThumbCache[key] = out.toDataURL('image/jpeg', 0.88);
+      sc.remove(m);
+    }
+    if (view) { /* a câmera do menu continua com o deslocamento */ }
+  } catch (e) { console.warn('fotos das skins', e); }
+  return skinThumbCache;
 }
 
 // ---------- mapa completo ----------
@@ -899,6 +980,8 @@ const SETTINGS_UI = {
     { k: 'look', label: 'Câmera', type: 'seg', opts: [['tp', '3ª pessoa'], ['fp', '1ª pessoa (bodycam)']] },
     { k: 'hudEdit', label: 'Layout dos botões (HUD)', type: 'action', text: 'EDITAR HUD', run: () => openHudEditor() },
     { k: 'aimAssist', label: 'Assistência de mira', type: 'toggle' },
+    { k: 'crossStyle', label: 'Mira', type: 'seg', opts: [['cruz', 'Cruz'], ['ponto', 'Ponto'], ['circulo', 'Círculo']] },
+    { k: 'crossCol', label: 'Cor da mira', type: 'seg', opts: [['branco', 'Branca'], ['verde', 'Verde'], ['ciano', 'Ciano'], ['amarelo', 'Amarela'], ['rosa', 'Rosa']] },
     { k: 'btnSize', label: 'Tamanho dos botões', type: 'range', min: 0.75, max: 1.35, step: 0.05, show: v => Math.round(v * 100) + '%' },
     { k: 'btnAlpha', label: 'Opacidade dos botões', type: 'range', min: 0.35, max: 1, step: 0.05, show: v => Math.round(v * 100) + '%' },
   ],
@@ -1056,6 +1139,7 @@ function initInput() {
     if (e.code === 'Tab' && G.state === 'play') { e.preventDefault(); UI.screen === 'inv' ? closeInventory() : openInventory('inv'); }
     if (e.code === 'KeyM' && G.state === 'play') { UI.screen === 'map' ? showScreen(null) : openMap(); }
     if (e.code === 'KeyB' && G.state === 'play') openEmoteWheel();
+    if (e.code === 'KeyI' && G.state === 'play') input.inspect = true;
     if (e.code === 'Backquote' && document.exitPointerLock) document.exitPointerLock();
     if (G.state === 'play' && (e.code === 'Space' || e.code.indexOf('Arrow') === 0)) e.preventDefault();
   });
@@ -1163,6 +1247,7 @@ function initInput() {
   holdBtn($('wbNade'), () => { input.nade = true; });
   holdBtn($('wbKit'), () => { input.heal = true; });
   holdBtn($('wbGel'), () => { input.wall = true; });
+  holdBtn($('wbInsp'), () => { input.inspect = true; });
   holdBtn($('btnPause'), () => { pauseGame(); });
   holdBtn($('btnMap'), () => { openMap(); });
   holdBtn($('mmWrap'), () => { openMap(); });
@@ -1278,6 +1363,7 @@ function frame(now) {
   PERF.last = now || 0;
   const raw = clock.getDelta();
   const dt = Math.min(raw, 0.05);
+  WPN.timeU.value = (performance.now() / 1000) % 600;
   if (!G.built) return;
   adaptQuality(raw);
   if (G.state === 'play' || (NET.live && G.player && G.player.ch && (G.state === 'pause' || G.state === 'end'))) tick(dt);
@@ -1332,8 +1418,9 @@ function boot() {
     $('loadStep').textContent = 'Conectando sua conta…';
     $('loadScr').classList.remove('hidden', 'out');
     Promise.all([CLOUD.init().catch(() => false), SRV.init().catch(() => false)]).then(async () => {
-      // com o servidor do jogo, a conta vem dele; o convidado continua só no aparelho
-      const inside = SRV.on ? (await SRV.restore()) || (ACC.getSession() === '__guest' && ACC.restore()) : ACC.restore();
+      // com o servidor do jogo, a conta vem dele; se a sessão não vale mais, entra com a cópia do aparelho
+      // (conta importada por código ou convidado) e o progresso sobe quando entrar com usuário e senha
+      const inside = SRV.on ? (await SRV.restore()) || ACC.restore() : ACC.restore();
       $('loadScr').classList.add('out'); setTimeout(() => $('loadScr').classList.add('hidden'), 400);
       if (!inside) { LOB.pendingRoom = code; LOB.showAuth(); return; }
       LOB.enter();

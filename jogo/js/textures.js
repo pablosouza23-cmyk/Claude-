@@ -17,6 +17,26 @@ TX.wrap = function (S, x, y, r, fn) {
   }
 };
 
+// normal map gerado do cinza da textura (claro = alto)
+TX.normal = function (key, strength) {
+  const ck = key + '|n';
+  if (TX.cache[ck]) return TX.cache[ck];
+  const src = TX.tex(key).image, S = src.width;
+  const sg = src.getContext('2d').getImageData(0, 0, S, S).data;
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d'), out = g.createImageData(S, S), o = out.data;
+  const h = (x, y) => sg[(((y + S) % S) * S + ((x + S) % S)) * 4] / 255;
+  const k = strength || 2;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const dx = (h(x + 1, y) - h(x - 1, y)) * k, dy = (h(x, y + 1) - h(x, y - 1)) * k, l = Math.hypot(dx, dy, 1), i = (y * S + x) * 4;
+    o[i] = (-dx / l * 0.5 + 0.5) * 255; o[i + 1] = (dy / l * 0.5 + 0.5) * 255; o[i + 2] = (1 / l * 0.5 + 0.5) * 255; o[i + 3] = 255;
+  }
+  g.putImageData(out, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = TX.aniso;
+  TX.cache[ck] = t;
+  return t;
+};
 TX.make = function (key, S, draw) {
   if (TX.cache[key]) return TX.cache[key];
   const c = document.createElement('canvas');
@@ -262,6 +282,81 @@ TX.drawers = {
     for (let i = 0; i < 1200; i++) { g.fillStyle = gray(r() < 0.5 ? 150 : 240, 0.35); g.fillRect(r() * S, r() * S, 1 + r() * 3, 1); }
     for (let i = 0; i < 14; i++) { const x = r() * S, y = r() * S, rad = 15 + r() * 40; TX.wrap(S, x, y, rad, (px, py) => { const gr = g.createRadialGradient(px, py, 0, px, py, rad); gr.addColorStop(0, 'rgba(90,80,60,0.25)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(px - rad, py - rad, rad * 2, rad * 2); }); }
   },
+  // ---------- skins de arma (padrões em cinza: branco = detalhe/acento) ----------
+  // ouro gravado: arabescos em espiral e moldura
+  skinGold(g, S, r) {
+    g.fillStyle = gray(0); g.fillRect(0, 0, S, S);
+    g.strokeStyle = gray(255); g.lineCap = 'round';
+    const cell = S / 4;
+    for (let cy = 0; cy < 4; cy++) for (let cx = 0; cx < 4; cx++) {
+      const x0 = cx * cell + cell / 2, y0 = cy * cell + cell / 2, flip = (cx + cy) % 2 ? 1 : -1;
+      g.lineWidth = S / 170;
+      for (let k = 0; k < 2; k++) {
+        g.beginPath();
+        for (let t = 0; t < 7.5; t += 0.08) { const rr = cell * 0.05 * t, x = x0 + Math.cos(t * flip + k * Math.PI) * rr, y = y0 + Math.sin(t * flip + k * Math.PI) * rr; t ? g.lineTo(x, y) : g.moveTo(x, y); }
+        g.stroke();
+      }
+      g.lineWidth = S / 260;
+      for (let l = 0; l < 4; l++) { const a = l * Math.PI / 2 + 0.6; g.beginPath(); g.moveTo(x0 + Math.cos(a) * cell * 0.38, y0 + Math.sin(a) * cell * 0.38); g.quadraticCurveTo(x0 + Math.cos(a + 0.5) * cell * 0.55, y0 + Math.sin(a + 0.5) * cell * 0.55, x0 + Math.cos(a + 0.9) * cell * 0.47, y0 + Math.sin(a + 0.9) * cell * 0.47); g.stroke(); }
+    }
+    g.lineWidth = S / 120; for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(0, i * cell); g.lineTo(S, i * cell); g.stroke(); }
+  },
+  // gelo: cristais (Voronoi) com rachaduras claras e geada
+  skinIce(g, S, r) {
+    const pts = []; for (let i = 0; i < 46; i++) pts.push([r() * S, r() * S]);
+    const img = g.createImageData(S, S), d = img.data;
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      let a = 1e9, b = 1e9;
+      for (const p of pts) for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { const dx = x - p[0] - ox, dy = y - p[1] - oy, dd = dx * dx + dy * dy; if (dd < a) { b = a; a = dd; } else if (dd < b) b = dd; }
+      const edge = Math.sqrt(b) - Math.sqrt(a), v = edge < 2.2 ? 255 : Math.max(0, 120 - edge * 3) + r() * 40;
+      const k = (y * S + x) * 4; d[k] = d[k + 1] = d[k + 2] = v; d[k + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    for (let i = 0; i < 1600; i++) { g.fillStyle = gray(255, 0.5); g.fillRect(r() * S, r() * S, 1, 1); }
+  },
+  // dragão: escamas escuras com fendas brilhantes
+  skinScales(g, S, r) {
+    g.fillStyle = gray(10); g.fillRect(0, 0, S, S);
+    const s = S / 10;
+    for (let row = -1; row < 12; row++) for (let col = -1; col < 11; col++) {
+      const x = col * s + (row % 2 ? s / 2 : 0), y = row * s * 0.62;
+      const gr = g.createRadialGradient(x, y - s * 0.15, s * 0.05, x, y, s * 0.62);
+      gr.addColorStop(0, gray(70)); gr.addColorStop(0.8, gray(30)); gr.addColorStop(1, gray(255));
+      g.fillStyle = gr; g.beginPath(); g.arc(x, y, s * 0.6, 0, Math.PI); g.fill();
+    }
+  },
+  // neon: trilhas de circuito
+  skinCircuit(g, S, r) {
+    g.fillStyle = gray(0); g.fillRect(0, 0, S, S);
+    g.strokeStyle = gray(255); g.fillStyle = gray(255); g.lineWidth = S / 200;
+    for (let i = 0; i < 46; i++) {
+      let x = Math.round(r() * 16) * S / 16, y = Math.round(r() * 16) * S / 16;
+      g.beginPath(); g.moveTo(x, y);
+      for (let k = 0; k < 4; k++) { if (r() < 0.5) x += (r() < 0.5 ? -1 : 1) * S / 16 * (1 + Math.floor(r() * 3)); else y += (r() < 0.5 ? -1 : 1) * S / 16 * (1 + Math.floor(r() * 3)); g.lineTo(x, y); }
+      g.stroke(); g.beginPath(); g.arc(x, y, S / 120, 0, Math.PI * 2); g.fill();
+    }
+  },
+  // camuflagem digital (cores próprias)
+  skinCamo(g, S, r) {
+    const cols = ['#4b5a32', '#2f3a22', '#7b7a52', '#5e4a32', '#1f2618'];
+    const px = S / 32;
+    g.fillStyle = cols[0]; g.fillRect(0, 0, S, S);
+    for (let l = 1; l < cols.length; l++) for (let i = 0; i < 26; i++) {
+      let x = Math.floor(r() * 32), y = Math.floor(r() * 32);
+      g.fillStyle = cols[l];
+      for (let k = 0; k < 18; k++) { g.fillRect(((x + 32) % 32) * px, ((y + 32) % 32) * px, px, px); if (r() < 0.5) x += r() < 0.5 ? 1 : -1; else y += r() < 0.5 ? 1 : -1; }
+    }
+  },
+  // fibra de carbono (cores próprias)
+  skinCarbon(g, S, r) {
+    const t = S / 32;
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
+      const along = (Math.floor(x / 2) + Math.floor(y / 2)) % 2;
+      const gr = along ? g.createLinearGradient(x * t, 0, x * t + t, 0) : g.createLinearGradient(0, y * t, 0, y * t + t);
+      gr.addColorStop(0, '#0d0e10'); gr.addColorStop(0.5, '#3a3d44'); gr.addColorStop(1, '#0d0e10');
+      g.fillStyle = gr; g.fillRect(x * t, y * t, t, t);
+    }
+  },
   // metal de arma: escovado, arranhões claros, desgaste e sujeira (cinza; a cor vem do modelo)
   gunMetal(g, S, r) {
     g.fillStyle = gray(178); g.fillRect(0, 0, S, S);
@@ -298,7 +393,7 @@ TX.drawers = {
   },
 };
 
-TX.SIZE = { weave: 256, gunMetal: 512, gunWood: 512, foliage: 256, frond: 256, needle: 256, ground: 512, leaf: 256, roof: 256, wood: 256, stone: 256, plaster: 256, metal: 128, bark: 128, fabric: 64, gun: 128, plain: 256, glass: 64 };
+TX.SIZE = { weave: 256, gunMetal: 1024, gunWood: 1024, skinGold: 1024, skinIce: 256, skinScales: 512, skinCircuit: 512, skinCamo: 512, skinCarbon: 512, foliage: 256, frond: 256, needle: 256, ground: 512, leaf: 256, roof: 256, wood: 256, stone: 256, plaster: 256, metal: 128, bark: 128, fabric: 64, gun: 128, plain: 256, glass: 64 };
 
 TX.tex = function (key) {
   const d = TX.drawers[key] || TX.drawers.plain;

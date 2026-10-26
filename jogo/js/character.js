@@ -420,7 +420,7 @@ CH.setGuns = function (ch, inHand, onBack) {
     if (inHand) {
       const p = WPN.build(inHand, !ch.hq);
       ch.gunMesh.geometry = p.g; ch.gunGlow.geometry = p.glow || _emptyGeo; ch.gunGlow.visible = !!p.glow;
-      ch.gunMesh.material = ch.gold && ch.gold[inHand] ? WPN.goldMat() : WPN.gunMat();
+      ch.gunMesh.material = ch.skins && ch.skins[inHand] ? WPN.skinMat(ch.skins[inHand]) : WPN.gunMat();
       ch.muzzle.position.set(0, p.muzzleY !== undefined ? p.muzzleY : 0.03, p.len + 0.02);
       ch.grip = p;
     }
@@ -428,7 +428,7 @@ CH.setGuns = function (ch, inHand, onBack) {
   }
   if (ch.stowId !== onBack) {
     ch.stowId = onBack;
-    if (onBack) { const p = WPN.build(onBack, true); ch.stowMesh.geometry = p.g; ch.stowGlow.geometry = p.glow || _emptyGeo; ch.stowGlow.visible = !!p.glow; ch.stowMesh.material = ch.gold && ch.gold[onBack] ? WPN.goldMat() : WPN.gunMat(); }
+    if (onBack) { const p = WPN.build(onBack, true); ch.stowMesh.geometry = p.g; ch.stowGlow.geometry = p.glow || _emptyGeo; ch.stowGlow.visible = !!p.glow; ch.stowMesh.material = ch.skins && ch.skins[onBack] ? WPN.skinMat(ch.skins[onBack]) : WPN.gunMat(); }
     ch.stow.visible = !!onBack;
   }
 };
@@ -751,18 +751,26 @@ CH.animate = function (ch, dt, s) {
     // sacando a arma: vem de baixo, inclinada, e sobe até a posição
     let dk = 0;
     if (ch.drawT > 0) { ch.drawT -= dt; dk = U.smooth(0, 0.35, Math.max(0, ch.drawT)); }
+    // inspecionar: levanta a arma, vira de lado para a câmera e depois mostra o outro lado
+    const it = s.inspect || 0;
+    const ie = it > 0 ? U.smooth(0, 0.14, it) * (1 - U.smooth(0.84, 1, it)) : 0;
     if (s.gunAt) {
       // câmera de peito: a arma fica num ponto fixo da tela (canto inferior direito)
       _gunQ.copy(s.gunAt.q);
       if (dk || rc) { _gunE.set(-rc * 0.1 - dk * 1.1, 0, dk * 0.6); _q1.setFromEuler(_gunE); _gunQ.multiply(_q1); }
-      _gunPos.copy(s.gunAt.p).addScaledVector(UP, -dk * 0.25);
+      _gunPos.copy(s.gunAt.p).addScaledVector(UP, -dk * 0.25 + ie * 0.06);
       _tmp.set(0, 0, -rc * 0.05).applyQuaternion(_gunQ); _gunPos.add(_tmp);
     } else {
       _gunE.set(pitch * 0.98 - rc * 0.1 - dk * 1.1, face, dk * 0.6);
       _gunQ.setFromEuler(_gunE);
-      _gunPos.copy(chest).addScaledVector(_bodyR, sx).addScaledVector(UP, sy - 0.12 - dk * 0.28);
-      _tmp.set(0, -0.02, sz - rc * 0.05).applyQuaternion(_gunQ);
+      _gunPos.copy(chest).addScaledVector(_bodyR, sx * (1 - ie * 0.55)).addScaledVector(UP, sy - 0.12 - dk * 0.28 + ie * 0.1);
+      _tmp.set(0, -0.02, sz - rc * 0.05 - ie * 0.08).applyQuaternion(_gunQ);
       _gunPos.add(_tmp);
+    }
+    if (ie > 0) {
+      const roll = it < 0.5 ? U.smooth(0.12, 0.42, it) * 1.15 : 1.15 - U.smooth(0.5, 0.78, it) * 2.1;
+      _gunE.set(0.28 + Math.sin(it * 9) * 0.03, s.gunAt ? -0.5 : 0.85, roll); _gunE.x *= ie; _gunE.y *= ie; _gunE.z *= ie;
+      _q1.setFromEuler(_gunE); _gunQ.multiply(_q1);
     }
     // o grupo da arma é filho do corpo: converte para o espaço local
     _m2.copy(ch.body.matrixWorld).invert();

@@ -45,7 +45,7 @@ NET.createRoom = function () {
   NET.mode = 'host'; NET.pid = 0; NET.nextPid = 1;
   NET.gm = G.settings.mode || 'br'; NET.gs = G.settings.csSize || 4;
   NET.code = NET.makeCode();
-  NET.players = [{ pid: 0, name: G.settings.name || 'Jogador', av: G.settings.avatar || 'heroi', vf: !!(ACC.p && ACC.p.verified) }];
+  NET.players = [{ pid: 0, name: G.settings.name || 'Jogador', av: G.settings.avatar || 'heroi', vf: !!(ACC.p && ACC.p.verified), lk: NET.myLook() }];
   NET.setStatus('Criando sala…');
   const tryOpen = (tries) => {
     const peer = new Peer(NET.PREFIX + NET.code, NET.peerOpts());
@@ -110,7 +110,7 @@ NET.joinRoom = function (code) {
     const c = peer.connect(NET.PREFIX + code, { reliable: true, serialization: 'json' });
     NET.conn = c;
     const to = setTimeout(() => { if (!c.open) NET.setStatus('A sala não respondeu. Confira o código e tente de novo.', true); }, 12000);
-    c.on('open', () => { clearTimeout(to); c.send({ t: 'hi', n: G.settings.name || 'Jogador', a: G.settings.avatar || 'heroi', v: NET.ver, vf: !!(ACC.p && ACC.p.verified) }); NET.setStatus('Conectado. Aguardando o anfitrião…'); });
+    c.on('open', () => { clearTimeout(to); c.send({ t: 'hi', n: G.settings.name || 'Jogador', a: G.settings.avatar || 'heroi', v: NET.ver, vf: !!(ACC.p && ACC.p.verified), lk: NET.myLook() }); NET.setStatus('Conectado. Aguardando o anfitrião…'); });
     c.on('data', d => { try { NET.clientRecv(d); } catch (e) { console.error(e); } });
     c.on('close', () => NET.lostHost());
     c.on('error', () => NET.lostHost());
@@ -137,15 +137,25 @@ NET.leave = function () {
 
 NET.send = function (m) { if (NET.conn && NET.conn.open) NET.conn.send(m); };
 NET.bcast = function (m, except) { for (const c of NET.conns) if (c !== except && c.open) c.send(m); };
+// visual do jogador (skins de arma e de gel), conferido para só aceitar skins que existem
+NET.myLook = () => (typeof ACC !== 'undefined' && ACC.p ? ACC.look() : { g: {}, w: '' });
+NET.cleanLook = function (lk) {
+  const out = { g: {}, w: '' };
+  if (!lk || typeof lk !== 'object') return out;
+  if (lk.g && typeof lk.g === 'object') for (const g in lk.g) { const id = lk.g[g]; if (typeof id === 'string' && Object.prototype.hasOwnProperty.call(WPN.SKINS, id) && WPN.SKINS[id].gun === g) out.g[g] = id; }
+  if (typeof lk.w === 'string' && Object.prototype.hasOwnProperty.call(WALL_SKINS, lk.w)) out.w = lk.w;
+  return out;
+};
+
 NET.toPid = function (pid, m) { const p = NET.players.find(x => x.pid === pid); if (p && p.conn && p.conn.open) p.conn.send(m); };
 
-NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av, p.vf ? 1 : 0]), bots: NET.bots, live: NET.live, map: W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId, gm: NET.gm, gs: NET.gs });
+NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av, p.vf ? 1 : 0, p.lk || null]), bots: NET.bots, live: NET.live, map: W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId, gm: NET.gm, gs: NET.gs });
 NET.bcastRoom = function () { if (NET.isHost()) NET.bcast(NET.roomMsg()); };
 
 NET.setAvatar = function (av) {
   G.settings.avatar = av; G.saveSettings();
-  if (NET.isHost()) { const me = NET.players.find(p => p.pid === 0); if (me) me.av = av; NET.bcastRoom(); renderRoom(); }
-  else if (NET.isClient()) NET.send({ t: 'av', a: av });
+  if (NET.isHost()) { const me = NET.players.find(p => p.pid === 0); if (me) { me.av = av; me.lk = NET.myLook(); } NET.bcastRoom(); renderRoom(); }
+  else if (NET.isClient()) NET.send({ t: 'av', a: av, lk: NET.myLook() });
 };
 NET.setBots = function (on) { NET.bots = on; NET.bcastRoom(); renderRoom(); };
 
@@ -157,7 +167,7 @@ NET.hostStart = function () {
   // Contra Squad: times alternados pela ordem de entrada na sala
   const tm = {};
   NET.players.forEach((p, i) => { tm[p.pid] = i % 2; });
-  const msg = { t: 'go', seed, ps: NET.players.map(p => [p.pid, p.name, p.av]), bots: NET.bots, ang: Math.random() * Math.PI * 2, side: Math.random() - 0.5,
+  const msg = { t: 'go', seed, ps: NET.players.map(p => [p.pid, p.name, p.av, p.lk || null]), bots: NET.bots, ang: Math.random() * Math.PI * 2, side: Math.random() - 0.5,
     map: cs ? 'arena' : (W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId), mode: cs ? 'cs' : 'br', size: Math.max(NET.gs || 4, Math.ceil(NET.players.length / 2)), tm: tm };
   NET.bcast(msg);
   NET.begin(msg);
@@ -172,8 +182,10 @@ NET.begin = function (msg) {
 // monta os atores da partida multiplayer na mesma ordem em todos os aparelhos
 NET.buildActors = function (msg) {
   const rnd = U.rng(msg.seed);
-  for (const [pid, name, av] of msg.ps) {
+  for (const [pid, name, av, lk] of msg.ps) {
     const a = makeActor(name, av, pid === NET.pid);
+    // skins dos outros jogadores (a sua já vem da sua conta)
+    if (pid !== NET.pid) { const l = NET.cleanLook(lk); a.ch.skins = l.g; a.wallSkin = l.w; }
     a.pid = pid; a.human = true; a.revives = 1;
     a.ch.root.visible = false;
     if (pid === NET.pid) G.player = a; else a.remote = true;
@@ -280,7 +292,7 @@ NET.hostRecv = function (c, d) {
   const pl = NET.players.find(p => p.conn === c);
   if (d.t === 'hi') {
     if (pl) return;
-    const p = { pid: NET.nextPid++, name: String(d.n || 'Amigo').slice(0, 14), av: CH.AV[d.a] ? d.a : 'heroi', vf: !!d.vf, conn: c };
+    const p = { pid: NET.nextPid++, name: String(d.n || 'Amigo').slice(0, 14), av: CH.AV[d.a] ? d.a : 'heroi', vf: !!d.vf, lk: NET.cleanLook(d.lk), conn: c };
     NET.players.push(p);
     c.send({ t: 'wel', pid: p.pid });
     NET.bcastRoom(); renderRoom();
@@ -288,7 +300,7 @@ NET.hostRecv = function (c, d) {
     return;
   }
   if (!pl) return;
-  if (d.t === 'av') { if (CH.AV[d.a]) pl.av = d.a; NET.bcastRoom(); renderRoom(); return; }
+  if (d.t === 'av') { if (CH.AV[d.a]) pl.av = d.a; if (d.lk) pl.lk = NET.cleanLook(d.lk); NET.bcastRoom(); renderRoom(); return; }
   if (!NET.live) return;
   const a = NET.actorOf(pl.pid);
   if (!a) return;
@@ -369,7 +381,7 @@ NET.clientRecv = function (d) {
     case 'wel': NET.pid = d.pid; break;
     case 'full': NET.setStatus(d.live ? 'A partida já começou. Espere acabar e tente de novo.' : 'A sala está cheia.', true); break;
     case 'room':
-      NET.players = d.ps.map(p => ({ pid: p[0], name: p[1], av: p[2], vf: !!p[3] }));
+      NET.players = d.ps.map(p => ({ pid: p[0], name: p[1], av: p[2], vf: !!p[3], lk: NET.cleanLook(p[4]) }));
       NET.bots = d.bots; NET.code = d.code; NET.gm = d.gm || 'br'; NET.gs = d.gs || 4;
       if (d.map && d.map !== W.mapId && W.MAPS[d.map] && !NET.live && G.state !== 'play') LOB.switchMap(d.map, () => { if (UI.screen === 'roomScr') renderRoom(); });
       if (!NET.live && G.state !== 'play' && G.state !== 'end') { if (UI.screen !== 'roomScr') openRoom(); else renderRoom(); }

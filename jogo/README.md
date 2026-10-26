@@ -82,6 +82,45 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v2.9
+- **Skins de arma** (loja › aba **ARMAS**). O dano é o mesmo; muda só o visual, na mão, nas costas e na câmera de 1ª pessoa. Paga com gemas **ou** com ouro, e toca de novo para voltar ao visual padrão.
+
+  | Skin | Gemas | Ouro |
+  |---|---|---|
+  | **AK-47 Dourada** (ouro polido com arabescos gravados) | 150 | 8.000 |
+  | AK-47 Dragão de Fogo (escamas que pulsam como brasa) | 180 | 9.500 |
+  | AK-47 Gelo Ártico (cristal com brilho azul) | 130 | 7.000 |
+  | Carabina Neon | 90 | 5.000 |
+  | SMG Gelo Ártico | 80 | 4.500 |
+  | Pistola Dourada | 60 | 3.500 |
+  | Escopeta Carbono | 50 | 3.000 |
+  | Precisão Camuflada | 40 | 2.500 |
+
+  - O Fuzil de Assalto agora se chama **AK-47**. Quem já tinha o Fuzil Dourado ganhou a AK-47 Dourada.
+  - Os amigos na sala veem as suas skins, e alguns bots também aparecem com skins.
+- **Skins da parede de gel** (loja › aba **GEL**): Gelo Cristal, Ouro Real, Neon, Lava e Arco-Íris. As rachaduras dos tiros continuam aparecendo.
+- **Vitrine na loja:** a arma ou a parede aparece grande no palco, girando. Arraste para girar e inspecionar.
+- **Inspecionar a arma na partida:** tecla **I** ou o botão do olho na barra de armas. O personagem levanta a arma e mostra os dois lados, a câmera chega perto e aparece o nome da skin. Atirar, mirar, recarregar ou correr cancela.
+- **Arma mais realista:** metal com microrrelevo (normal map), verniz e reflexo de estúdio. O metal brilha nas bordas em vez de ficar preto chapado.
+- **Mira nova:**
+  - a mira de cintura abre ao andar, pular e atirar, fecha agachado e fica **vermelha** em cima de um inimigo;
+  - em Configurações › Controles dá para escolher o formato (cruz, ponto ou círculo) e a cor;
+  - as retículas das miras foram redesenhadas;
+  - a luneta tem retículo de precisão com marcas de distância, reflexo na lente e respiração (mais firme agachado).
+- **Entrar com Google** (só no site com o servidor da Netlify):
+  1. No [Google Cloud Console](https://console.cloud.google.com/apis/credentials), crie um projeto e configure a **Tela de consentimento OAuth** (tipo Externo, nome Battle Island).
+  2. Em **Credenciais › Criar credenciais › ID do cliente OAuth**, escolha **Aplicativo da Web** e, em **Origens JavaScript autorizadas**, coloque `https://SEU-SITE.netlify.app`.
+  3. Copie o **ID do cliente** (termina em `.apps.googleusercontent.com`).
+  4. Na Netlify, em **Site configuration › Environment variables**, crie `GOOGLE_CLIENT_ID` com esse valor e faça um novo deploy.
+  5. O botão **Continuar com o Google** aparece na tela de login. No perfil, quem já tem conta pode **ligar a conta Google** para entrar sem senha.
+  - O servidor confere o login no próprio Google antes de aceitar.
+- **Progresso que não se perde entre aparelhos:**
+  - O **código de transferência**, gerado no site com servidor, também leva a sessão. O outro aparelho entra direto na conta do servidor.
+  - Se o aparelho tem uma cópia com mais progresso (nível, XP, partidas), ela é juntada com a do servidor e nada volta para o nível 1. Itens comprados e cartas do correio das duas cópias ficam todos.
+  - Ao reabrir o jogo, a conta importada continua aberta, mesmo sem a sessão do servidor.
+  - O progresso é salvo na hora quando o app é fechado ou minimizado.
+  - Use **sempre o mesmo link** (o site da Netlify) em todos os aparelhos. O arquivo HTML baixado e o link do claude.ai guardam as contas em lugares diferentes.
+
 ## Novidades da v2.8
 - **Sala de espera (como no Free Fire):** antes do avião, todo mundo aparece numa área do mapa com uma arma aleatória e pistola, durante 20 segundos. Os tiros ali não machucam e os itens do chão ficam para depois do salto. Quando o tempo acaba, as armas somem e todos vão para o avião.
 - **Avião novo:** cargueiro com fuselagem arredondada, cabine com janelas, asa alta afinada, 4 motores turbo-hélice com hélices girando, cauda em T, rampa de carga e pintura branca com faixas.

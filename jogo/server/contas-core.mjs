@@ -25,6 +25,16 @@ const fail = (status, error) => ({ status, body: { ok: false, error } });
 const ok = (body) => ({ status: 200, body: Object.assign({ ok: true }, body) });
 const mid = () => Date.now().toString(36) + randomBytes(4).toString('hex');
 
+// confere o "ID token" do botão Entrar com Google no próprio Google (assinatura, validade e para qual app foi emitido)
+export async function verifyGoogle(cred, clientId) {
+  if (!cred || cred.length > 4096) return null;
+  const r = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(cred));
+  if (!r.ok) return null;
+  const j = await r.json();
+  if (j.aud !== clientId || !/^(https:\/\/)?accounts\.google\.com$/.test(j.iss || '') || Number(j.exp) * 1000 < Date.now() || !j.sub) return null;
+  return { sub: String(j.sub), email: String(j.email || ''), name: String(j.given_name || j.name || '') };
+}
+
 async function getRec(store, u) { return u ? await store.get('u:' + u, { type: 'json' }) : null; }
 async function allUsers(store) {
   const out = [];
@@ -62,6 +72,51 @@ export async function handle(body, store, opts) {
   const ownerHash = (opts && opts.ownerHash) || DEFAULT_OWNER_HASH;
   switch (body.op) {
     case 'ping': return ok({ app: 'battle-island', v: 1 });
+
+    // o que o jogo precisa saber do servidor (o ID do app do Google, se o login com Google estiver ligado)
+    case 'config': return ok({ google: (opts && opts.googleClientId) || '' });
+
+    // Entrar com Google: acha a conta ligada a essa conta Google ou cria uma nova.
+    // Se vier logado (u + tok), liga a conta Google à conta atual.
+    case 'google': {
+      const cid = opts && opts.googleClientId;
+      if (!cid) return fail(400, 'no_google');
+      const info = await ((opts && opts.verifyGoogle) || verifyGoogle)(String(body.cred || ''), cid);
+      if (!info) return fail(401, 'google');
+      const gk = 'g:' + info.sub;
+      const link = await store.get(gk, { type: 'json' });
+      let rec = link ? await getRec(store, link.u) : null;
+      let created = false;
+      if (body.link) {
+        const a = await auth(store, body);
+        if (!a) return fail(401, 'session');
+        if (rec && rec.u !== a.u) return fail(409, 'google_used');
+        rec = a.rec;
+      }
+      if (!rec) {
+        if (!validProfile(body.p)) return fail(400, 'bad_profile');
+        let base = cleanUser(info.email.split('@')[0]).replace(/[^a-z0-9_.]/g, '').slice(0, 11);
+        if (base.length < 3) base = 'jogador';
+        let u = base;
+        for (let i = 0; i < 20 && await getRec(store, u); i++) u = base + (1000 + Math.floor(Math.random() * 9000));
+        if (await getRec(store, u)) return fail(409, 'exists');
+        const p = body.p;
+        if (info.name && (!p.name || p.name === 'Jogador')) p.name = info.name.slice(0, 14);
+        if (!/^\d{1,10}$/.test(String(p.id || '')) || await idTaken(store, String(p.id), u)) p.id = newId();
+        const salt = randomBytes(16).toString('hex'), now = Date.now();
+        // senha aleatória que ninguém sabe: essa conta entra pelo Google (o dono pode definir uma senha pelo painel)
+        rec = { u, salt, hash: hashPass(salt, randomBytes(24).toString('hex')), p, t: now, upd: now, toks: [] };
+        created = true;
+      }
+      rec.google = info.sub; rec.email = info.email;
+      rec.p.google = info.email.replace(/^(.{2}).*(@.*)$/, '$1•••$2');
+      const tk = newToken();
+      rec.toks = [{ tk, t: Date.now() }].concat(rec.toks || []).slice(0, MAX_TOKENS);
+      await store.setJSON('u:' + rec.u, rec);
+      await store.setJSON(gk, { u: rec.u });
+      const box = await inbox(store, rec.u);
+      return ok({ u: rec.u, tok: tk, p: rec.p, upd: rec.upd, t: rec.t, inbox: box.items, created });
+    }
 
     case 'register': {
       const u = cleanUser(body.u);
@@ -126,6 +181,7 @@ export async function handle(body, store, opts) {
       const a = await auth(store, body);
       if (!a) return fail(401, 'session');
       await store.delete('u:' + a.u); await store.delete('in:' + a.u);
+      if (a.rec.google) await store.delete('g:' + a.rec.google);
       return ok({});
     }
 

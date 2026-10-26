@@ -6,7 +6,7 @@ const V3 = THREE.Vector3;
 
 const G = {
   state: 'menu', time: 0, built: false,
-  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'ilha', mode: 'br', csSize: 4, csGun: 'FUZIL' },
+  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'ilha', mode: 'br', csSize: 4, csGun: 'FUZIL', crossStyle: 'cruz', crossCol: 'branco' },
   actors: [], bots: [], walls: [], loot: [], nades: [], props: [],
 };
 
@@ -123,10 +123,17 @@ function onResize() {
 // ------------------------------------------------------------------ atores
 function makeActor(name, pal, isPlayer) {
   const ch = CH.make(pal, isPlayer);
-  if (isPlayer && typeof ACC !== 'undefined' && ACC.p) ch.gold = ACC.goldGuns();
+  // skins: o jogador usa as dele; alguns bots aparecem com skins para a ilha ficar mais viva
+  let wallSkin = '';
+  if (isPlayer && typeof ACC !== 'undefined' && ACC.p) { ch.skins = ACC.gunSkins(); wallSkin = ACC.wallSkin(); }
+  else if (!isPlayer && Math.random() < 0.3) {
+    const ids = Object.keys(WPN.SKINS), sk = ids[Math.floor(Math.random() * ids.length)];
+    ch.skins = { [WPN.SKINS[sk].gun]: sk };
+    if (Math.random() < 0.5) { const ws = Object.keys(WALL_SKINS); wallSkin = ws[Math.floor(Math.random() * ws.length)]; }
+  }
   scene.add(ch.root);
   return {
-    name: name, ch: ch, isPlayer: isPlayer,
+    name: name, ch: ch, isPlayer: isPlayer, wallSkin: wallSkin,
     pos: new V3(), vel: new V3(), vy: 0, onGround: true, face: 0, phase: 'plane', hs: 20, vdown: 12, board: true,
     hp: 200, maxHp: 200, armor: 0, helmet: 0, alive: true,
     slots: [null, null, null], cur: 3, nadeHand: false,
@@ -442,21 +449,124 @@ function buildWallGeo() {
   capGeo = new THREE.CylinderGeometry(WALL_T / 2, WALL_T / 2, WALL_H + 0.5 - WALL_T / 2, 10).translate(0, (WALL_H - WALL_T / 2 - 0.5) / 2, 0);
 }
 
-function wallBaseTexture(g, w, h) {
+// skins da parede de gel (compradas na loja; cada jogador usa a sua)
+const WALL_SKINS = {
+  gelo: { name: 'Gel Gelo Cristal', emis: 0x5aa8ff, ei: 0.55, rough: 0.12, metal: 0.05 },
+  ouro: { name: 'Gel Ouro Real', emis: 0x3a2400, ei: 0.25, rough: 0.28, metal: 0.85 },
+  neon: { name: 'Gel Neon', emis: 0xffffff, ei: 1.5, rough: 0.4, metal: 0.2, pulse: 1 },
+  lava: { name: 'Gel Lava', emis: 0xffffff, ei: 1.6, rough: 0.8, metal: 0, pulse: 1 },
+  arco: { name: 'Gel Arco-Íris', emis: 0xffffff, ei: 0.3, rough: 0.35, metal: 0.1 },
+};
+function wallBaseTexture(g, w, h, skin) {
+  const R = Math.random;
+  if (skin === 'gelo') {
+    const gr = g.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, '#e6f8ff'); gr.addColorStop(0.45, '#8fd2fb'); gr.addColorStop(1, '#2f86d6');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    // facetas de cristal: triângulos com tons diferentes e arestas claras
+    const pts = [];
+    for (let i = 0; i < 46; i++) pts.push([R() * w, R() * h]);
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i * 7 + 3) % pts.length], c = pts[(i * 13 + 5) % pts.length];
+      g.fillStyle = 'rgba(' + (R() < 0.5 ? '255,255,255,' : '20,90,180,') + (0.05 + R() * 0.12) + ')';
+      g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.lineTo(c[0], c[1]); g.closePath(); g.fill();
+    }
+    g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 1.5;
+    for (let i = 0; i < 40; i++) { const x = R() * w, y = R() * h, a = R() * 6.28, l = 20 + R() * 70; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke(); }
+    for (let i = 0; i < 400; i++) { g.fillStyle = 'rgba(255,255,255,' + R() * 0.8 + ')'; g.fillRect(R() * w, R() * h, 1.5, 1.5); }
+    return;
+  }
+  if (skin === 'ouro') {
+    const gr = g.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, '#fff3b0'); gr.addColorStop(0.35, '#f0c24a'); gr.addColorStop(0.7, '#c98d1c'); gr.addColorStop(1, '#7a4c08');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    // gravação: arabescos em fileiras e frisos em cima e embaixo
+    g.lineWidth = 2.2;
+    for (let row = 0; row < 3; row++) for (let col = 0; col < 8; col++) {
+      const cx = col * 64 + 32 + (row % 2) * 32, cy = 50 + row * 70;
+      g.strokeStyle = 'rgba(95,55,5,0.75)';
+      for (let k = 0; k < 4; k++) { g.beginPath(); g.arc(cx + (k % 2 ? 14 : -14), cy + (k < 2 ? -10 : 10), 12, k * 1.57, k * 1.57 + 3.6); g.stroke(); }
+      g.strokeStyle = 'rgba(255,248,200,0.8)';
+      g.beginPath(); g.arc(cx, cy, 5, 0, 6.28); g.stroke();
+    }
+    for (const y of [8, h - 14]) { g.fillStyle = 'rgba(90,50,0,0.6)'; g.fillRect(0, y, w, 6); g.fillStyle = 'rgba(255,245,190,0.7)'; g.fillRect(0, y - 2, w, 2); }
+    return;
+  }
+  if (skin === 'neon') {
+    g.fillStyle = '#080b18'; g.fillRect(0, 0, w, h);
+    const line = (x0, y0, x1, y1, c, wd) => { g.strokeStyle = c; g.lineWidth = wd; g.shadowColor = c; g.shadowBlur = 12; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); };
+    for (let x = 0; x <= w; x += 32) line(x, 0, x, h, 'rgba(38,244,255,0.85)', 2);
+    for (let y = 0; y <= h; y += 32) line(0, y, w, y, 'rgba(38,244,255,0.85)', 2);
+    for (let i = 0; i < 6; i++) { const y = 16 + Math.floor(R() * 7) * 32; line(0, y, w, y, 'rgba(255,60,240,0.95)', 3); }
+    g.shadowBlur = 0;
+    return;
+  }
+  if (skin === 'lava') {
+    g.fillStyle = '#1b0f0a'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 260; i++) { const r = 4 + R() * 18; g.fillStyle = 'rgba(' + (R() < 0.5 ? '0,0,0,' : '70,40,30,') + (0.2 + R() * 0.3) + ')'; g.beginPath(); g.arc(R() * w, R() * h, r, 0, 6.28); g.fill(); }
+    g.lineCap = 'round'; g.shadowColor = '#ff6a00'; g.shadowBlur = 14;
+    for (let i = 0; i < 9; i++) { g.strokeStyle = R() < 0.5 ? '#ff7a10' : '#ffc040'; drawCrack(g, R() * w, R() * h, R() * 6.28, 90 + R() * 120, 3 + R() * 3, 3); }
+    g.shadowBlur = 0;
+    const gr = g.createLinearGradient(0, h * 0.75, 0, h);
+    gr.addColorStop(0, 'rgba(255,90,0,0)'); gr.addColorStop(1, 'rgba(255,120,0,0.75)');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    return;
+  }
+  if (skin === 'arco') {
+    const gr = g.createLinearGradient(0, 0, w, 0);
+    ['#ff4d6d', '#ffb238', '#ffe74c', '#5be37d', '#3ec7ff', '#7a6cff', '#ff5ad1', '#ff4d6d'].forEach((c, i, a) => gr.addColorStop(i / (a.length - 1), c));
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    const gv = g.createLinearGradient(0, 0, 0, h);
+    gv.addColorStop(0, 'rgba(255,255,255,0.55)'); gv.addColorStop(0.5, 'rgba(255,255,255,0.1)'); gv.addColorStop(1, 'rgba(0,0,0,0.15)');
+    g.fillStyle = gv; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = 6;
+    for (let i = 0; i < 7; i++) { const x = R() * w; g.beginPath(); g.moveTo(x, h); g.bezierCurveTo(x + 40, h * 0.6, x - 40, h * 0.3, x + 20, 0); g.stroke(); }
+    return;
+  }
   const gr = g.createLinearGradient(0, 0, 0, h);
   gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.7, '#eef7ff'); gr.addColorStop(1, '#cfe6fa');
   g.fillStyle = gr; g.fillRect(0, 0, w, h);
   g.strokeStyle = 'rgba(150,190,230,0.35)'; g.lineWidth = 3;
   for (let i = 0; i < 9; i++) {
     g.beginPath();
-    const x = Math.random() * w, y = Math.random() * h;
-    g.moveTo(x, y); g.quadraticCurveTo(x + 30, y + 10, x + 60 + Math.random() * 60, y - 10);
+    const x = R() * w, y = R() * h;
+    g.moveTo(x, y); g.quadraticCurveTo(x + 30, y + 10, x + 60 + R() * 60, y - 10);
     g.stroke();
   }
   const ge = g.createLinearGradient(0, 0, w, 0);
   ge.addColorStop(0, 'rgba(160,200,240,0.55)'); ge.addColorStop(0.08, 'rgba(160,200,240,0)');
   ge.addColorStop(0.92, 'rgba(160,200,240,0)'); ge.addColorStop(1, 'rgba(160,200,240,0.55)');
   g.fillStyle = ge; g.fillRect(0, 0, w, h);
+}
+// material de uma parede (textura própria, porque as rachaduras são desenhadas nela)
+function makeWallMat(skin) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512; canvas.height = 256;
+  const g = canvas.getContext('2d');
+  const st = skin && Object.prototype.hasOwnProperty.call(WALL_SKINS, skin) ? WALL_SKINS[skin] : null;
+  wallBaseTexture(g, 512, 256, st ? skin : '');
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = TX.aniso || 4;
+  const mat = st ? new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: st.emis, emissiveIntensity: st.ei, roughness: st.rough, metalness: st.metal, envMapIntensity: 1.2 })
+    : U.toon({ map: tex, color: 0xffffff, emissive: 0x4a5c70 });
+  return { mat, tex, ctx: g, st };
+}
+// peça de parede inteira (arco + pontas), usada na partida e na vitrine da loja
+function wallMesh(mat) {
+  if (!wallGeo) buildWallGeo();
+  const grp = new THREE.Group();
+  const m = new THREE.Mesh(wallGeo, mat);
+  m.castShadow = true; m.receiveShadow = true;
+  grp.add(m);
+  U.addOutline(m, 0.035);
+  for (const s of [-1, 1]) {
+    const cap = new THREE.Mesh(capGeo, mat);
+    cap.position.set(Math.sin(s * WALL_ARC / 2) * WALL_R, -0.5, Math.cos(s * WALL_ARC / 2) * WALL_R);
+    grp.add(cap);
+    U.addOutline(cap, 0.035);
+  }
+  return grp;
 }
 
 function drawCrack(g, x, y, ang, len, width, depth) {
@@ -491,30 +601,14 @@ function deployWall(owner, towardYaw, fromNet) {
   const base = Math.min(W.height(px, pz), W.height(px + fz * 1.5, pz - fx * 1.5), W.height(px - fz * 1.5, pz + fx * 1.5), owner.pos.y);
   const phi0 = Math.atan2(fx, fz);
 
-  const canvas = document.createElement('canvas');
-  canvas.width = 512; canvas.height = 256;
-  const g = canvas.getContext('2d');
-  wallBaseTexture(g, 512, 256);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = U.toon({ map: tex, color: 0xffffff, emissive: 0x4a5c70 });
-  const grp = new THREE.Group();
+  const wm = makeWallMat(owner.wallSkin), mat = wm.mat, tex = wm.tex, g = wm.ctx;
+  const grp = wallMesh(mat);
   grp.position.set(cx, base, cz);
   grp.rotation.y = phi0;
-  const m = new THREE.Mesh(wallGeo, mat);
-  m.castShadow = true; m.receiveShadow = true;
-  grp.add(m);
-  U.addOutline(m, 0.035);
-  for (const s of [-1, 1]) {
-    const cap = new THREE.Mesh(capGeo, mat);
-    cap.position.set(Math.sin(s * WALL_ARC / 2) * WALL_R, -0.5, Math.cos(s * WALL_ARC / 2) * WALL_R);
-    grp.add(cap);
-    U.addOutline(cap, 0.035);
-  }
   grp.scale.y = 0.05;
   scene.add(grp);
 
-  const wall = { owner: owner, grp: grp, mat: mat, tex: tex, ctx: g, cx: cx, cz: cz, base: base, phi0: phi0, hp: WALL_HP, life: WALL_LIFE, grow: 0, cols: [], dead: false };
+  const wall = { owner: owner, grp: grp, mat: mat, tex: tex, ctx: g, st: wm.st, cx: cx, cz: cz, base: base, phi0: phi0, hp: WALL_HP, life: WALL_LIFE, grow: 0, cols: [], dead: false };
   for (let i = 0; i < WALL_SEGS; i++) {
     const phi = phi0 - WALL_ARC / 2 + (i + 0.5) / WALL_SEGS * WALL_ARC;
     const c = {
@@ -580,6 +674,7 @@ function updateWalls(dt) {
   for (let i = G.walls.length - 1; i >= 0; i--) {
     const w = G.walls[i];
     if (w.grow < 1) { w.grow = Math.min(1, w.grow + dt / 0.22); w.grp.scale.y = 0.05 + 0.95 * U.smooth(0, 1, w.grow); }
+    if (w.st && w.st.pulse) w.mat.emissiveIntensity = w.st.ei * (0.75 + 0.25 * Math.sin(G.time * 4 + i));
     w.life -= dt;
     if (w.life <= 0) shatterWall(w, null);
   }
@@ -1397,6 +1492,15 @@ function aimAssist(p, dt) {
   return isTouch ? 0.55 + bestS * 0.3 : 0.8;
 }
 
+// inspecionar a arma (tecla I ou o botão do olho): o personagem gira a arma na frente da câmera
+const INSPECT_T = 3.2;
+function startInspect(p) {
+  const s = curSlot(p);
+  if (!s || p.nadeHand || p.reloadT > 0 || p.healT > 0 || p.phase !== 'ground' || G.ads) return;
+  p.inspect = true; p.inspT = 0; p.inspId = s.id; p.aimOn = false; p.emote = null;
+  SND.play('ui', 0.5);
+}
+
 function updatePlayer(dt) {
   const p = G.player;
   if (!p.alive) { CH.animate(p.ch, dt, { dead: true }); return; }
@@ -1447,6 +1551,7 @@ function updatePlayer(dt) {
     if (canOpenAirdrop()) openAirdrop(p); else playerPickup();
   }
   if (consume('reload', 'KeyR')) startReload(p);
+  if (consume('inspect', 'KeyI')) { if (p.inspect) p.inspect = false; else startInspect(p); }
   if (consume('aimToggle')) p.aimOn = !p.aimOn;
   if (consume('nade', 'KeyQ')) {
     if (p.nadeHand) { p.nadeHand = false; refreshGuns(p); }
@@ -1476,6 +1581,12 @@ function updatePlayer(dt) {
   if (!curSlot(p) || p.nadeHand) p.aimOn = false;
   p.aim = U.damp(p.aim, p.aimOn ? 1 : 0, 12, dt);
 
+  // inspecionar: cancela ao atirar, mirar, recarregar, trocar de arma ou correr
+  if (p.inspect) {
+    p.inspT += dt / INSPECT_T;
+    const s = curSlot(p);
+    if (p.inspT >= 1 || firing || p.aimOn || p.reloadT > 0 || p.healT > 0 || p.nadeHand || !s || s.id !== p.inspId || p.speed > 4.5 || !p.onGround) p.inspect = false;
+  }
   if (p.emote) { p.emoteT -= dt; if (p.emoteT <= 0 || p.speed > 0.6 || firing || !p.onGround || p.aimOn) p.emote = null; }
   const combat = p.aimOn || G.time - p.lastFire < 0.7 || p.nadeHand;
   let target = p.face;
@@ -1485,7 +1596,7 @@ function updatePlayer(dt) {
   p.ch.body.rotation.y = p.face;
   p.ch.root.position.copy(p.pos);
   p.ch.root.visible = !isScoped(p);
-  CH.animate(p.ch, dt, { mode: 'ground', speed: p.speed, vx: p.vel.x, vz: p.vel.z, aim: combat && curSlot(p) ? Math.max(p.aim, 0.85) : p.aim, air: !p.onGround, pitch: combat || G.settings.look === 'fp' ? G.pitch : 0, crouch: p.crouch, armed: !!curSlot(p) && !p.nadeHand && !p.emote, reload: reloadK(p), emote: p.emote, gunAt: fpGunAt(p) });
+  CH.animate(p.ch, dt, { mode: 'ground', speed: p.speed, vx: p.vel.x, vz: p.vel.z, aim: combat && curSlot(p) ? Math.max(p.aim, 0.85) : p.aim, air: !p.onGround, pitch: combat || G.settings.look === 'fp' ? G.pitch : 0, crouch: p.crouch, armed: !!curSlot(p) && !p.nadeHand && !p.emote, reload: reloadK(p), emote: p.emote, gunAt: fpGunAt(p), inspect: p.inspect ? p.inspT : 0 });
 
   // passos: poeirinha e som
   if (p.onGround && p.speed > 2.2) {

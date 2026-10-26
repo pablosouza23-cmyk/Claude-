@@ -171,6 +171,19 @@ LOB.renderAuth = function () {
   $('aGo').textContent = m === 'login' ? 'ENTRAR' : m === 'new' ? 'CRIAR CONTA' : m === 'reset' ? 'TROCAR SENHA E ENTRAR' : 'IMPORTAR CONTA';
   $('aPass').autocomplete = m === 'new' ? 'new-password' : 'current-password';
   $('authErr').textContent = '';
+  // Entrar com Google (só com o servidor do jogo e o ID do Google configurado)
+  const gOn = SRV.on && !!SRV.gid && (m === 'login' || m === 'new');
+  $('gBox').classList.toggle('hidden', !gOn);
+  if (gOn && !LOB.gDone) { LOB.gDone = true; GOOG.button($('gBtn'), (c) => LOB.googleCred(c)).then(ok => { if (!ok) { LOB.gDone = false; $('gBox').classList.add('hidden'); } }); }
+};
+LOB.googleCred = async function (cred) {
+  if (LOB.authBusy) return;
+  LOB.authBusy = true; $('authErr').textContent = 'Entrando com Google…';
+  const r = await SRV.google(cred, false);
+  LOB.authBusy = false;
+  if (r.err) { $('authErr').textContent = r.err; return; }
+  $('authErr').textContent = '';
+  LOB.enter(r.created ? 'Conta criada com o Google! Bem-vindo, ' + ACC.p.name + '.' : 'Bem-vindo de volta, ' + ACC.p.name + '!');
 };
 LOB.submitAuth = async function () {
   const m = LOB.authMode;
@@ -239,11 +252,13 @@ LOB.openShop = function (kind, title) {
 };
 LOB.closeShop = function () {
   if (LOB.preview) { LOB.preview = null; swapShowcase(); }
+  LOB.setDisplay(null);
   LOB.shift = 0;
   goMenu();
 };
 LOB.items = function (kind) {
-  if (kind === 'guns') return Object.keys(SHOP.guns).map(id => ({ id: id, name: SHOP.guns[id].name, it: SHOP.guns[id] }));
+  if (kind === 'guns') return Object.keys(SHOP.guns).map(id => ({ id: id, name: WPN.SKINS[id].name, gun: WPN.SKINS[id].gun, it: SHOP.guns[id] }));
+  if (kind === 'walls') return Object.keys(SHOP.walls).map(id => ({ id: id, name: WALL_SKINS[id].name, it: SHOP.walls[id] }));
   return kind === 'skins' ? SKINS.map(s => ({ id: s[0], name: s[1], it: SHOP.skins[s[0]] })) : EMOTES.map(e => ({ id: e[0], name: e[1], icon: e[2], it: SHOP.emotes[e[0]] }));
 };
 LOB.priceHTML = (pr) => pr ? cur(pr[0]) + '<b>' + fmtN(pr[1]) + '</b>' : '<b>GRÁTIS</b>';
@@ -253,10 +268,12 @@ LOB.renderShop = function () {
   document.querySelectorAll('#shTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === kind));
   const list = LOB.items(kind);
   if (!S.sel) S.sel = list[0].id;
+  if ((kind === 'guns' || kind === 'walls') && (!LOB.disp || LOB.disp.userData.id !== S.sel)) LOB.setDisplay(kind, S.sel);
   $('shGrid').innerHTML = list.map(o => {
-    const own = ACC.owns(kind, o.id), eq = kind === 'skins' && p.skin === o.id, r = RARE[o.it.rare];
-    const th = kind === 'guns' ? weaponThumbs()[o.it.gun] : null;
-    const art = kind === 'guns' ? (th ? '<img class="goldThumb" src="' + th + '" alt="">' : '<i class="ph">' + icon('bullet') + '</i>') :
+    const gear = kind === 'guns' || kind === 'walls';
+    const own = ACC.owns(kind, o.id), eq = kind === 'skins' ? p.skin === o.id : gear && own && ACC.skinOn(o.id, kind), r = RARE[o.it.rare];
+    const th = gear ? skinThumbs()[o.id] : null;
+    const art = gear ? (th ? '<img class="skThumb" src="' + th + '" alt="">' : '<i class="ph">' + icon(kind === 'walls' ? 'shield' : 'bullet') + '</i>') :
       kind === 'skins' ? (LOB.thumbs[o.id] ? '<img src="' + LOB.thumbs[o.id] + '" alt="">' : '<i class="ph">' + icon('person') + '</i>') : '<i class="emo">' + o.icon + '</i>';
     return '<button class="card' + (S.sel === o.id ? ' sel' : '') + '" data-id="' + o.id + '" style="--rc:' + r[1] + '">' + art +
       '<span class="nm">' + o.name + '</span>' + (eq ? '<em class="tagEq">EQUIPADO</em>' : own ? '<em class="tagOwn">' + icon('check') + '</em>' : '<span class="pr">' + LOB.priceHTML(o.it.price) + '</span>') + '</button>';
@@ -268,7 +285,7 @@ LOB.renderShop = function () {
 LOB.select = function (id) {
   const S = LOB.sh;
   S.sel = id;
-  if (S.kind === 'guns') { /* a arma dourada aparece nas costas do personagem depois de comprada */ }
+  if (S.kind === 'guns' || S.kind === 'walls') LOB.setDisplay(S.kind, id);
   else if (S.kind === 'skins') { const k = id === ACC.p.skin ? null : id; if (LOB.preview !== k) { LOB.preview = k; swapShowcase(); } showEmote('wave'); }
   else showEmote(id);
   document.querySelectorAll('#shGrid .card').forEach(b => b.classList.toggle('sel', b.dataset.id === id));
@@ -276,19 +293,20 @@ LOB.select = function (id) {
 };
 LOB.renderDetail = function () {
   const S = LOB.sh, kind = S.kind, id = S.sel, o = LOB.items(kind).find(x => x.id === id), r = RARE[o.it.rare], p = ACC.p;
-  const own = ACC.owns(kind, id), eq = kind === 'skins' && p.skin === id;
+  const own = ACC.owns(kind, id), eq = kind === 'skins' && p.skin === id, gear = kind === 'guns' || kind === 'walls';
   let btn;
-  if (kind === 'guns') {
-    const on = own && ACC.p.goldOff.indexOf(id) < 0;
-    btn = own ? '<button class="mBtn ' + (on ? 'ok' : 'primary') + '" id="shAct">' + (on ? icon('check') + 'USANDO' : 'USAR DOURADA') + '</button>' :
+  if (gear) {
+    const on = own && ACC.skinOn(id, kind);
+    btn = own ? '<button class="mBtn ' + (on ? 'ok' : 'primary') + '" id="shAct">' + (on ? icon('check') + 'EQUIPADA' : 'EQUIPAR') + '</button>' :
       '<button class="mBtn primary buy" id="shAct">COMPRAR ' + LOB.priceHTML(o.it.price) + '</button>' + (o.it.alt ? '<button class="mBtn primary buy alt" id="shAlt">COMPRAR ' + LOB.priceHTML(o.it.alt) + '</button>' : '');
   } else if (kind === 'skins') btn = eq ? '<button class="mBtn ok" disabled>' + icon('check') + 'EQUIPADO</button>' : own ? '<button class="mBtn primary" id="shAct">EQUIPAR</button>' :
     '<button class="mBtn primary buy" id="shAct">COMPRAR ' + LOB.priceHTML(o.it.price) + '</button>';
   else btn = own ? '<button class="mBtn ok" id="shAct">' + icon('play') + 'TESTAR</button>' : '<button class="mBtn primary buy" id="shAct">COMPRAR ' + LOB.priceHTML(o.it.price) + '</button>';
   $('shDetail').innerHTML = '<span class="rare" style="--rc:' + r[1] + '">' + r[0] + '</span><b class="dn">' + o.name + '</b><p>' +
-    (kind === 'guns' ? o.it.desc : kind === 'skins' ? SKIN_INFO[id] || '' : 'Emote com animação de captura de movimento. Use na partida pelo botão ' + icon('smile') + '.') + '</p>' + btn +
+    (gear ? o.it.desc + (kind === 'guns' ? ' <i class="skGun">' + WPN.DEF[o.gun].name + '</i>' : '') : kind === 'skins' ? SKIN_INFO[id] || '' : 'Emote com animação de captura de movimento. Use na partida pelo botão ' + icon('smile') + '.') + '</p>' + btn +
     (kind === 'emotes' && own ? '<small class="hint">Você já tem este emote.</small>' : '') +
-    (kind === 'guns' && own ? '<small class="hint">Toque para ' + (ACC.p.goldOff.indexOf(id) < 0 ? 'voltar à arma normal' : 'usar a dourada') + '.</small>' : '');
+    (gear && own ? '<small class="hint">' + (ACC.skinOn(id, kind) ? 'Toque para voltar ao visual padrão.' : 'Toque para usar esta skin.') + '</small>' : '') +
+    (gear ? '<small class="hint">Arraste para girar e inspecionar.</small>' : '');
   const b = $('shAct');
   if (b) b.addEventListener('click', () => { SND.play('ui'); LOB.act(); });
   const b2 = $('shAlt');
@@ -296,7 +314,7 @@ LOB.renderDetail = function () {
 };
 LOB.act = function (useAlt) {
   const S = LOB.sh, kind = S.kind, id = S.sel, it = SHOP[kind][id];
-  if (kind === 'guns') { LOB.actGun(id, it, useAlt); return; }
+  if (kind === 'guns' || kind === 'walls') { LOB.actGun(id, it, useAlt, kind); return; }
   if (ACC.owns(kind, id)) {
     if (kind === 'skins') { ACC.p.skin = id; ACC.emit(); LOB.preview = null; LOB.applyProfile(); swapShowcase(); notify('ok', 'Personagem equipado'); if (NET.on()) NET.setAvatar(id); }
     else showEmote(id);
@@ -321,23 +339,64 @@ LOB.act = function (useAlt) {
   }, true], ['CANCELAR']]);
 };
 
-// arma dourada: comprar (gemas ou ouro) ou ligar/desligar
-LOB.actGun = function (id, it, useAlt) {
-  const refresh = () => { if (G.show) G.show.ch.gold = ACC.goldGuns(); swapShowcase(); LOB.renderShop(); };
-  if (ACC.owns('guns', id)) { ACC.toggleGold(id); refresh(); return; }
+// skins de arma e de gel: comprar (gemas ou ouro) ou equipar/desequipar
+LOB.actGun = function (id, it, useAlt, kind) {
+  const name = LOB.items(kind).find(x => x.id === id).name;
+  const refresh = () => { swapShowcase(); LOB.syncLook(); LOB.renderShop(); };
+  if (ACC.owns(kind, id)) { ACC.equipSkin(id, kind); refresh(); notify('ok', ACC.skinOn(id, kind) ? name + ' equipada' : 'Visual padrão'); return; }
   const pr = useAlt && it.alt ? it.alt : it.price;
   if (!ACC.canPay(pr)) {
     const falta = pr[1] - ACC.p[pr[0]];
-    LOB.dialog(pr[0] === 'gems' ? 'GEMAS INSUFICIENTES' : 'OURO INSUFICIENTE', 'Faltam <b>' + fmtN(falta) + '</b> ' + (pr[0] === 'gems' ? 'gemas' : 'de ouro') + ' para ' + it.name + '.',
+    LOB.dialog(pr[0] === 'gems' ? 'GEMAS INSUFICIENTES' : 'OURO INSUFICIENTE', 'Faltam <b>' + fmtN(falta) + '</b> ' + (pr[0] === 'gems' ? 'gemas' : 'de ouro') + ' para ' + name + '.',
       [[pr[0] === 'gems' ? 'RECARGAR' : 'TROCAR GEMAS', () => LOB.openRecharge(), true], ['AGORA NÃO']]);
     return;
   }
-  LOB.dialog('CONFIRMAR COMPRA', 'Comprar <b>' + it.name + '</b> por <span class="inlineP">' + LOB.priceHTML(pr) + '</span>?', [['COMPRAR', () => {
-    const err = ACC.buyGun(id, useAlt);
+  LOB.dialog('CONFIRMAR COMPRA', 'Comprar <b>' + name + '</b> por <span class="inlineP">' + LOB.priceHTML(pr) + '</span>?', [['COMPRAR', () => {
+    const err = ACC.buyGun(id, useAlt, kind);
     if (err) { notify('info', err); return; }
-    SND.play('pick'); notify('ok', it.name + ' é sua! Já aparece na mão e nas costas.');
-    refresh(); showEmote('cheer2');
+    SND.play('pick'); notify('ok', name + ' é sua! Já está equipada.');
+    refresh();
   }, true], ['CANCELAR']]);
+};
+// manda o visual novo para a sala (se estiver numa)
+LOB.syncLook = function () { if (typeof NET !== 'undefined' && NET.on()) NET.setAvatar(G.settings.avatar); };
+
+// vitrine da loja: a arma (ou a parede de gel) grande no palco, girando; arrastar gira para inspecionar
+LOB.setDisplay = function (kind, id) {
+  if (LOB.disp) { scene.remove(LOB.disp); LOB.disp = null; }
+  if (G.show) G.show.ch.root.visible = true;
+  if (!kind) return;
+  const g = new THREE.Group();
+  if (kind === 'guns') {
+    const sk = WPN.SKINS[id], m = WPN.mesh(sk.gun, 0.006);
+    m.userData.main.material = WPN.skinMat(id);
+    const box = new THREE.Box3().setFromObject(m), c = box.getCenter(new THREE.Vector3()), len = box.getSize(new THREE.Vector3()).z;
+    m.position.sub(c);
+    const holder = new THREE.Group(); holder.add(m); holder.rotation.y = Math.PI / 2;
+    holder.scale.setScalar(Math.min(2.6, 1.9 / Math.max(0.2, len)));
+    g.add(holder);
+  } else {
+    const wm = makeWallMat(id), w = wallMesh(wm.mat);
+    w.position.set(0, -WALL_H / 2 + 0.25, -WALL_R);
+    const holder = new THREE.Group(); holder.add(w); holder.scale.setScalar(0.48);
+    g.add(holder);
+    g.userData.wm = wm;
+  }
+  g.userData.kind = kind; g.userData.id = id;
+  scene.add(g);
+  LOB.disp = g;
+  LOB.yaw = 0;
+};
+LOB.updateDisplay = function (dt, t) {
+  const d = LOB.disp;
+  if (!d) return;
+  if (G.show) G.show.ch.root.visible = false;
+  d.position.copy(LOB.podium).add(new THREE.Vector3(0, 1.05 + Math.sin(t * 1.6) * 0.05, 0));
+  // gira sozinho devagar; arrastando, o jogador controla o ângulo
+  LOB.dispSpin = (LOB.dispSpin || 0) + (LOB.drag ? 0 : dt * 0.55);
+  d.rotation.set(d.userData.kind === 'guns' ? Math.sin(t * 0.7) * 0.12 : 0, LOB.outYaw + LOB.yaw * 2 + LOB.dispSpin, 0);
+  const wm = d.userData.wm;
+  if (wm && wm.st && wm.st.pulse) wm.mat.emissiveIntensity = wm.st.ei * (0.75 + 0.25 * Math.sin(t * 4));
 };
 
 // ---------- ranking global ----------
@@ -474,7 +533,13 @@ LOB.renderProfile = function () {
       .map(s => '<div><small>' + s[0] + '</small><b>' + s[1] + '</b></div>').join('') + '</div>' +
     '<div class="pfBtns">' + (p.owner ? '<button class="chip hot" id="pfAdmin">' + icon('shield') + 'PAINEL DO DONO</button>' : '') + (guest ? '<button class="chip hot" id="pfNew">' + icon('user') + 'CRIAR CONTA</button>' : '') +
     '<button class="chip" id="pfCode">' + icon('copy') + 'CÓDIGO DE TRANSFERÊNCIA</button><button class="chip" id="pfOut">' + icon('exit') + (guest ? 'ENTRAR EM OUTRA CONTA' : 'SAIR DA CONTA') + '</button>' +
-    (guest ? '' : '<button class="chip danger" id="pfDel">APAGAR CONTA</button>') + '</div>';
+    (guest ? '' : '<button class="chip danger" id="pfDel">APAGAR CONTA</button>') + '</div>' +
+    (!guest && SRV.on && SRV.gid && SRV.user === ACC.user ? (p.google ? '<p class="pfG">' + icon('check') + 'Conta Google ligada: <b>' + escapeHTML(p.google) + '</b></p>' :
+      '<div class="pfG"><small>Ligue sua conta Google para entrar sem senha em qualquer aparelho:</small><div id="pfGBtn"></div></div>') : '');
+  if ($('pfGBtn')) GOOG.button($('pfGBtn'), async (c) => {
+    const r = await SRV.google(c, true);
+    if (r.err) notify('info', r.err); else { notify('ok', 'Conta Google ligada!'); LOB.renderProfile(); }
+  });
   $('pfName').addEventListener('keydown', e => e.stopPropagation());
   $('pfName').addEventListener('change', () => { LOB.setName($('pfName').value); });
   const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', () => { SND.play('ui'); fn(); }); };
@@ -509,7 +574,7 @@ LOB.openMail = function () {
   LOB.renderMail();
 };
 const fmtDate = (t) => { const d = new Date(t); return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
-LOB.itemIcon = (it) => it.k === 'gold' ? COIN_SVG : it.k === 'gems' ? GEM_SVG : it.k === 'verified' ? VERIFIED_SVG : it.k === 'emote' || it.k === 'allEmotes' ? icon('smile') : icon('person');
+LOB.itemIcon = (it) => it.k === 'gold' ? COIN_SVG : it.k === 'gems' ? GEM_SVG : it.k === 'verified' ? VERIFIED_SVG : it.k === 'allGuns' ? icon('bullet') : it.k === 'emote' || it.k === 'allEmotes' ? icon('smile') : icon('person');
 LOB.renderMail = function () {
   const list = ACC.p.mail;
   if (LOB.mailSel) ACC.readMail(LOB.mailSel);
@@ -575,7 +640,7 @@ LOB.renderAdmin = function () {
       '<label class="fld"><span>Para (ID do jogador ou "todos")</span><input id="adTo" value="' + (LOB.adTo || 'todos') + '" spellcheck="false"></label>' +
       '<label class="fld"><span>Título</span><input id="adTitle" maxlength="40" value="Presente da equipe"></label>' +
       '<label class="fld"><span>Mensagem</span><textarea id="adText" rows="2" maxlength="300">Valeu por jogar Battle Island!</textarea></label>' +
-      '<div class="adGifts"><label><input type="checkbox" id="adSkins"> Todos os personagens</label><label><input type="checkbox" id="adEmotes"> Todos os emotes</label><label><input type="checkbox" id="adVf"> Selo de verificado</label>' +
+      '<div class="adGifts"><label><input type="checkbox" id="adSkins"> Todos os personagens</label><label><input type="checkbox" id="adEmotes"> Todos os emotes</label><label><input type="checkbox" id="adGuns"> Todas as skins de arma e gel</label><label><input type="checkbox" id="adVf"> Selo de verificado</label>' +
       '<label class="num">' + COIN_SVG + '<input type="number" id="adGold" min="0" max="1000000" value="0"></label><label class="num">' + GEM_SVG + '<input type="number" id="adGems" min="0" max="100000" value="0"></label></div>' +
       '<button class="mBtn primary" id="adSend">' + icon('mail') + 'ENVIAR</button></div>';
     body.querySelectorAll('input, textarea').forEach(el => el.addEventListener('keydown', e => e.stopPropagation()));
@@ -585,6 +650,7 @@ LOB.renderAdmin = function () {
       const items = [];
       if ($('adSkins').checked) items.push({ k: 'allSkins' });
       if ($('adEmotes').checked) items.push({ k: 'allEmotes' });
+      if ($('adGuns').checked) items.push({ k: 'allGuns' });
       if ($('adVf').checked) items.push({ k: 'verified' });
       const g = Math.max(0, Math.floor(+$('adGold').value || 0)), m = Math.max(0, Math.floor(+$('adGems').value || 0));
       if (g) items.push({ k: 'gold', n: g });
@@ -817,7 +883,7 @@ LOB.init = function () {
     else if (k === 'rank') LOB.openRank();
   }));
   click('shBack', () => LOB.closeShop());
-  document.querySelectorAll('#shTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.sh.kind = b.dataset.t; LOB.sh.sel = b.dataset.t === 'skins' ? ACC.p.skin : null; if (LOB.preview) { LOB.preview = null; swapShowcase(); } LOB.renderShop(); }));
+  document.querySelectorAll('#shTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.sh.kind = b.dataset.t; LOB.sh.sel = b.dataset.t === 'skins' ? ACC.p.skin : null; if (LOB.preview) { LOB.preview = null; swapShowcase(); } LOB.setDisplay(null); LOB.renderShop(); }));
   click('rcClose', () => LOB.closeRecharge());
   click('rcEx', () => LOB.exchange());
   click('rcHist', () => LOB.history());

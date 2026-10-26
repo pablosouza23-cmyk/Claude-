@@ -12,7 +12,7 @@ WPN.RARITY = {
 
 // type controla animação/recuo; sight escolhe a retícula; zoom = aproximação ao mirar
 WPN.DEF = {
-  FUZIL: { name: 'Fuzil de Assalto', short: 'FUZIL', rarity: 'comum', type: 'rifle', dmg: 34, head: 54, cd: 0.11, mag: 30, res: 120, spread: 0.011, range: 160, sight: 'reddot', zoom: 1.6, icon: 'rifle', desc: 'Equilíbrio entre alcance, precisão e poder de fogo.' },
+  FUZIL: { name: 'AK-47', short: 'AK-47', rarity: 'comum', type: 'rifle', dmg: 34, head: 54, cd: 0.11, mag: 30, res: 120, spread: 0.011, range: 160, sight: 'reddot', zoom: 1.6, icon: 'rifle', desc: 'Equilíbrio entre alcance, precisão e poder de fogo.' },
   SMG: { name: 'Submetralhadora', short: 'SMG', rarity: 'comum', type: 'smg', dmg: 26, head: 40, cd: 0.075, mag: 25, res: 100, spread: 0.016, range: 100, sight: 'greendot', zoom: 1.3, icon: 'smg', desc: 'Compacta, leve e letal em curta distância.' },
   PRECISAO: { name: 'Rifle de Precisão', short: 'PRECISÃO', rarity: 'raro', type: 'sniper', dmg: 95, head: 185, cd: 1.15, mag: 5, res: 30, spread: 0.002, range: 260, sight: 'scope', zoom: 4.2, icon: 'sniper', desc: 'Precisão extrema para longas distâncias.' },
   ESCOPETA: { name: 'Escopeta', short: 'ESCOPETA', rarity: 'raro', type: 'shotgun', dmg: 16, head: 22, cd: 0.85, mag: 8, res: 32, spread: 0.06, range: 38, pellets: 8, sight: 'iron', zoom: 1.2, icon: 'shotgun', desc: 'Dano massivo a curta distância.' },
@@ -380,10 +380,38 @@ WPN.build = function (id, lod) {
 // material das armas: cores por vértice + textura de desgaste, com brilho metálico
 // O shader escolhe o material de cada parte pela cor do modelo: marrom = madeira (veios, fosca),
 // escuro = metal (escovado, arranhões brilhando), claro = polímero/pintura.
+// reflexo de estúdio para as armas: céu claro, chão cinza e três painéis de luz
+// (o metal polido e o ouro refletem isso e ganham brilho de verdade, em vez do chão escuro da ilha)
+WPN.studioEnv = function () {
+  if (WPN._env !== undefined) return WPN._env;
+  WPN._env = null;
+  try {
+    if (typeof renderer === 'undefined' || !renderer) return null;
+    const es = new THREE.Scene();
+    const sg = new THREE.SphereGeometry(50, 32, 16), col = [], pos = sg.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i) / 50, c = y > 0 ? new THREE.Color(0x9aa3ad).lerp(new THREE.Color(0xf2f4f8), Math.pow(y, 0.6)) : new THREE.Color(0x6d7178).lerp(new THREE.Color(0x26282c), Math.pow(-y, 0.5));
+      col.push(c.r, c.g, c.b);
+    }
+    sg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    es.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+    for (const [x, y, z, w, h, k] of [[0, 30, 0, 40, 18, 5], [-38, 10, 20, 8, 30, 3.5], [36, 6, -24, 10, 24, 2.5]]) {
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(k, k, k * 0.96), side: THREE.DoubleSide }));
+      pl.position.set(x, y, z); pl.lookAt(0, 0, 0); es.add(pl);
+    }
+    const pm = new THREE.PMREMGenerator(renderer);
+    WPN._env = pm.fromScene(es, 0.03).texture;
+    pm.dispose();
+  } catch (e) { WPN._env = null; }
+  return WPN._env;
+};
+
 WPN.gunMat = function () {
   if (WPN._gun) return WPN._gun;
   const metal = TX.tex('gunMetal'), wood = TX.tex('gunWood');
-  const m = new THREE.MeshStandardMaterial({ vertexColors: true, map: metal, bumpMap: metal, bumpScale: 1.2, roughness: 0.45, metalness: 0.55, envMapIntensity: 1.3 });
+  // metal fosfatado com microrrelevo (normal map), verniz leve e reflexo do céu; madeira com veio
+  const m = new THREE.MeshPhysicalMaterial({ vertexColors: true, map: metal, normalMap: TX.normal('gunMetal', 2.2), normalScale: new THREE.Vector2(0.55, 0.55),
+    roughness: 0.42, metalness: 0.6, envMap: WPN.studioEnv(), envMapIntensity: 1.25, clearcoat: 0.22, clearcoatRoughness: 0.4 });
   m.onBeforeCompile = (sh) => {
     sh.uniforms.woodMap = { value: wood };
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D woodMap;')
@@ -395,15 +423,76 @@ WPN.gunMat = function () {
         '#endif',
         'vec4 mt = texture2D(map, vMapUv);',
         'vec4 wd = texture2D(woodMap, vMapUv * vec2(0.35, 1.4));',
-        'diffuseColor.rgb *= mix(mix(mt.rgb * 1.75, vec3(0.95 + mt.r * 0.1), smoothstep(0.35, 0.6, bright)), wd.rgb * 1.15, woodK);',
+        // metal escuro ganha leve azulado de fosfato; desgaste claro nas marcas
+        'vec3 metalCol = mt.rgb * 1.6 * vec3(0.93, 0.96, 1.02);',
+        'diffuseColor.rgb *= mix(mix(metalCol, vec3(0.95 + mt.r * 0.1), smoothstep(0.35, 0.6, bright)), wd.rgb * vec3(1.18, 1.08, 1.0), woodK);',
       ].join('\n'))
-      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = mix(mix(clamp(1.05 - mt.r * 0.95, 0.2, 0.7), 0.58, smoothstep(0.35, 0.6, bright)), 0.66, woodK);')
-      .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = metalness * (1.0 - woodK) * (1.0 - smoothstep(0.3, 0.55, bright));');
+      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = mix(mix(clamp(1.1 - mt.r * 1.0, 0.18, 0.72), 0.55, smoothstep(0.35, 0.6, bright)), 0.5 - wd.r * 0.12, woodK);')
+      .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = metalness * (1.0 - woodK) * (1.0 - smoothstep(0.3, 0.55, bright) * 0.8);');
   };
-  m.customProgramCacheKey = () => 'gunPBR';
+  m.customProgramCacheKey = () => 'gunPBR2';
   WPN._gun = m;
   return m;
 };
+
+// ---------- skins de arma ----------
+// cada estilo pinta as partes de metal, de madeira e as claras com cores próprias e um desenho por cima
+// (pat: textura em cinza, branco = detalhe; col: textura colorida usada direto)
+WPN.STYLES = {
+  gold: { pat: 'skinGold', scale: 0.55, base: 0xffd85a, acc: 0x8a5a10, wood: 0x141210, wacc: 0xffd24a, brightC: 0xfff0b0, metal: 0.78, rough: 0.26, racc: 0.5, wmetal: 0.4, wrough: 0.22, coat: 0.7, nrm: 3, emis: 0xc88a18, emisK: 0, glowBase: 0.2, env: 2 },
+  ice: { pat: 'skinIce', scale: 0.8, base: 0x9fdcff, acc: 0xffffff, wood: 0x5fb7ef, wacc: 0xe8fbff, brightC: 0xdff6ff, metal: 0.15, rough: 0.06, racc: 0.3, wmetal: 0.1, wrough: 0.1, coat: 1, emis: 0x2b9cff, emisK: 0.55, glowBase: 0.08 },
+  dragon: { pat: 'skinScales', scale: 1.1, base: 0x1c0f0b, acc: 0xff4a12, wood: 0x2a0806, wacc: 0xff7a1a, brightC: 0xffb066, metal: 0.65, rough: 0.38, racc: 0.3, wmetal: 0.4, wrough: 0.35, coat: 0.5, emis: 0xff3a0a, emisK: 2.2, pulse: 1 },
+  neon: { pat: 'skinCircuit', scale: 0.9, base: 0x0b0e18, acc: 0x26f4ff, wood: 0x150a22, wacc: 0xff3cf0, brightC: 0xb8f7ff, metal: 0.55, rough: 0.3, racc: 0.2, wmetal: 0.4, wrough: 0.3, coat: 0.7, emis: 0x26f4ff, emisK: 2.4, wemis: 0xff3cf0, pulse: 1 },
+  camo: { col: 'skinCamo', scale: 0.7, metal: 0.1, rough: 0.78, coat: 0, keepMetal: true },
+  carbon: { col: 'skinCarbon', scale: 2.2, metal: 0.25, rough: 0.28, coat: 1, keepMetal: true },
+};
+// skins à venda (gun = arma em que a skin vai)
+WPN.SKINS = {
+  ak_ouro: { gun: 'FUZIL', name: 'AK-47 Dourada', style: 'gold' },
+  ak_gelo: { gun: 'FUZIL', name: 'AK-47 Gelo Ártico', style: 'ice' },
+  ak_dragao: { gun: 'FUZIL', name: 'AK-47 Dragão de Fogo', style: 'dragon' },
+  m4_neon: { gun: 'CARABINA', name: 'Carabina Neon', style: 'neon' },
+  awm_camo: { gun: 'PRECISAO', name: 'Precisão Camuflada', style: 'camo' },
+  esc_carbono: { gun: 'ESCOPETA', name: 'Escopeta Carbono', style: 'carbon' },
+  smg_gelo: { gun: 'SMG', name: 'SMG Gelo Ártico', style: 'ice' },
+  des_ouro: { gun: 'PISTOLA', name: 'Pistola Dourada', style: 'gold' },
+};
+WPN.skinMat = function (skinId) {
+  const sk = WPN.SKINS[skinId];
+  if (!sk) return WPN.gunMat();
+  WPN._skin = WPN._skin || {};
+  if (WPN._skin[sk.style]) return WPN._skin[sk.style];
+  const st = WPN.STYLES[sk.style], C = (h) => new THREE.Color(h === undefined ? 0xffffff : h);
+  const tex = TX.tex(st.pat || st.col);
+  const m = new THREE.MeshPhysicalMaterial({ vertexColors: true, map: tex, normalMap: TX.normal(st.pat || st.col, st.nrm || 1.6), normalScale: new THREE.Vector2(0.6, 0.6),
+    roughness: st.rough, metalness: st.metal, clearcoat: st.coat || 0, clearcoatRoughness: 0.18, envMap: WPN.studioEnv(), envMapIntensity: st.env || 1.15 });
+  const U2 = { uBase: { value: C(st.base) }, uAcc: { value: C(st.acc) }, uWood: { value: C(st.wood) }, uWacc: { value: C(st.wacc) }, uBright: { value: C(st.brightC) },
+    uEmis: { value: C(st.emis || 0) }, uWemis: { value: C(st.wemis || st.emis || 0) }, uEmisK: { value: st.emisK || 0 }, uGlow: { value: st.glowBase || 0 },
+    uRacc: { value: st.racc === undefined ? st.rough : st.racc }, uWmetal: { value: st.wmetal === undefined ? st.metal : st.wmetal }, uWrough: { value: st.wrough === undefined ? st.rough : st.wrough },
+    uScale: { value: st.scale || 1 }, uTime: WPN.timeU };
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, U2);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uBase, uAcc, uWood, uWacc, uBright, uEmis, uWemis; uniform float uEmisK, uGlow, uRacc, uWmetal, uWrough, uScale, uTime;\nfloat skPat = 0.0, skWood = 0.0, skBright = 0.0;')
+      .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>')
+      .replace('#include <map_fragment>', [
+        '#ifdef USE_COLOR',
+        ' skWood = smoothstep(0.035, 0.13, vColor.r - vColor.b) * step(0.07, vColor.r);',
+        ' skBright = smoothstep(0.35, 0.6, max(vColor.r, max(vColor.g, vColor.b)));',
+        '#endif',
+        'vec4 skT = texture2D(map, vMapUv * uScale);',
+        st.col ? 'skPat = 0.0; vec3 skCol = mix(skT.rgb * 1.15, vec3(0.75), skBright * 0.6);'
+          : 'skPat = skT.r; vec3 skCol = mix(mix(uBase, uAcc, skPat), mix(uWood, uWacc, skPat), skWood); skCol = mix(skCol, uBright, skBright * (1.0 - skWood));',
+        'diffuseColor.rgb = skCol;',
+      ].join('\n'))
+      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = mix(mix(roughness, uRacc, skPat), uWrough, skWood);')
+      .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = mix(metalness, uWmetal, skWood);')
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\nfloat skPulse = ' + (st.pulse ? '0.65 + 0.35 * sin(uTime * 3.0 + vMapUv.x * 4.0)' : '1.0') + ';\ntotalEmissiveRadiance += (mix(uEmis, uWemis, skWood) * skPat * uEmisK * skPulse) + uEmis * uGlow;');
+  };
+  m.customProgramCacheKey = () => 'gunSkin_' + sk.style;
+  WPN._skin[sk.style] = m;
+  return m;
+};
+WPN.timeU = { value: 0 };
 
 WPN.glowMat = function () {
   if (!WPN._gm) WPN._gm = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
@@ -411,13 +500,6 @@ WPN.glowMat = function () {
 };
 
 // malha completa (corpo + contorno + brilho) pronta para pôr na cena
-// ouro polido para as armas douradas da loja
-WPN.goldMat = function () {
-  if (WPN._gold) return WPN._gold;
-  const metal = TX.tex('gunMetal');
-  WPN._gold = new THREE.MeshStandardMaterial({ color: 0xffc845, map: metal, bumpMap: metal, bumpScale: 0.7, metalness: 0.95, roughness: 0.24, envMapIntensity: 1.7, emissive: 0x3a2400, emissiveIntensity: 0.35 });
-  return WPN._gold;
-};
 WPN.mesh = function (id, olThick) {
   const p = WPN.build(id);
   const g = new THREE.Group();

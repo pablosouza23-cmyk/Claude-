@@ -83,10 +83,33 @@ ACC.newProfile = function (name) {
     friends: [], freq: [], fsent: [],
     mail: [ACC.letter('Equipe Battle Island', 'Bem-vindo à ilha!', 'Valeu por jogar! Aqui vai um presente para começar. Ganhe ouro nas partidas e confira a loja.', [{ k: 'gold', n: 300 }, { k: 'gems', n: 10 }])] };
 };
-ACC.db = function () {
-  try { return JSON.parse(localStorage.getItem(ACC.KEY) || 'null') || { users: {} }; } catch (e) { return { users: {} }; }
+// As contas ficam em memória e são gravadas em dois lugares: no aparelho (localStorage) e, quando o jogo
+// está aberto pelo link do claude.ai, no banco de dados on-line do jogo (CLOUD, mais abaixo).
+ACC.mem = null;
+ACC.load = function () {
+  if (ACC.mem) return ACC.mem;
+  try { ACC.mem = JSON.parse(localStorage.getItem(ACC.KEY) || 'null'); } catch (e) { ACC.mem = null; }
+  if (!ACC.mem || !ACC.mem.users) ACC.mem = { users: {} };
+  return ACC.mem;
 };
-ACC.writeDb = function (db) { try { localStorage.setItem(ACC.KEY, JSON.stringify(db)); return true; } catch (e) { return false; } };
+ACC.db = () => JSON.parse(JSON.stringify(ACC.load()));
+ACC.writeDb = function (db) {
+  ACC.mem = JSON.parse(JSON.stringify(db));
+  let local = true;
+  try { localStorage.setItem(ACC.KEY, JSON.stringify(db)); } catch (e) { local = false; }
+  CLOUD.push();
+  return local || CLOUD.on();
+};
+// sessão: lembra quem está logado (no aparelho e, on-line, na conta do claude.ai de quem está jogando)
+ACC.setSession = function (user) {
+  try { if (user) localStorage.setItem(ACC.SESSION, user); else localStorage.removeItem(ACC.SESSION); } catch (e) { /* ignora */ }
+  CLOUD.setSession(user);
+};
+ACC.getSession = function () {
+  let u = null;
+  try { u = localStorage.getItem(ACC.SESSION); } catch (e) { /* ignora */ }
+  return u || CLOUD.session || null;
+};
 ACC.hashPass = (salt, pass) => { let h = salt + ':' + pass; for (let i = 0; i < 500; i++) h = SHA.hex(h + salt); return h; };
 ACC.validUser = (u) => /^[a-z0-9_.]{3,16}$/.test(u);
 // IDs especiais definidos pelo dono do jogo (ID antigo → ID novo); valem em qualquer aparelho
@@ -103,8 +126,9 @@ ACC.fix = function (p) {
 };
 ACC.use = function (user, profile) {
   ACC.user = user; ACC.p = ACC.fix(profile);
-  try { localStorage.setItem(ACC.SESSION, user); } catch (e) { /* ignora */ }
+  ACC.setSession(user);
   ACC.emit();
+  CLOUD.watch(user);
 };
 ACC.register = function (user, pass, name) {
   user = String(user || '').trim().toLowerCase();
@@ -166,8 +190,7 @@ ACC.guest = function () {
 };
 ACC.isGuest = () => ACC.user === '__guest';
 ACC.restore = function () {
-  let user = null;
-  try { user = localStorage.getItem(ACC.SESSION); } catch (e) { /* ignora */ }
+  const user = ACC.getSession();
   const db = ACC.db();
   if (user && db.users[user]) { ACC.use(user, db.users[user].p); return true; }
   return false;
@@ -175,7 +198,8 @@ ACC.restore = function () {
 ACC.logout = function () {
   ACC.save();
   ACC.user = null; ACC.p = null;
-  try { localStorage.removeItem(ACC.SESSION); } catch (e) { /* ignora */ }
+  ACC.setSession(null);
+  CLOUD.watch(null);
 };
 ACC.save = function () {
   if (!ACC.p || !ACC.user) return;
@@ -189,7 +213,8 @@ ACC.emit = function () { ACC.save(); for (const f of ACC.listeners) try { f(ACC.
 ACC.deleteAccount = function () {
   const db = ACC.db(); delete db.users[ACC.user]; ACC.writeDb(db);
   ACC.user = null; ACC.p = null;
-  try { localStorage.removeItem(ACC.SESSION); } catch (e) { /* ignora */ }
+  ACC.setSession(null);
+  CLOUD.watch(null);
 };
 
 // código de transferência: leva a conta (com a senha protegida) para outro aparelho
@@ -211,6 +236,105 @@ ACC.importCode = function (code) {
   ACC.writeDb(db);
   ACC.use(d.u, d.p);
   return null;
+};
+
+// ---------- banco de dados on-line ----------
+// Aberto pelo link do claude.ai, o jogo tem um banco de dados próprio: cada conta vira o documento
+// accounts/<usuário> (com a senha só como hash), e cada pessoa do claude.ai guarda qual conta usou por último.
+// Fora do claude.ai (arquivo, GitHub Pages, app) isto fica desligado e vale só o aparelho.
+const CLOUD = { db: null, uid: null, session: null, last: {}, dirty: false, busy: false, unsub: null, status: 'off' };
+CLOUD.on = () => !!CLOUD.db;
+const _cloudRec = (r) => ({ salt: r.salt || '', hash: r.hash || '', p: r.p, t: r.t || (r.p && r.p.created) || Date.now(), upd: r.upd || 0 });
+CLOUD.init = async function () {
+  if (!window.claude || typeof window.claude.use !== 'function') return false;
+  CLOUD.status = 'connecting';
+  const wait = (pr, ms) => Promise.race([pr, new Promise(r => setTimeout(() => r(null), ms))]);
+  try {
+    const db = await wait(window.claude.use('db'), 8000);
+    if (!db) { CLOUD.status = 'off'; return false; }
+    const user = await wait(window.claude.use('user'), 4000);
+    CLOUD.uid = user ? await wait(user.id(), 4000) : null;
+    const snap = await wait(db.collection('accounts').get(), 10000);
+    if (!snap) { CLOUD.status = 'off'; return false; }
+    // junta o que está on-line com o que está no aparelho: vale a versão mais nova de cada conta
+    const mem = ACC.load();
+    const remote = {};
+    for (const d of snap.docs) {
+      const r = d.data();
+      if (!r || !r.p) continue;
+      const u = r.u || d.id;
+      remote[u] = true;
+      const l = mem.users[u];
+      if (!l || (r.upd || 0) >= (l.upd || 0)) mem.users[u] = _cloudRec(r);
+      CLOUD.last[u] = JSON.stringify(mem.users[u]);
+    }
+    try { localStorage.setItem(ACC.KEY, JSON.stringify(mem)); } catch (e) { /* ignora */ }
+    if (CLOUD.uid) {
+      const s = await wait(db.doc('data/users/' + CLOUD.uid + '/state').get(), 5000);
+      if (s && s.exists) CLOUD.session = s.data().user || null;
+    }
+    CLOUD.db = db;
+    CLOUD.status = 'on';
+    // contas criadas só neste aparelho sobem agora
+    for (const u in mem.users) if (!remote[u] && u !== '__guest') CLOUD.dirty = true;
+    CLOUD.push();
+    return true;
+  } catch (e) {
+    console.warn('banco on-line indisponível', e);
+    CLOUD.status = 'off';
+    return false;
+  }
+};
+// grava as contas que mudaram (uma escrita por vez, sem repetir o que já está lá)
+CLOUD.push = function () {
+  if (!CLOUD.db) return;
+  CLOUD.dirty = true;
+  clearTimeout(CLOUD.timer);
+  CLOUD.timer = setTimeout(CLOUD.flush, 700);
+};
+CLOUD.flush = async function () {
+  if (!CLOUD.db || CLOUD.busy || !CLOUD.dirty) return;
+  CLOUD.busy = true; CLOUD.dirty = false;
+  const mem = ACC.load();
+  try {
+    for (const u in mem.users) {
+      if (u === '__guest') continue;
+      const rec = mem.users[u], js = JSON.stringify(rec);
+      if (CLOUD.last[u] === js) continue;
+      rec.upd = Date.now();
+      const out = _cloudRec(rec);
+      CLOUD.last[u] = JSON.stringify(rec);
+      await CLOUD.db.doc('accounts/' + u).set(Object.assign({ u: u }, out));
+    }
+    for (const u in CLOUD.last) if (!mem.users[u]) { delete CLOUD.last[u]; await CLOUD.db.doc('accounts/' + u).delete(); }
+    try { localStorage.setItem(ACC.KEY, JSON.stringify(mem)); } catch (e) { /* ignora */ }
+    CLOUD.status = 'on';
+  } catch (e) {
+    console.warn('não salvou on-line', e);
+    CLOUD.status = e && (e.code === 'invalid_argument' || e.code === 'not_granted') ? 'readonly' : 'error';
+    CLOUD.dirty = CLOUD.status === 'error';
+  }
+  CLOUD.busy = false;
+  if (CLOUD.dirty) CLOUD.push();
+};
+CLOUD.setSession = function (user) {
+  CLOUD.session = user || null;
+  if (!CLOUD.db || !CLOUD.uid) return;
+  CLOUD.db.doc('data/users/' + CLOUD.uid + '/state').set({ user: user || '', t: Date.now() }).catch(() => {});
+};
+// acompanha a conta aberta: correio e mudanças feitas em outro aparelho chegam na hora
+CLOUD.watch = function (user) {
+  if (CLOUD.unsub) { CLOUD.unsub(); CLOUD.unsub = null; }
+  if (!CLOUD.db || !user || user === '__guest') return;
+  CLOUD.unsub = CLOUD.db.doc('accounts/' + user).onSnapshot((snap) => {
+    if (!snap.exists || snap.metadata.hasPendingWrites) return;
+    const r = snap.data(), mem = ACC.load(), l = mem.users[user];
+    if (!r || !r.p || (l && (r.upd || 0) <= (l.upd || 0))) return;
+    mem.users[user] = _cloudRec(r);
+    CLOUD.last[user] = JSON.stringify(mem.users[user]);
+    try { localStorage.setItem(ACC.KEY, JSON.stringify(mem)); } catch (e) { /* ignora */ }
+    if (ACC.user === user) { ACC.p = ACC.fix(JSON.parse(JSON.stringify(r.p))); for (const f of ACC.listeners) try { f(ACC.p); } catch (e) { console.error(e); } }
+  }, () => { CLOUD.unsub = null; });
 };
 
 // ---------- progresso e moedas ----------

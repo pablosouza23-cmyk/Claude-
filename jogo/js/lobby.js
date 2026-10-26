@@ -158,8 +158,10 @@ LOB.renderAuth = function () {
   const users = m === 'login' || m === 'reset' ? ACC.userList() : [];
   $('authUsers').innerHTML = users.length ? '<small>Contas neste aparelho:</small>' + users.map(u => '<button type="button" class="chip" data-u="' + escapeHTML(u) + '">' + escapeHTML(u) + '</button>').join('') : '';
   $('authUsers').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { $('aUser').value = b.dataset.u; $('aPass').focus(); }));
-  const ok = ACC.storageOk(), bad = !ok || /^(content|blob):/.test(location.protocol);
+  const cloud = CLOUD.on(), ok = ACC.storageOk(), bad = !cloud && (!ok || /^(content|blob):/.test(location.protocol));
   $('authWarn').classList.toggle('hidden', !bad);
+  $('authNote').innerHTML = cloud ? icon('check') + ' Sua conta fica salva <b>on-line</b>, no banco de dados do jogo. Entre com o mesmo usuário e senha em qualquer aparelho.' :
+    'Sua conta fica salva neste aparelho. Para jogar em outro celular, gere o código de transferência no perfil.';
   $('authWarn').innerHTML = icon('warn') + (!ok ? 'Este navegador não está salvando dados (modo anônimo ou visualizador de arquivos). A conta vai sumir ao fechar. Abra o jogo no Chrome normal.' :
     'O jogo foi aberto direto do arquivo baixado e o celular pode apagar a conta ao fechar. Para a conta ficar salva, jogue pelo link do jogo no Chrome.');
   $('fUser').classList.toggle('hidden', m === 'code');
@@ -384,7 +386,8 @@ LOB.renderProfile = function () {
     '<div class="pfTop"><div class="pfAv" style="background-image:url(' + (LOB.thumbs[p.skin] || '') + ')"></div><div class="pfId">' +
     '<label class="fld inline"><span>Apelido</span><input id="pfName" maxlength="14" value="' + escapeHTML(p.name) + '">' + (p.verified ? VERIFIED_SVG : '') + '</label>' +
     '<div class="pfIdRow"><button id="pfIdBtn" class="idTag" aria-label="Copiar ID">ID <b>' + p.id + '</b>' + icon('copy') + '</button>' + (p.verified ? '<span class="vfTag">' + VERIFIED_SVG + 'VERIFICADO</span>' : '') + (p.owner ? '<span class="vfTag own">' + icon('crown') + 'DONO</span>' : '') + '</div>' +
-    '<div class="pfAcc">' + (guest ? icon('warn') + 'Convidado: crie uma conta para não perder o progresso' : icon('user') + 'Conta: <b>' + escapeHTML(ACC.user) + '</b>') + '</div>' +
+    '<div class="pfAcc">' + (guest ? icon('warn') + 'Convidado: crie uma conta para não perder o progresso' : icon('user') + 'Conta: <b>' + escapeHTML(ACC.user) + '</b> · ' +
+      (CLOUD.status === 'on' ? 'salva on-line' : CLOUD.status === 'readonly' ? 'sem permissão para salvar on-line' : CLOUD.status === 'error' ? 'erro ao salvar on-line, tentando de novo' : 'salva neste aparelho')) + '</div>' +
     '<div class="pfLvl"><b>NÍVEL ' + p.level + '</b><div class="xpBar"><div style="width:' + Math.min(100, p.xp / ACC.need(p.level) * 100) + '%"></div></div><small>' + fmtN(p.xp) + ' / ' + fmtN(ACC.need(p.level)) + ' XP</small></div></div></div>' +
     '<div class="pfStats">' + [['PARTIDAS', st.matches], ['VITÓRIAS', st.wins], ['TOP 5', st.top5], ['ABATES', st.kills], ['K/D', kd], ['MAIS ABATES', st.best], ['DANO TOTAL', fmtN(st.dmg)], ['PERSONAGENS', p.owned.skins.length + '/' + SKINS.length]]
       .map(s => '<div><small>' + s[0] + '</small><b>' + s[1] + '</b></div>').join('') + '</div>' +

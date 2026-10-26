@@ -668,3 +668,4 @@ body.hud-editing #joyBase { opacity: .9; }
 .frEmpty { padding: 14px 4px; text-align: center; }
 .frAdd { display: flex; flex-direction: column; gap: 8px; max-width: 460px; } .frMe { display: flex; align-items: center; gap: 8px; font-size: 14px; } .frMe b { font-size: 20px; color: var(--yellow); letter-spacing: 1px; }
 .frAdd .mBtn { justify-content: center; height: 44px; font-size: 18px; gap: 8px; }
+.authNote .ico { width: 13px; height: 13px; color: #5ff07a; vertical-align: -2px; }

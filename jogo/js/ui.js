@@ -1304,9 +1304,15 @@ function boot() {
     G.built = true;
     G.state = 'menu';
     const code = new URLSearchParams(location.search).get('sala');
-    if (!ACC.restore()) { LOB.pendingRoom = code; LOB.showAuth(); return; }
-    LOB.enter();
-    if (code) LOB.joinLink(code);
+    // espera o banco de dados on-line (só existe aberto pelo link do claude.ai) antes de entrar na conta
+    $('loadStep').textContent = 'Conectando sua conta…';
+    $('loadScr').classList.remove('hidden', 'out');
+    CLOUD.init().catch(() => false).then(() => {
+      $('loadScr').classList.add('out'); setTimeout(() => $('loadScr').classList.add('hidden'), 400);
+      if (!ACC.restore()) { LOB.pendingRoom = code; LOB.showAuth(); return; }
+      LOB.enter();
+      if (code) LOB.joinLink(code);
+    });
   });
 }
 

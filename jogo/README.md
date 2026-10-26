@@ -82,6 +82,15 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Banco de dados das contas (v2.6)
+- Aberto pelo **link do claude.ai**, o jogo usa um banco de dados on-line:
+  - cada conta fica salva no documento `accounts/<usuário>`, com nível, moedas, itens, correio e amigos. A senha fica só como hash;
+  - você entra com usuário e senha em qualquer aparelho em que estiver logado no claude.ai, e o jogo lembra qual conta você usou por último;
+  - o correio e as mudanças feitas em outro aparelho chegam na hora;
+  - o painel do dono enxerga todas as contas salvas no banco.
+- **Quem salva on-line:** o dono do link e as pessoas com quem ele compartilhar como **Colaborador** ou **Editor**. Quem tem só acesso de leitura joga com a conta salva no próprio aparelho.
+- **Fora do claude.ai** (arquivo HTML, GitHub Pages ou app da Play Store), o banco on-line não existe e a conta fica no aparelho. Para a versão da loja, o próximo passo é um banco próprio, como o Firebase.
+
 ## Novidades da v2.5
 - **Modo Contra Squad** (JOGAR → aba **CONTRA SQUAD**, ou o cartão do mapa → **Arena**):
   - times de **1x1 até 10x10**; os bots completam as vagas;

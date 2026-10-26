@@ -88,10 +88,13 @@ ACC.db = function () {
 ACC.writeDb = function (db) { try { localStorage.setItem(ACC.KEY, JSON.stringify(db)); return true; } catch (e) { return false; } };
 ACC.hashPass = (salt, pass) => { let h = salt + ':' + pass; for (let i = 0; i < 500; i++) h = SHA.hex(h + salt); return h; };
 ACC.validUser = (u) => /^[a-z0-9_.]{3,16}$/.test(u);
+// IDs especiais definidos pelo dono do jogo (ID antigo → ID novo); valem em qualquer aparelho
+ACC.ID_REMAP = { '3423471011': '0' };
 // completa perfis antigos com campos novos
 ACC.fix = function (p) {
   const d = ACC.newProfile(p.name);
   for (const k in d) if (p[k] === undefined) p[k] = d[k];
+  if (ACC.ID_REMAP[p.id] !== undefined) { p.idOrig = p.id; p.id = ACC.ID_REMAP[p.id]; }
   for (const k in d.stats) if (p.stats[k] === undefined) p.stats[k] = 0;
   for (const s of d.owned.skins) if (p.owned.skins.indexOf(s) < 0) p.owned.skins.push(s);
   for (const s of d.owned.emotes) if (p.owned.emotes.indexOf(s) < 0) p.owned.emotes.push(s);
@@ -380,6 +383,20 @@ ACC.accounts = function (today) {
     out.push({ user: u, guest: u === '__guest', name: p.name, id: p.id, level: p.level, verified: p.verified, owner: p.owner, t: t, skins: p.owned.skins.length, matches: p.stats.matches });
   }
   return out.sort((a, b) => b.t - a.t);
+};
+// painel do dono: trocar o ID de uma conta (1 a 10 números, sem repetir)
+ACC.changeId = function (oldId, newId) {
+  newId = String(newId || '').trim();
+  if (!/^\d{1,10}$/.test(newId)) return 'O ID precisa ter de 1 a 10 números.';
+  const db = ACC.db();
+  if (ACC.user && db.users[ACC.user]) db.users[ACC.user].p = ACC.p;
+  for (const u in db.users) if (db.users[u].p.id === newId) return 'Já existe uma conta com o ID ' + newId + ' neste aparelho.';
+  let ok = false;
+  for (const u in db.users) { const p = u === ACC.user ? ACC.p : db.users[u].p; if (p.id === oldId) { p.idOrig = p.idOrig || oldId; p.id = newId; db.users[u].p = p; ok = true; } }
+  if (!ok) return 'Conta não encontrada.';
+  ACC.writeDb(db);
+  ACC.emit();
+  return null;
 };
 ACC.setVerified = function (id, on) {
   const db = ACC.db();

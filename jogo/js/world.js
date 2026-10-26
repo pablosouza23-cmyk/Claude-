@@ -1125,7 +1125,7 @@ W.buildRuins = function (P) {
 
 W.buildRocks = function (P, rnd) {
   let n = 0, tries = 0;
-  while (n < 60 && tries < 3000) {
+  while (n < (W.MAP.rocks === undefined ? 60 : W.MAP.rocks) && tries < 3000) {
     tries++;
     const [x, z] = W.randLand(rnd, 4);
     if (W.keepOutAreas(x, z, 2) || W.pathDist(x, z) < 4 || !W.isFree(x, z, 3, W.occupied)) continue;
@@ -1139,7 +1139,7 @@ W.buildRocks = function (P, rnd) {
 
 W.buildCrates = function (P, rnd) {
   let n = 0, tries = 0;
-  while (n < 50 && tries < 3000) {
+  while (n < (W.MAP.crates === undefined ? 50 : W.MAP.crates) && tries < 3000) {
     tries++;
     const [x, z] = W.randLand(rnd, 22);
     if (!W.isFree(x, z, 2.5, W.occupied) || W.height(x, z) < 0.2) continue;

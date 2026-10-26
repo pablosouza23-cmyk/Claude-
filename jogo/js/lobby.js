@@ -494,7 +494,7 @@ LOB.renderAdmin = function () {
       const g = Math.max(0, Math.floor(+$('adGold').value || 0)), m = Math.max(0, Math.floor(+$('adGems').value || 0));
       if (g) items.push({ k: 'gold', n: g });
       if (m) items.push({ k: 'gems', n: m });
-      if (to !== 'todos' && !/^\d{10}$/.test(to)) { notify('info', 'Use um ID de 10 números ou "todos"'); return; }
+      if (to !== 'todos' && !/^\d{1,10}$/.test(to)) { notify('info', 'Use o ID do jogador (só números) ou "todos"'); return; }
       const n = ACC.sendMail(to, ACC.letter('Equipe Battle Island', $('adTitle').value.trim() || 'Mensagem', $('adText').value.trim(), items));
       LOB.dialog(n ? 'ENVIADO' : 'NINGUÉM RECEBEU', n ? 'Mensagem enviada para <b>' + n + '</b> conta(s) deste aparelho.' : 'Nenhuma conta com esse ID neste aparelho.', [['OK', null, true]]);
     });
@@ -505,8 +505,17 @@ LOB.renderAdmin = function () {
     ' neste aparelho. Para ver as contas de todos os celulares é preciso um servidor (veja o README).</p>' +
     (rows.length ? '<table class="adTable"><thead><tr><th>JOGADOR</th><th>ID</th><th>NV</th><th>CRIADA</th><th>VERIFICADO</th><th></th></tr></thead><tbody>' + rows.map(r =>
       '<tr><td><b>' + escapeHTML(r.name) + '</b>' + (r.verified ? VERIFIED_SVG : '') + (r.owner ? ' ' + icon('crown') : '') + '<small>' + (r.guest ? 'convidado' : escapeHTML(r.user)) + '</small></td><td class="mono">' + r.id + '</td><td>' + r.level + '</td><td>' + fmtDate(r.t) + '</td>' +
-      '<td><button class="tog' + (r.verified ? ' on' : '') + '" data-vf="' + r.id + '" aria-pressed="' + r.verified + '"><i></i></button></td><td><button class="chip" data-to="' + r.id + '">' + icon('mail') + '</button></td></tr>').join('') + '</tbody></table>' : '<p class="hint">Nenhuma conta criada hoje ainda.</p>');
+      '<td><button class="tog' + (r.verified ? ' on' : '') + '" data-vf="' + r.id + '" aria-pressed="' + r.verified + '"><i></i></button></td><td class="adAct"><button class="chip" data-to="' + r.id + '" aria-label="Enviar correio">' + icon('mail') + '</button><button class="chip" data-cid="' + r.id + '">ID</button></td></tr>').join('') + '</tbody></table>' : '<p class="hint">Nenhuma conta criada hoje ainda.</p>');
   body.querySelectorAll('[data-vf]').forEach(b => b.addEventListener('click', () => { SND.play('ui'); ACC.setVerified(b.dataset.vf, !b.classList.contains('on')); LOB.renderAdmin(); }));
+  body.querySelectorAll('[data-cid]').forEach(b => b.addEventListener('click', () => {
+    SND.play('ui');
+    const old = b.dataset.cid;
+    LOB.dialog('MUDAR ID', 'ID atual: <b>' + old + '</b><br>Novo ID (1 a 10 números, ex.: 0, 7, 100):<input id="newId" class="codeIn" inputmode="numeric" autocomplete="off">', [['SALVAR', () => {
+      const v = $('newId').value.trim(), err = ACC.changeId(old, v);
+      if (err) notify('info', err); else { notify('ok', 'ID alterado para ' + v); LOB.renderAdmin(); }
+    }, true], ['CANCELAR']]);
+    const el = $('newId'); el.addEventListener('keydown', e => e.stopPropagation()); setTimeout(() => el.focus(), 50);
+  }));
   body.querySelectorAll('[data-to]').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.adTo = b.dataset.to; LOB.adTab = 'enviar'; LOB.renderAdmin(); }));
 };
 

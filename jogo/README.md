@@ -103,6 +103,7 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
   - aba **CRIADAS HOJE**: lista as contas criadas hoje, com nome, usuário, ID, nível e hora. Tem um botão para ligar ou desligar o verificado;
   - aba **TODAS**: lista todas as contas;
   - aba **ENVIAR CORREIO**: manda uma mensagem para um ID ou para `todos`, com todos os personagens, todos os emotes, selo, ouro e gemas.
+- **Mudar ID** (painel do dono, botão **ID** em cada conta): troca o ID por outro de 1 a 10 números, por exemplo `0`. Para fixar um ID em qualquer aparelho, existe a lista `ACC.ID_REMAP` em `js/account.js`. Hoje ela já transforma o ID `3423471011` em `0`.
 - **Trocar o código do dono:**
   1. Abra o jogo no Chrome do computador e aperte F12 (Console).
   2. Rode `SHA.hex('battle-dono:' + 'SEU-CODIGO-NOVO')`, com o código em letras maiúsculas.

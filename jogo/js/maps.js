@@ -537,5 +537,67 @@
       ['Vilas', (P) => { W.buildMillVillage(P); W.buildRiceFields(P); W.buildSettlement(P); }],
     ],
   };
+  // ---------- arena do Contra Squad: ilha pequena, duas bases e o centro disputado ----------
+  W.buildArena = function (P, rnd) {
+    const A = W.A, C = A['PRAÇA'], base = C.h - 0.05;
+    // centro: prédio de 2 andares com terraço, contêineres e blocos de concreto em volta
+    W.building(P, C.x, C.z + 2, 0, base, 5, 4.4, 2, 0xd9cfbf, 0x8a5a33);
+    const cols = [0xc0392b, 0x2e6fb5, 0x3fa36b, 0xe67e22, 0xe8c11c];
+    const F = W.frame(P, C.x, C.z, 0, base);
+    for (const c of [[-13, -11, 0.2], [13, 11, 0.2], [-13, 13, -0.3], [13, -13, -0.3]]) F.box(c[0], 0, c[1], 6.1, 2.6, 2.45, cols[(c[0] > 0 ? 1 : 0) + (c[1] > 0 ? 2 : 0)], 'metal', 2, c[2]);
+    F.box(-13, 2.6, -11, 6.1, 2.6, 2.45, 0x7d3c98, 'metal', 2, 0.2);
+    for (const b of [[-8, -16], [8, 17], [-18, 2], [18, -2], [0, -15], [0, 16]]) F.box(b[0], 0, b[1], 2.4, 1.25, 0.8, 0xb9b2a5, 'stone', 2, b[0] ? 0 : Math.PI / 2);
+    W.occupied.push([C.x, C.z, C.r]);
+    // norte: mercado com casas e barracas
+    const M = A.MERCADO, mb = M.h - 0.05;
+    W.placeHouses(P, M, [[-12, 6, Math.PI], [0, 8, Math.PI], [12, 6, Math.PI]], 'colorida');
+    const FM = W.frame(P, M.x, M.z, 0, mb), tents = [0xd84f2a, 0x2f7d8f, 0xe8c11c];
+    for (let i = 0; i < 3; i++) {
+      const x = -8 + i * 8;
+      FM.box(x, 0, -4, 2.6, 0.9, 1.2, 0x8a5a33, 'wood', 2);
+      for (const sx of [-1.2, 1.2]) FM.box(x + sx, 0, -4.5, 0.1, 2.3, 0.1, 0x6b4a2a, 'wood');
+      FM.box(x, 2.25, -4.2, 3, 0.08, 2, tents[i], 'fabric');
+    }
+    W.occupied.push([M.x, M.z, M.r]);
+    // sul: galpão aberto e caixas
+    const S = A['GALPÃO'], sb = S.h - 0.05;
+    W.shed(P, S.x, S.z - 2, 0, sb, 7, 6, 5, 0x9aa4ab, 0x5b6268, 'metal', 'metal');
+    for (let i = 0; i < 6; i++) W.box(P, S.x - 10 + (i % 3) * 1.5 + (i > 2 ? 17 : 0), S.z + 6 + (i % 2), 1.3, 1.3, 1.3, i * 0.3, 0xa86f3c, sb, null, 'wood');
+    W.occupied.push([S.x, S.z, S.r]);
+    // bases: sacos de areia em meia-lua virados para o centro, bandeira do time e um barraco
+    for (const [name, col, dir] of [['BASE AZUL', 0x2f7bff, 1], ['BASE VERMELHA', 0xff3b3b, -1]]) {
+      const B = A[name], bb = B.h - 0.05, FB = W.frame(P, B.x, B.z, dir > 0 ? Math.PI / 2 : -Math.PI / 2, bb);
+      for (let i = -3; i <= 3; i++) { if (i === 0) continue; const an = i * 0.32; FB.box(Math.sin(an) * 9, 0, Math.cos(an) * 9, 2.2, 1.15, 0.9, 0xb59f74, 'fabric', 2, an); }
+      FB.box(0, 0, -6, 0.14, 7, 0.14, 0xd9dde0, 'metal');
+      FB.box(0.95, 5.6, -6, 1.8, 1.1, 0.05, col, 'fabric');
+      FB.box(0, -0.2, 0, 10, 0.25, 12, 0x8f9296, 'stone', 2);
+      W.house(P, FB.wx(-6, -6), FB.wz(-6, -6), FB.rot + Math.PI, bb, dir > 0 ? 0 : 3, 'pescador', [2.6, 2.2]);
+      W.occupied.push([B.x, B.z, B.r]);
+    }
+    // corredores laterais: contêineres e muros baixos entre as bases e o centro
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      W.box(P, sx * 31, sz * 15, 6.1, 2.6, 2.45, sz * 0.4, cols[(sx + 1) + (sz > 0 ? 1 : 0)], null, { walkable: true }, 'metal');
+      W.box(P, sx * 40, sz * 26, 4, 1.2, 0.8, sx * 0.6, 0xb9b2a5, null, null, 'stone');
+    }
+  };
+
+  W.MAPS.arena = {
+    name: 'Arena', desc: 'Contra Squad: duas bases, centro com prédio, mercado e galpão', color: '#ff5a3c', cs: true,
+    landR: 82, playR: 96, show: 'BASE AZUL', trees: 45, rocks: 6, crates: 18,
+    areas: [
+      { name: 'PRAÇA', x: 0, z: 0, r: 20, flat: true },
+      { name: 'BASE AZUL', x: -56, z: 0, r: 13, flat: true },
+      { name: 'BASE VERMELHA', x: 56, z: 0, r: 13, flat: true },
+      { name: 'MERCADO', x: 0, z: 38, r: 14, flat: true },
+      { name: 'GALPÃO', x: 0, z: -38, r: 14, flat: true },
+    ],
+    paths: [
+      [[-56, 0], [-25, 0], [0, 0], [25, 0], [56, 0]],
+      [[0, 0], [0, 38]], [[0, 0], [0, -38]],
+      [[-56, 0], [-35, 28], [0, 38], [35, 28], [56, 0]],
+      [[-56, 0], [-35, -28], [0, -38], [35, -28], [56, 0]],
+    ],
+    build: [['Arena', (P, rnd) => W.buildArena(P, rnd)]],
+  };
   W.MAP_LIST = ['ilha', 'triangulo'];
 })();

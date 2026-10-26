@@ -4,6 +4,21 @@ Battle royale 3D para celular, que roda no navegador (Chrome Android) e pode ser
 
 **Partida:** 25 jogadores (você e seus amigos + bots) saltam de um avião sobre a ilha. Depois cada um pega armas e equipamentos, enquanto a zona segura fecha. Ganha quem ficar por último.
 
+## Servidor das contas (hospedagem)
+O jogo funciona sozinho em qualquer hospedagem de arquivos (HTML/JS). Nesse caso, as contas, o ouro, as gemas e as skins ficam **salvos no aparelho** de cada pessoa, e o multiplayer e os amigos continuam funcionando (são de celular para celular).
+
+Alguns recursos precisam do **servidor das contas**, que responde em `/api/contas`:
+- login no mesmo usuário em qualquer aparelho;
+- painel do dono com todas as contas;
+- ranking global;
+- recarga por Pix;
+- códigos de resgate e verificados (azul, dourado e supremo);
+- entrar com Google.
+
+A lógica desse servidor está pronta em `server/contas-core.mjs` e não depende de hospedagem: ela recebe o pedido (JSON) e um banco com `get`, `setJSON`, `delete` e `list`. Para ligar, é preciso uma hospedagem com servidor ou funções, que encaminhe `POST /api/contas` para `handle(corpo, banco, opções)`.
+
+Por enquanto **não há hospedagem configurada**: sem o servidor, o jogo usa só as contas do aparelho e avisa quando um recurso precisa do servidor.
+
 ## Jogar com os amigos (multiplayer)
 1. Toque em **JOGAR → CRIAR SALA**. Aparece um código de 5 letras (ex.: `K7Q2M`).
 2. Mande o código, ou toque em **CONVIDAR** pra mandar o link pelo WhatsApp.
@@ -99,7 +114,7 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
   - Abre pelo menu (**VERIFICADO**) ou pelo perfil (**RESGATAR VERIFICADO**).
   - Tem o campo do código, o botão **RESGATAR**, o "Conferindo no servidor…" e as mensagens de sucesso ou erro.
 - **Onde o selo aparece:** perfil, topo do lobby, ranking, lista da sala, nomes do grupo no palco, convites, lista de amigos e painel do dono. O jogo não tem chat; se um dia tiver, ele usa a mesma função `LOB.vf`.
-- **Como funciona por dentro** (`server/contas-core.mjs`, Netlify Functions + Netlify Blobs, o mesmo servidor das contas):
+- **Como funciona por dentro** (`server/contas-core.mjs`, o servidor das contas):
   - **Códigos:** no programa fica só o hash SHA-256 do código, nunca o código. O servidor confere o código e grava o resgate na conta logada (token de sessão).
   - **Regras de cada código:** tem validade (`exp`) e limite de pessoas (`max`), e a mesma conta não resgata duas vezes.
   - **Auditoria:** cada tentativa fica registrada, com acerto ou erro, em `audit:redeem` (as últimas 1000).
@@ -119,7 +134,7 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
   1. Entre no jogo com a **sua conta** (usuário e senha).
   2. Abra o **Painel do dono** (perfil, 5 toques no ID e o código do dono) e vá na aba **CÓDIGOS**.
   3. Em **CARGOS AUTORIZADOS**, escreva o seu usuário, escolha **Dono (dourado)** e toque em **AUTORIZAR**. Faça o mesmo com os administradores, em **Administrador (supremo)**.
-     - Também dá para usar variáveis na Netlify: `OWNER_USERS=seuusuario` e `ADMIN_USERS=adm1,adm2`, separados por vírgula.
+     - Também dá para usar as opções `ownerUsers` / `adminUsers` do servidor (variáveis de ambiente da hospedagem), com usuários separados por vírgula.
   4. Teste o **dourado**: em **VERIFICADO**, digite `D0WN-GOLD-7X9K` e toque em RESGATAR. Ele aparece no lobby, no perfil e no ranking. Saia e entre de novo: o selo continua.
   5. Teste o **supremo**: entre numa conta autorizada como administrador e resgate `SUPR-ADM-9Q2X`.
   6. Teste a **segurança**: numa conta sem cargo, os dois códigos dão "Sua conta não tem permissão". Repetir o código dá "Você já resgatou".
@@ -161,7 +176,6 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
   - Mostra se o **servidor das contas está LIGADO ou DESLIGADO** e, quando está desligado, o motivo e o passo a passo para ligar.
   - Nova coluna **VISTO**: quando cada pessoa entrou no jogo pela última vez.
   - Botão de **presente** (correio com ouro, gemas, personagens, emotes, skins e verificado) e botão para **adicionar como amigo** em cada conta.
-- **Por que as contas não aparecem/salvam entre celulares:** isso acontece quando o site foi publicado **arrastando a pasta** na Netlify, porque assim o servidor não vai junto. É preciso publicar **ligando o repositório do GitHub**: Site configuration › Build & deploy › Link repository › branch `ccr-5c74d41a-5em3vz` › Base directory `jogo` › Publish directory `jogo`.
 
 ## Correções da v3.1
 - **Salto, prancha e paraquedas sem ir e voltar:**
@@ -191,9 +205,9 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
   - **Como ligar:**
     1. Crie (ou use) sua conta no [Mercado Pago](https://www.mercadopago.com.br) com o **seu CPF**. É para essa conta que o dinheiro vai.
     2. Em **Seu negócio › Configurações › Credenciais** (ou em mercadopago.com.br/developers › Suas integrações › Criar aplicação), copie o **Access Token de produção** (começa com `APP_USR-`).
-    3. Na Netlify, em **Site configuration › Environment variables**, crie `MP_ACCESS_TOKEN` com esse valor e faça um novo deploy.
+    3. Na hospedagem do servidor das contas, passe esse valor como `mpToken` (por exemplo, numa variável de ambiente `MP_ACCESS_TOKEN`).
     4. Pronto: na recarga aparece "Pagamento por Pix", com o QR Code e o copia-e-cola.
-  - O CPF e a chave Pix **não vão no código** (o repositório é público). O que liga o jogo à sua conta é o Access Token, guardado só na Netlify.
+  - O CPF e a chave Pix **não vão no código** (o repositório é público). O que liga o jogo à sua conta é o Access Token, guardado só na hospedagem do servidor.
   - No app da Play Store, o Google exige o pagamento pelo **Google Play** para itens digitais. Antes de vender por lá, falta validar a compra no servidor.
 - **Mais leve no celular:**
   - armas com material mais simples no celular e na qualidade Baixa/Média;
@@ -226,11 +240,11 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
   - em Configurações › Controles dá para escolher o formato (cruz, ponto ou círculo) e a cor;
   - as retículas das miras foram redesenhadas;
   - a luneta tem retículo de precisão com marcas de distância, reflexo na lente e respiração (mais firme agachado).
-- **Entrar com Google** (só no site com o servidor da Netlify):
+- **Entrar com Google** (só com o servidor das contas ligado):
   1. No [Google Cloud Console](https://console.cloud.google.com/apis/credentials), crie um projeto e configure a **Tela de consentimento OAuth** (tipo Externo, nome Battle Island).
-  2. Em **Credenciais › Criar credenciais › ID do cliente OAuth**, escolha **Aplicativo da Web** e, em **Origens JavaScript autorizadas**, coloque `https://SEU-SITE.netlify.app`.
+  2. Em **Credenciais › Criar credenciais › ID do cliente OAuth**, escolha **Aplicativo da Web** e, em **Origens JavaScript autorizadas**, coloque o endereço do site do jogo (ex.: `https://SEU-SITE.com`).
   3. Copie o **ID do cliente** (termina em `.apps.googleusercontent.com`).
-  4. Na Netlify, em **Site configuration › Environment variables**, crie `GOOGLE_CLIENT_ID` com esse valor e faça um novo deploy.
+  4. Na hospedagem do servidor das contas, passe esse valor como `googleClientId` (por exemplo, numa variável de ambiente `GOOGLE_CLIENT_ID`).
   5. O botão **Continuar com o Google** aparece na tela de login. No perfil, quem já tem conta pode **ligar a conta Google** para entrar sem senha.
   - O servidor confere o login no próprio Google antes de aceitar.
 - **Progresso que não se perde entre aparelhos:**
@@ -238,7 +252,7 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
   - Se o aparelho tem uma cópia com mais progresso (nível, XP, partidas), ela é juntada com a do servidor e nada volta para o nível 1. Itens comprados e cartas do correio das duas cópias ficam todos.
   - Ao reabrir o jogo, a conta importada continua aberta, mesmo sem a sessão do servidor.
   - O progresso é salvo na hora quando o app é fechado ou minimizado.
-  - Use **sempre o mesmo link** (o site da Netlify) em todos os aparelhos. O arquivo HTML baixado e o link do claude.ai guardam as contas em lugares diferentes.
+  - Use **sempre o mesmo link** (o site do jogo, com o servidor das contas) em todos os aparelhos. O arquivo HTML baixado e o link do claude.ai guardam as contas em lugares diferentes.
 
 ## Novidades da v2.8
 - **Sala de espera (como no Free Fire):** antes do avião, todo mundo aparece numa área do mapa com uma arma aleatória e pistola, durante 20 segundos. Os tiros ali não machucam e os itens do chão ficam para depois do salto. Quando o tempo acaba, as armas somem e todos vão para o avião.
@@ -251,20 +265,13 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - A contagem do lobby antes da partida caiu de 15 para 5 segundos, porque agora existe a sala de espera.
 
 ## Novidades da v2.7
-- **Servidor das contas na Netlify** (`netlify/functions/contas.mjs` + `server/contas-core.mjs`):
-  - as contas ficam no **Netlify Blobs**, o armazenamento que já vem com o site, de graça e sem outra conta;
+- **Servidor das contas** (`server/contas-core.mjs`):
   - qualquer pessoa que criar conta no site aparece no **painel do dono**, em "CRIADAS HOJE" e "TODAS";
   - login com a mesma senha em qualquer celular ou computador;
   - a senha fica só como hash scrypt, e cada login recebe um token de sessão;
   - o correio do dono, o ID novo e o verificado chegam no outro celular em até 30 segundos;
   - no painel, o botão **SENHA** troca a senha de quem esqueceu;
   - contas antigas, criadas só no aparelho, sobem para o servidor no primeiro login com a senha.
-- **Como publicar com o servidor** (o "arrastar a pasta" da Netlify **não** cria funções, então precisa ser pelo GitHub):
-  1. Na Netlify, abra o site → **Site configuration** → **Build & deploy** → **Link repository** e escolha o repositório no GitHub.
-  2. Em **Branch to deploy**, escolha o branch do jogo. Em **Base directory**, escreva `jogo`. Deixe **Build command** vazio e **Publish directory** como `jogo`.
-  3. Clique em **Deploy**. A Netlify instala o `@netlify/blobs` sozinha (está no `package.json`) e cria o endereço `/api/contas`.
-  4. Para conferir, abra `https://SEU-SITE.netlify.app/api/contas`. Tem que aparecer `{"ok":true,"app":"battle-island"...}`.
-  5. Opcional: em **Environment variables**, crie `OWNER_HASH` com o hash do seu código de dono novo para trocar o código sem mexer no programa.
 - **Ranking global** (botão **RANKING** no lobby): o top 100 de abates e o top 20 por arma, de todas as contas do servidor. Os abates por arma contam a partir desta versão.
 - **Fuzil Dourado** na loja (aba **ARMAS**): custa 120 gemas **ou** 6.000 de ouro. O dano é o mesmo e o visual é de ouro polido, na mão, nas costas e na câmera de 1ª pessoa. Dá para ligar e desligar.
 - **Roda do mouse** troca de arma na partida.

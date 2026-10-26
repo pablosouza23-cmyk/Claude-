@@ -1,9 +1,9 @@
-// Servidor das contas do Battle Island (lógica pura, sem depender da Netlify, para dar para testar).
+// Servidor das contas do Battle Island (lógica pura, sem depender de hospedagem: recebe o pedido e um "store" com get/setJSON/delete/list).
 // Guarda cada conta em "u:<usuário>" e a caixa de entrada (correio e ajustes do dono) em "in:<usuário>".
 // A senha nunca é guardada: só o hash scrypt com sal. Quem está logado recebe um token de sessão.
 import { scryptSync, randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 
-// mesmo código do dono do jogo (js/account.js, ACC.OWNER_HASH); pode ser trocado pela variável OWNER_HASH na Netlify
+// mesmo código do dono do jogo (js/account.js, ACC.OWNER_HASH); pode ser trocado por opts.ownerHash (variável de ambiente da hospedagem)
 export const DEFAULT_OWNER_HASH = 'e671ec3f728a094705745f7f788862c1690c8d893a2c021a78811b9e791e58e8';
 const USER_RE = /^[a-z0-9_.]{3,16}$/;
 const MAX_PROFILE = 200 * 1024;
@@ -79,7 +79,7 @@ export const DEFAULT_CODES = {
 export const TIERS = ['azul', 'dourado', 'supremo'];
 const tierOf = (rec) => (rec && rec.badge) || (rec && rec.p && rec.p.verified ? 'azul' : '');
 const csv = (s) => String(s || '').split(',').map(x => cleanUser(x)).filter(Boolean);
-// cargos: os que o dono autorizou pelo painel (guardados no banco) + os das variáveis OWNER_USERS / ADMIN_USERS da Netlify
+// cargos: os que o dono autorizou pelo painel (guardados no banco) + os de opts.ownerUsers / opts.adminUsers (variáveis de ambiente da hospedagem)
 async function roles(store, opts) {
   const r = (await store.get('cfg:roles', { type: 'json' })) || { owner: [], admin: [] };
   return { owner: [...new Set(r.owner.concat(csv(opts && opts.ownerUsers)))], admin: [...new Set(r.admin.concat(csv(opts && opts.adminUsers)))] };

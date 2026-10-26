@@ -704,7 +704,7 @@ LOB.vfRedeem = async function () {
   const code = $('vfCode').value.trim(), msg = $('vfMsg');
   const say = (ok, t) => { msg.className = 'vfMsg ' + (ok ? 'ok' : 'err'); msg.innerHTML = icon(ok ? 'check' : 'warn') + t; };
   if (!code) { say(false, 'Digite o código.'); return; }
-  if (!SRV.on) { say(false, 'O resgate precisa do servidor das contas (o site oficial do jogo na Netlify). ' + (SRV.WHY[SRV.why] || '')); return; }
+  if (!SRV.on) { say(false, 'O resgate precisa do servidor das contas ligado. ' + ((w) => w.charAt(0).toUpperCase() + w.slice(1))(SRV.WHY[SRV.why] || '')); return; }
   if (SRV.user !== ACC.user) { say(false, 'Entre com sua conta (usuário e senha) para resgatar.'); return; }
   if (LOB.vfBusy) return;
   LOB.vfBusy = true; $('vfGo').disabled = true; $('vfSpin').classList.remove('hidden'); msg.textContent = '';
@@ -864,7 +864,7 @@ LOB.renderAdmin = function () {
   const ago = (t) => { if (!t) return '—'; const m = Math.round((Date.now() - t) / 60000); return m < 2 ? 'agora' : m < 60 ? m + ' min' : m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d'; };
   body.innerHTML = (SRV.on ? '<p class="srvOk">' + icon('check') + 'Servidor das contas <b>LIGADO</b>: todas as contas do site aparecem aqui, e presentes, verificado e ID chegam no celular da pessoa.</p>' :
     '<div class="srvOff">' + icon('warn') + '<div><b>SERVIDOR DAS CONTAS DESLIGADO</b><span>Motivo: ' + (SRV.WHY[SRV.why] || SRV.WHY.rede) + '</span>' +
-    '<small>Para ligar: na Netlify abra o site › <b>Site configuration › Build &amp; deploy › Link repository</b> › GitHub › repositório do jogo › branch <b>ccr-5c74d41a-5em3vz</b> › Base directory <b>jogo</b> › Publish directory <b>jogo</b> › Deploy. Depois abra o jogo pelo endereço do site.</small></div></div>') +
+    '<small>Para ligar: hospede o jogo num serviço com servidor e ligue o endereço /api/contas à lógica de server/contas-core.mjs (com um banco de dados). Depois abra o jogo pelo endereço do site.</small></div></div>') +
     '<p class="hint adNote">' + icon('info') + (tab === 'hoje' ? rows.length + ' conta(s) criada(s) hoje' : rows.length + ' conta(s) no total') +
     (SRV.on ? ' no servidor do jogo (todas as contas criadas no site, de qualquer celular).' : CLOUD.status === 'on' ? ' no banco on-line (contas de quem joga pelo seu link do claude.ai como Colaborador ou Editor).' :
       ' só neste aparelho: o banco on-line não está ligado aqui (abra pelo link do claude.ai, logado como dono).') +

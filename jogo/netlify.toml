@@ -1,8 +1,0 @@
-# Netlify: publica esta pasta e cria o servidor das contas (netlify/functions/contas.mjs → /api/contas).
-# No painel da Netlify, use "Base directory" = jogo se o site vier do repositório inteiro.
-[build]
-  publish = "."
-
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"

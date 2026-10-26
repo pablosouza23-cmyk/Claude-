@@ -401,8 +401,8 @@ CLOUD.watch = function (user) {
   }, () => { CLOUD.unsub = null; });
 };
 
-// ---------- servidor do jogo (Netlify: /api/contas) ----------
-// Com o site na Netlify, as contas ficam no servidor: login de qualquer celular, painel do dono com as contas
+// ---------- servidor do jogo (/api/contas) ----------
+// Com o jogo hospedado junto com o servidor das contas, elas ficam no servidor: login de qualquer celular, painel do dono com as contas
 // de todo mundo e correio entre aparelhos. Sem servidor (arquivo, GitHub Pages) tudo continua no aparelho.
 const SRV = { url: '/api/contas', on: false, tok: null, user: null, KEY: 'battleIsland.srv', last: '', busy: false, status: 'off' };
 const SRV_ERR = { bad_user: 'Usuário: 3 a 16 letras minúsculas, números, _ ou .', short_pass: 'A senha precisa de pelo menos 4 caracteres.', exists: 'Esse usuário já existe. Toque em ENTRAR.',
@@ -410,11 +410,11 @@ const SRV_ERR = { bad_user: 'Usuário: 3 a 16 letras minúsculas, números, _ ou
   session: 'Sua sessão expirou. Entre de novo.', code_expired: 'Esse código já venceu.', not_allowed: 'Este código é exclusivo de uma conta autorizada pelo dono do jogo. Sua conta não tem permissão para resgatá-lo.', bad_role: 'Cargo inválido.', bad_code: 'Código inválido. Confira as letras e os números.', code_used: 'Você já resgatou esse código.',
   code_out: 'Esse código já foi resgatado pelo número máximo de pessoas.', code_exists: 'Já existe um código igual.', bad_item: 'Escolha o prêmio do código.', bad_profile: 'Conta grande demais para salvar.', owner: 'Código do dono errado.', google: 'O Google não confirmou o login. Tente de novo.', google_used: 'Essa conta Google já está ligada a outra conta do jogo.', no_google: 'Login com Google não está ligado no servidor.', id_taken: 'Já existe uma conta com esse ID.', bad_id: 'O ID precisa ter de 1 a 10 números.' };
 SRV.WHY = {
-  arquivo: 'o jogo foi aberto pelo arquivo HTML baixado. O servidor só existe no site da Netlify.',
-  claude: 'o jogo está aberto pelo link do claude.ai. O servidor das contas é o do site da Netlify.',
-  semFuncao: 'o site foi publicado sem as funções do servidor (provavelmente arrastando a pasta na Netlify). Publique ligando o repositório do GitHub.',
+  arquivo: 'o jogo foi aberto pelo arquivo HTML baixado. O servidor só existe no site hospedado com o servidor das contas.',
+  claude: 'o jogo está aberto pelo link do claude.ai, que não tem o servidor das contas.',
+  semFuncao: 'o site onde o jogo está não tem o servidor das contas (/api/contas). As contas ficam só em cada aparelho.',
   rede: 'sem internet ou o site não respondeu. Tente de novo.',
-  erro: 'o servidor deu erro. Confira em Netlify › Logs › Functions.',
+  erro: 'o servidor das contas deu erro. Confira os registros (logs) da hospedagem.',
 };
 SRV.msg = (e) => SRV_ERR[e && e.code] || 'Sem conexão com o servidor do jogo. Tente de novo.';
 SRV.call = async function (body, ms) {

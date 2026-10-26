@@ -172,6 +172,7 @@ export async function handle(body, store, opts) {
       if (!passOk(rec, body.pass)) return fail(401, 'bad_pass');
       const tk = newToken();
       rec.toks = [{ tk, t: Date.now() }].concat(rec.toks || []).slice(0, MAX_TOKENS);
+      rec.seen = Date.now();
       await store.setJSON('u:' + u, rec);
       const box = await inbox(store, u);
       return ok({ tok: tk, p: rec.p, upd: rec.upd, t: rec.t, inbox: box.items });
@@ -180,7 +181,10 @@ export async function handle(body, store, opts) {
     case 'me': {
       const a = await auth(store, body);
       if (!a) return fail(401, 'session');
-      if (await checkPix(a.rec, opts)) await store.setJSON('u:' + a.u, a.rec);
+      // "visto por último" (gravado no máximo a cada 2 minutos)
+      const seenOld = Date.now() - (a.rec.seen || 0) > 120000;
+      if (seenOld) a.rec.seen = Date.now();
+      if (await checkPix(a.rec, opts) || seenOld) await store.setJSON('u:' + a.u, a.rec);
       const box = await inbox(store, a.u);
       return ok({ p: a.rec.p, upd: a.rec.upd, t: a.rec.t, inbox: box.items, paid: paidList(a.rec) });
     }
@@ -201,7 +205,7 @@ export async function handle(body, store, opts) {
       p.gems = g;
       // Pix que o celular já somou (aparece em p.buys com o token pix-<id>)
       for (const [id, x] of Object.entries(a.rec.pix || {})) if (x.status === 'approved' && !x.done && (p.buys || []).some(b => b && b.token === 'pix-' + id)) x.done = 1;
-      a.rec.p = p; a.rec.upd = Date.now();
+      a.rec.p = p; a.rec.upd = Date.now(); a.rec.seen = a.rec.upd;
       await store.setJSON('u:' + a.u, a.rec);
       return ok({ upd: a.rec.upd, gems: g });
     }
@@ -298,7 +302,7 @@ async function admin(body, store) {
     case 'list': {
       const now = new Date(), since = body.today ? new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - (body.tz || 0) * 60000 : 0;
       const rows = recs.filter(r => r.t >= since).map(r => ({ user: r.u, name: r.p.name, id: r.p.id, level: r.p.level, verified: !!r.p.verified, owner: !!r.p.owner,
-        t: r.t, matches: (r.p.stats && r.p.stats.matches) || 0, skins: (r.p.owned && r.p.owned.skins && r.p.owned.skins.length) || 0 }));
+        t: r.t, seen: r.seen || r.upd || r.t, matches: (r.p.stats && r.p.stats.matches) || 0, skins: (r.p.owned && r.p.owned.skins && r.p.owned.skins.length) || 0 }));
       rows.sort((a, b) => b.t - a.t);
       return ok({ rows, total: recs.length });
     }

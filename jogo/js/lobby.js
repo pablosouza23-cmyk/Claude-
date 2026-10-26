@@ -759,13 +759,24 @@ LOB.renderAdmin = function () {
     return;
   }
   const rows = SRV.on ? LOB.adRows : ACC.accounts(tab === 'hoje');
-  body.innerHTML = '<p class="hint adNote">' + icon('info') + (tab === 'hoje' ? rows.length + ' conta(s) criada(s) hoje' : rows.length + ' conta(s) no total') +
+  const ago = (t) => { if (!t) return '—'; const m = Math.round((Date.now() - t) / 60000); return m < 2 ? 'agora' : m < 60 ? m + ' min' : m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d'; };
+  body.innerHTML = (SRV.on ? '<p class="srvOk">' + icon('check') + 'Servidor das contas <b>LIGADO</b>: todas as contas do site aparecem aqui, e presentes, verificado e ID chegam no celular da pessoa.</p>' :
+    '<div class="srvOff">' + icon('warn') + '<div><b>SERVIDOR DAS CONTAS DESLIGADO</b><span>Motivo: ' + (SRV.WHY[SRV.why] || SRV.WHY.rede) + '</span>' +
+    '<small>Para ligar: na Netlify abra o site › <b>Site configuration › Build &amp; deploy › Link repository</b> › GitHub › repositório do jogo › branch <b>ccr-5c74d41a-5em3vz</b> › Base directory <b>jogo</b> › Publish directory <b>jogo</b> › Deploy. Depois abra o jogo pelo endereço do site.</small></div></div>') +
+    '<p class="hint adNote">' + icon('info') + (tab === 'hoje' ? rows.length + ' conta(s) criada(s) hoje' : rows.length + ' conta(s) no total') +
     (SRV.on ? ' no servidor do jogo (todas as contas criadas no site, de qualquer celular).' : CLOUD.status === 'on' ? ' no banco on-line (contas de quem joga pelo seu link do claude.ai como Colaborador ou Editor).' :
       ' só neste aparelho: o banco on-line não está ligado aqui (abra pelo link do claude.ai, logado como dono).') +
     (SRV.on ? '' : ' Contas criadas no arquivo HTML, no GitHub Pages ou por quem só pode ver o link ficam no celular de cada pessoa.') + '</p>' +
-    (rows.length ? '<table class="adTable"><thead><tr><th>JOGADOR</th><th>ID</th><th>NV</th><th>CRIADA</th><th>VERIFICADO</th><th></th></tr></thead><tbody>' + rows.map(r =>
-      '<tr><td><b>' + escapeHTML(r.name) + '</b>' + (r.verified ? VERIFIED_SVG : '') + (r.owner ? ' ' + icon('crown') : '') + '<small>' + (r.guest ? 'convidado' : escapeHTML(r.user)) + '</small></td><td class="mono">' + r.id + '</td><td>' + r.level + '</td><td>' + fmtDate(r.t) + '</td>' +
-      '<td><button class="tog' + (r.verified ? ' on' : '') + '" data-vf="' + r.id + '" aria-pressed="' + r.verified + '"><i></i></button></td><td class="adAct"><button class="chip" data-to="' + r.id + '" aria-label="Enviar correio">' + icon('mail') + '</button><button class="chip" data-cid="' + r.id + '">ID</button>' + (SRV.on ? '<button class="chip" data-pw="' + escapeHTML(r.user) + '">SENHA</button>' : '') + '</td></tr>').join('') + '</tbody></table>' : '<p class="hint">Nenhuma conta criada hoje ainda.</p>');
+    (rows.length ? '<table class="adTable"><thead><tr><th>JOGADOR</th><th>ID</th><th>NV</th><th>CRIADA</th><th>VISTO</th><th>VERIFICADO</th><th></th></tr></thead><tbody>' + rows.map(r =>
+      '<tr><td><b>' + escapeHTML(r.name) + '</b>' + (r.verified ? VERIFIED_SVG : '') + (r.owner ? ' ' + icon('crown') : '') + '<small>' + (r.guest ? 'convidado' : escapeHTML(r.user)) + '</small></td><td class="mono">' + r.id + '</td><td>' + r.level + '</td><td>' + fmtDate(r.t) + '</td><td>' + ago(r.seen) + '</td>' +
+      '<td><button class="tog' + (r.verified ? ' on' : '') + '" data-vf="' + r.id + '" aria-pressed="' + r.verified + '"><i></i></button></td><td class="adAct"><button class="chip" data-to="' + r.id + '" aria-label="Enviar presente">' + icon('gift') + '</button>' +
+      (r.id !== ACC.p.id && !FR.isFriend(r.id) ? '<button class="chip" data-fr="' + r.id + '" aria-label="Adicionar amigo">' + icon('users') + '</button>' : '') + '<button class="chip" data-cid="' + r.id + '">ID</button>' + (SRV.on ? '<button class="chip" data-pw="' + escapeHTML(r.user) + '">SENHA</button>' : '') + '</td></tr>').join('') + '</tbody></table>' : '<p class="hint">Nenhuma conta criada hoje ainda.</p>');
+  // adicionar como amigo direto da lista
+  body.querySelectorAll('[data-fr]').forEach(b => b.addEventListener('click', async () => {
+    SND.play('ui');
+    const err = await FR.request(b.dataset.fr);
+    notify(err ? 'info' : 'ok', err || 'Pedido de amizade enviado para o ID ' + b.dataset.fr);
+  }));
   body.querySelectorAll('[data-vf]').forEach(b => b.addEventListener('click', () => {
     SND.play('ui');
     const on = !b.classList.contains('on');

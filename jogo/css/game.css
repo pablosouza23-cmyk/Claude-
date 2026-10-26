@@ -119,7 +119,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 #crosshair.st-ponto b { width: 6px; height: 6px; left: -3px; top: -3px; }
 #reticle { position: absolute; left: 50%; top: 50%; width: 150px; height: 150px; transform: translate(-50%, -50%); }
 #reticle svg { width: 100%; height: 100%; filter: drop-shadow(0 0 2px rgba(255,255,255,.25)) drop-shadow(0 0 3px rgba(0,0,0,.45)); }
-#scope { position: absolute; inset: 0; opacity: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 0, transparent min(40vh, 34vw), #030405 calc(min(40vh, 34vw) + 2px)); }
+#scope { position: fixed; inset: 0; z-index: 1; opacity: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 0, transparent min(40vh, 34vw), #030405 calc(min(40vh, 34vw) + 2px)); }
 #scope.show { opacity: 1; }
 #scope .sWrap { position: absolute; inset: 0; will-change: transform; }
 #scope .sRing { position: absolute; left: 50%; top: 50%; width: calc(min(80vh, 68vw) + 6px); height: calc(min(80vh, 68vw) + 6px); transform: translate(-50%, -50%); border-radius: 50%;
@@ -750,3 +750,10 @@ body.hud-editing #joyBase { opacity: .9; }
 .pixSt { margin: 0; font-size: 12px; display: flex; align-items: center; gap: 4px; color: #ffd76a; } .pixSt .ico { width: 14px; height: 14px; }
 .dlgBox { max-height: calc(100vh - 16px); overflow-y: auto; }
 @media (max-height: 500px) { .pixBox small { display: none; } .pixCode { height: 34px; } }
+#hud.hidden + #scope { display: none; }
+/* com a luneta aberta, os botões ficam mais visíveis por cima do preto */
+body:has(#scope.show) #touch .tbtn { opacity: 1; }
+.srvOk, .srvOff { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 8px; padding: 8px 10px; border-radius: 6px; font-size: 12px; }
+.srvOk { background: rgba(60,200,110,.14); border: 1px solid rgba(60,200,110,.45); } .srvOk .ico { color: #5be37d; width: 16px; height: 16px; flex: none; }
+.srvOff { background: rgba(255,80,60,.14); border: 1px solid rgba(255,90,60,.55); } .srvOff .ico { color: #ff7a5a; width: 18px; height: 18px; flex: none; }
+.srvOff div { display: flex; flex-direction: column; gap: 3px; } .srvOff span { color: #ffd2c8; } .srvOff small { opacity: .85; line-height: 1.35; }

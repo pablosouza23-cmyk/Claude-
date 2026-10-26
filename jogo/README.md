@@ -82,6 +82,14 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Correções da v3.2
+- **Luneta da sniper:** o preto em volta da lente agora fica **embaixo** dos botões de toque. Atirar, mirar, pular e o resto continuam visíveis e funcionando com a luneta aberta.
+- **Painel do dono:**
+  - Mostra se o **servidor das contas está LIGADO ou DESLIGADO** e, quando está desligado, o motivo e o passo a passo para ligar.
+  - Nova coluna **VISTO**: quando cada pessoa entrou no jogo pela última vez.
+  - Botão de **presente** (correio com ouro, gemas, personagens, emotes, skins e verificado) e botão para **adicionar como amigo** em cada conta.
+- **Por que as contas não aparecem/salvam entre celulares:** isso acontece quando o site foi publicado **arrastando a pasta** na Netlify, porque assim o servidor não vai junto. É preciso publicar **ligando o repositório do GitHub**: Site configuration › Build & deploy › Link repository › branch `ccr-5c74d41a-5em3vz` › Base directory `jogo` › Publish directory `jogo`.
+
 ## Correções da v3.1
 - **Salto, prancha e paraquedas sem ir e voltar:**
   - No multiplayer, os outros jogadores e os bots agora descem suaves. Antes, a velocidade de quem estava no ar ia como zero e o boneco andava aos trancos e descia em degraus.

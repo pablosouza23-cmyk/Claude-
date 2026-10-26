@@ -127,7 +127,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 #crosshair.st-ponto b { width: 6px; height: 6px; left: -3px; top: -3px; }
 #reticle { position: absolute; left: 50%; top: 50%; width: 150px; height: 150px; transform: translate(-50%, -50%); }
 #reticle svg { width: 100%; height: 100%; filter: drop-shadow(0 0 2px rgba(255,255,255,.25)) drop-shadow(0 0 3px rgba(0,0,0,.45)); }
-#scope { position: absolute; inset: 0; opacity: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 0, transparent min(40vh, 34vw), #030405 calc(min(40vh, 34vw) + 2px)); }
+#scope { position: fixed; inset: 0; z-index: 1; opacity: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 0, transparent min(40vh, 34vw), #030405 calc(min(40vh, 34vw) + 2px)); }
 #scope.show { opacity: 1; }
 #scope .sWrap { position: absolute; inset: 0; will-change: transform; }
 #scope .sRing { position: absolute; left: 50%; top: 50%; width: calc(min(80vh, 68vw) + 6px); height: calc(min(80vh, 68vw) + 6px); transform: translate(-50%, -50%); border-radius: 50%;
@@ -758,6 +758,13 @@ body.hud-editing #joyBase { opacity: .9; }
 .pixSt { margin: 0; font-size: 12px; display: flex; align-items: center; gap: 4px; color: #ffd76a; } .pixSt .ico { width: 14px; height: 14px; }
 .dlgBox { max-height: calc(100vh - 16px); overflow-y: auto; }
 @media (max-height: 500px) { .pixBox small { display: none; } .pixCode { height: 34px; } }
+#hud.hidden + #scope { display: none; }
+/* com a luneta aberta, os botões ficam mais visíveis por cima do preto */
+body:has(#scope.show) #touch .tbtn { opacity: 1; }
+.srvOk, .srvOff { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 8px; padding: 8px 10px; border-radius: 6px; font-size: 12px; }
+.srvOk { background: rgba(60,200,110,.14); border: 1px solid rgba(60,200,110,.45); } .srvOk .ico { color: #5be37d; width: 16px; height: 16px; flex: none; }
+.srvOff { background: rgba(255,80,60,.14); border: 1px solid rgba(255,90,60,.55); } .srvOff .ico { color: #ff7a5a; width: 18px; height: 18px; flex: none; }
+.srvOff div { display: flex; flex-direction: column; gap: 3px; } .srvOff span { color: #ffd2c8; } .srvOff small { opacity: .85; line-height: 1.35; }
 
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
@@ -802,25 +809,6 @@ body.hud-editing #joyBase { opacity: .9; }
 
   <div id="crosshair"><i class="t1"></i><i class="t2"></i><i class="t3"></i><i class="t4"></i><s class="ring"></s><b></b></div>
   <div id="reticle"></div>
-  <div id="scope"><div class="sWrap"><div class="sRing"></div>
-    <svg class="sCross" viewBox="-100 -100 200 200" aria-hidden="true">
-      <defs>
-        <radialGradient id="scLens" cx="0" cy="0" r="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5fa0b0" stop-opacity=".05"/><stop offset=".78" stop-color="#0a2a30" stop-opacity=".08"/><stop offset=".93" stop-color="#000" stop-opacity=".55"/><stop offset="1" stop-color="#000" stop-opacity=".95"/></radialGradient>
-        <linearGradient id="scGlare" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
-      </defs>
-      <circle r="100" fill="url(#scLens)"/>
-      <ellipse cx="-38" cy="-52" rx="46" ry="18" transform="rotate(-32 -38 -52)" fill="url(#scGlare)"/>
-      <g fill="#050505">
-        <rect x="-100" y="-1.8" width="66" height="3.6"/><rect x="34" y="-1.8" width="66" height="3.6"/><rect x="-1.8" y="34" width="3.6" height="66"/>
-      </g>
-      <g stroke="#050505" stroke-width=".55">
-        <path d="M-34 0H34M0 -100V34"/>
-        <path d="M-24 -2.2v4.4M-18 -1.4v2.8M-12 -2.2v4.4M-6 -1.4v2.8M6 -1.4v2.8M12 -2.2v4.4M18 -1.4v2.8M24 -2.2v4.4M-2.2 -24h4.4M-1.4 -18h2.8M-2.2 -12h4.4M-1.4 -6h2.8"/>
-        <path d="M-5 8h10M-4 14h8M-3 20h6M-2 26h4" stroke-width=".7"/>
-      </g>
-      <g fill="#050505" font-size="3.4" font-family="sans-serif"><text x="6.5" y="9.2">1</text><text x="5.5" y="15.2">2</text><text x="4.5" y="21.2">3</text><text x="3.5" y="27.2">4</text></g>
-      <circle r="1.25" fill="#ff2a2a"/><circle r="3" fill="#ff2a2a" opacity=".22"/>
-    </svg></div></div>
   <div id="hitmark"></div>
   <div id="hurtArrow"></div>
   <div id="handHint"></div>
@@ -850,6 +838,26 @@ body.hud-editing #joyBase { opacity: .9; }
   <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha · R recarrega · E pegar · Q granada · G gel · I inspeciona a arma · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · roda do mouse troca a arma · Esc pausa</div>
   <div id="fps" class="hidden"></div>
 </div>
+<!-- luneta: fica embaixo dos botões de toque (que continuam visíveis e clicáveis) -->
+<div id="scope"><div class="sWrap"><div class="sRing"></div>
+    <svg class="sCross" viewBox="-100 -100 200 200" aria-hidden="true">
+      <defs>
+        <radialGradient id="scLens" cx="0" cy="0" r="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5fa0b0" stop-opacity=".05"/><stop offset=".78" stop-color="#0a2a30" stop-opacity=".08"/><stop offset=".93" stop-color="#000" stop-opacity=".55"/><stop offset="1" stop-color="#000" stop-opacity=".95"/></radialGradient>
+        <linearGradient id="scGlare" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      </defs>
+      <circle r="100" fill="url(#scLens)"/>
+      <ellipse cx="-38" cy="-52" rx="46" ry="18" transform="rotate(-32 -38 -52)" fill="url(#scGlare)"/>
+      <g fill="#050505">
+        <rect x="-100" y="-1.8" width="66" height="3.6"/><rect x="34" y="-1.8" width="66" height="3.6"/><rect x="-1.8" y="34" width="3.6" height="66"/>
+      </g>
+      <g stroke="#050505" stroke-width=".55">
+        <path d="M-34 0H34M0 -100V34"/>
+        <path d="M-24 -2.2v4.4M-18 -1.4v2.8M-12 -2.2v4.4M-6 -1.4v2.8M6 -1.4v2.8M12 -2.2v4.4M18 -1.4v2.8M24 -2.2v4.4M-2.2 -24h4.4M-1.4 -18h2.8M-2.2 -12h4.4M-1.4 -6h2.8"/>
+        <path d="M-5 8h10M-4 14h8M-3 20h6M-2 26h4" stroke-width=".7"/>
+      </g>
+      <g fill="#050505" font-size="3.4" font-family="sans-serif"><text x="6.5" y="9.2">1</text><text x="5.5" y="15.2">2</text><text x="4.5" y="21.2">3</text><text x="3.5" y="27.2">4</text></g>
+      <circle r="1.25" fill="#ff2a2a"/><circle r="3" fill="#ff2a2a" opacity=".22"/>
+    </svg></div></div>
 
 <!-- ===================== CONTROLES DE TOQUE ===================== -->
 <div id="touch" class="hidden" data-mode="ground">
@@ -911,7 +919,7 @@ body.hud-editing #joyBase { opacity: .9; }
   </div>
   <div id="squadBar" class="squadBar"><small>SEU GRUPO</small><div id="squadSlots"></div></div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v3.1</div>
+  <div class="ver">v3.2</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1157,7 +1165,7 @@ body.hud-editing #joyBase { opacity: .9; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v3.1 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v3.2 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -8910,6 +8918,13 @@ const SRV = { url: '/api/contas', on: false, tok: null, user: null, KEY: 'battle
 const SRV_ERR = { bad_user: 'Usuário: 3 a 16 letras minúsculas, números, _ ou .', short_pass: 'A senha precisa de pelo menos 4 caracteres.', exists: 'Esse usuário já existe. Toque em ENTRAR.',
   not_found: 'Usuário não encontrado. Confira o nome ou crie a conta.', bad_pass: 'Senha incorreta. Toque no olho para ver o que está digitando. Esqueceu? Peça ao dono do jogo para trocar.',
   session: 'Sua sessão expirou. Entre de novo.', bad_profile: 'Conta grande demais para salvar.', owner: 'Código do dono errado.', google: 'O Google não confirmou o login. Tente de novo.', google_used: 'Essa conta Google já está ligada a outra conta do jogo.', no_google: 'Login com Google não está ligado no servidor.', id_taken: 'Já existe uma conta com esse ID.', bad_id: 'O ID precisa ter de 1 a 10 números.' };
+SRV.WHY = {
+  arquivo: 'o jogo foi aberto pelo arquivo HTML baixado. O servidor só existe no site da Netlify.',
+  claude: 'o jogo está aberto pelo link do claude.ai. O servidor das contas é o do site da Netlify.',
+  semFuncao: 'o site foi publicado sem as funções do servidor (provavelmente arrastando a pasta na Netlify). Publique ligando o repositório do GitHub.',
+  rede: 'sem internet ou o site não respondeu. Tente de novo.',
+  erro: 'o servidor deu erro. Confira em Netlify › Logs › Functions.',
+};
 SRV.msg = (e) => SRV_ERR[e && e.code] || 'Sem conexão com o servidor do jogo. Tente de novo.';
 SRV.call = async function (body, ms) {
   const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -8924,10 +8939,14 @@ SRV.call = async function (body, ms) {
   } finally { clearTimeout(to); }
 };
 SRV.init = async function () {
-  if (!/^https?:$/.test(location.protocol) || /claude\.ai|claudeusercontent/.test(location.host)) return false;
+  // motivo quando o servidor não liga (aparece no painel do dono e no perfil)
+  if (!/^https?:$/.test(location.protocol)) { SRV.why = 'arquivo'; return false; }
+  if (/claude\.ai|claudeusercontent/.test(location.host)) { SRV.why = 'claude'; return false; }
   for (let i = 0; i < 2 && !SRV.on; i++) {
-    try { const j = await SRV.call({ op: 'ping' }, 15000); SRV.on = j.app === 'battle-island'; } catch (e) { if (e && e.status === 404) break; SRV.on = false; }
+    try { const j = await SRV.call({ op: 'ping' }, 15000); SRV.on = j.app === 'battle-island'; if (!SRV.on) SRV.why = 'semFuncao'; }
+    catch (e) { SRV.on = false; SRV.why = e && (e.status === 404 || e.status === 405 || e.code === 'http') ? 'semFuncao' : e && e.status >= 500 ? 'erro' : 'rede'; if (SRV.why === 'semFuncao') break; }
   }
+  if (SRV.on) SRV.why = '';
   SRV.status = SRV.on ? 'on' : 'off';
   if (SRV.on) try { const c = await SRV.call({ op: 'config' }, 10000); SRV.gid = c.google || ''; SRV.pix = !!c.pix; } catch (e) { SRV.gid = ''; SRV.pix = false; }
   if (SRV.on) setInterval(() => { if (typeof G === 'undefined' || G.state !== 'play') SRV.poll(); }, 30000);
@@ -9315,7 +9334,7 @@ ACC.accounts = function (today) {
   for (const u in db.users) {
     const r = db.users[u], p = ACC.fix(r.p), t = r.t || p.created;
     if (today && !sameDay(t, now)) continue;
-    out.push({ user: u, guest: u === '__guest', name: p.name, id: p.id, level: p.level, verified: p.verified, owner: p.owner, t: t, skins: p.owned.skins.length, matches: p.stats.matches });
+    out.push({ user: u, guest: u === '__guest', name: p.name, id: p.id, level: p.level, verified: p.verified, owner: p.owner, t: t, seen: r.upd || t, skins: p.owned.skins.length, matches: p.stats.matches });
   }
   return out.sort((a, b) => b.t - a.t);
 };
@@ -10104,13 +10123,24 @@ LOB.renderAdmin = function () {
     return;
   }
   const rows = SRV.on ? LOB.adRows : ACC.accounts(tab === 'hoje');
-  body.innerHTML = '<p class="hint adNote">' + icon('info') + (tab === 'hoje' ? rows.length + ' conta(s) criada(s) hoje' : rows.length + ' conta(s) no total') +
+  const ago = (t) => { if (!t) return '—'; const m = Math.round((Date.now() - t) / 60000); return m < 2 ? 'agora' : m < 60 ? m + ' min' : m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d'; };
+  body.innerHTML = (SRV.on ? '<p class="srvOk">' + icon('check') + 'Servidor das contas <b>LIGADO</b>: todas as contas do site aparecem aqui, e presentes, verificado e ID chegam no celular da pessoa.</p>' :
+    '<div class="srvOff">' + icon('warn') + '<div><b>SERVIDOR DAS CONTAS DESLIGADO</b><span>Motivo: ' + (SRV.WHY[SRV.why] || SRV.WHY.rede) + '</span>' +
+    '<small>Para ligar: na Netlify abra o site › <b>Site configuration › Build &amp; deploy › Link repository</b> › GitHub › repositório do jogo › branch <b>ccr-5c74d41a-5em3vz</b> › Base directory <b>jogo</b> › Publish directory <b>jogo</b> › Deploy. Depois abra o jogo pelo endereço do site.</small></div></div>') +
+    '<p class="hint adNote">' + icon('info') + (tab === 'hoje' ? rows.length + ' conta(s) criada(s) hoje' : rows.length + ' conta(s) no total') +
     (SRV.on ? ' no servidor do jogo (todas as contas criadas no site, de qualquer celular).' : CLOUD.status === 'on' ? ' no banco on-line (contas de quem joga pelo seu link do claude.ai como Colaborador ou Editor).' :
       ' só neste aparelho: o banco on-line não está ligado aqui (abra pelo link do claude.ai, logado como dono).') +
     (SRV.on ? '' : ' Contas criadas no arquivo HTML, no GitHub Pages ou por quem só pode ver o link ficam no celular de cada pessoa.') + '</p>' +
-    (rows.length ? '<table class="adTable"><thead><tr><th>JOGADOR</th><th>ID</th><th>NV</th><th>CRIADA</th><th>VERIFICADO</th><th></th></tr></thead><tbody>' + rows.map(r =>
-      '<tr><td><b>' + escapeHTML(r.name) + '</b>' + (r.verified ? VERIFIED_SVG : '') + (r.owner ? ' ' + icon('crown') : '') + '<small>' + (r.guest ? 'convidado' : escapeHTML(r.user)) + '</small></td><td class="mono">' + r.id + '</td><td>' + r.level + '</td><td>' + fmtDate(r.t) + '</td>' +
-      '<td><button class="tog' + (r.verified ? ' on' : '') + '" data-vf="' + r.id + '" aria-pressed="' + r.verified + '"><i></i></button></td><td class="adAct"><button class="chip" data-to="' + r.id + '" aria-label="Enviar correio">' + icon('mail') + '</button><button class="chip" data-cid="' + r.id + '">ID</button>' + (SRV.on ? '<button class="chip" data-pw="' + escapeHTML(r.user) + '">SENHA</button>' : '') + '</td></tr>').join('') + '</tbody></table>' : '<p class="hint">Nenhuma conta criada hoje ainda.</p>');
+    (rows.length ? '<table class="adTable"><thead><tr><th>JOGADOR</th><th>ID</th><th>NV</th><th>CRIADA</th><th>VISTO</th><th>VERIFICADO</th><th></th></tr></thead><tbody>' + rows.map(r =>
+      '<tr><td><b>' + escapeHTML(r.name) + '</b>' + (r.verified ? VERIFIED_SVG : '') + (r.owner ? ' ' + icon('crown') : '') + '<small>' + (r.guest ? 'convidado' : escapeHTML(r.user)) + '</small></td><td class="mono">' + r.id + '</td><td>' + r.level + '</td><td>' + fmtDate(r.t) + '</td><td>' + ago(r.seen) + '</td>' +
+      '<td><button class="tog' + (r.verified ? ' on' : '') + '" data-vf="' + r.id + '" aria-pressed="' + r.verified + '"><i></i></button></td><td class="adAct"><button class="chip" data-to="' + r.id + '" aria-label="Enviar presente">' + icon('gift') + '</button>' +
+      (r.id !== ACC.p.id && !FR.isFriend(r.id) ? '<button class="chip" data-fr="' + r.id + '" aria-label="Adicionar amigo">' + icon('users') + '</button>' : '') + '<button class="chip" data-cid="' + r.id + '">ID</button>' + (SRV.on ? '<button class="chip" data-pw="' + escapeHTML(r.user) + '">SENHA</button>' : '') + '</td></tr>').join('') + '</tbody></table>' : '<p class="hint">Nenhuma conta criada hoje ainda.</p>');
+  // adicionar como amigo direto da lista
+  body.querySelectorAll('[data-fr]').forEach(b => b.addEventListener('click', async () => {
+    SND.play('ui');
+    const err = await FR.request(b.dataset.fr);
+    notify(err ? 'info' : 'ok', err || 'Pedido de amizade enviado para o ID ' + b.dataset.fr);
+  }));
   body.querySelectorAll('[data-vf]').forEach(b => b.addEventListener('click', () => {
     SND.play('ui');
     const on = !b.classList.contains('on');

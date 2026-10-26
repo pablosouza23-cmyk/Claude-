@@ -403,6 +403,13 @@ const SRV = { url: '/api/contas', on: false, tok: null, user: null, KEY: 'battle
 const SRV_ERR = { bad_user: 'Usuário: 3 a 16 letras minúsculas, números, _ ou .', short_pass: 'A senha precisa de pelo menos 4 caracteres.', exists: 'Esse usuário já existe. Toque em ENTRAR.',
   not_found: 'Usuário não encontrado. Confira o nome ou crie a conta.', bad_pass: 'Senha incorreta. Toque no olho para ver o que está digitando. Esqueceu? Peça ao dono do jogo para trocar.',
   session: 'Sua sessão expirou. Entre de novo.', bad_profile: 'Conta grande demais para salvar.', owner: 'Código do dono errado.', google: 'O Google não confirmou o login. Tente de novo.', google_used: 'Essa conta Google já está ligada a outra conta do jogo.', no_google: 'Login com Google não está ligado no servidor.', id_taken: 'Já existe uma conta com esse ID.', bad_id: 'O ID precisa ter de 1 a 10 números.' };
+SRV.WHY = {
+  arquivo: 'o jogo foi aberto pelo arquivo HTML baixado. O servidor só existe no site da Netlify.',
+  claude: 'o jogo está aberto pelo link do claude.ai. O servidor das contas é o do site da Netlify.',
+  semFuncao: 'o site foi publicado sem as funções do servidor (provavelmente arrastando a pasta na Netlify). Publique ligando o repositório do GitHub.',
+  rede: 'sem internet ou o site não respondeu. Tente de novo.',
+  erro: 'o servidor deu erro. Confira em Netlify › Logs › Functions.',
+};
 SRV.msg = (e) => SRV_ERR[e && e.code] || 'Sem conexão com o servidor do jogo. Tente de novo.';
 SRV.call = async function (body, ms) {
   const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -417,10 +424,14 @@ SRV.call = async function (body, ms) {
   } finally { clearTimeout(to); }
 };
 SRV.init = async function () {
-  if (!/^https?:$/.test(location.protocol) || /claude\.ai|claudeusercontent/.test(location.host)) return false;
+  // motivo quando o servidor não liga (aparece no painel do dono e no perfil)
+  if (!/^https?:$/.test(location.protocol)) { SRV.why = 'arquivo'; return false; }
+  if (/claude\.ai|claudeusercontent/.test(location.host)) { SRV.why = 'claude'; return false; }
   for (let i = 0; i < 2 && !SRV.on; i++) {
-    try { const j = await SRV.call({ op: 'ping' }, 15000); SRV.on = j.app === 'battle-island'; } catch (e) { if (e && e.status === 404) break; SRV.on = false; }
+    try { const j = await SRV.call({ op: 'ping' }, 15000); SRV.on = j.app === 'battle-island'; if (!SRV.on) SRV.why = 'semFuncao'; }
+    catch (e) { SRV.on = false; SRV.why = e && (e.status === 404 || e.status === 405 || e.code === 'http') ? 'semFuncao' : e && e.status >= 500 ? 'erro' : 'rede'; if (SRV.why === 'semFuncao') break; }
   }
+  if (SRV.on) SRV.why = '';
   SRV.status = SRV.on ? 'on' : 'off';
   if (SRV.on) try { const c = await SRV.call({ op: 'config' }, 10000); SRV.gid = c.google || ''; SRV.pix = !!c.pix; } catch (e) { SRV.gid = ''; SRV.pix = false; }
   if (SRV.on) setInterval(() => { if (typeof G === 'undefined' || G.state !== 'play') SRV.poll(); }, 30000);
@@ -808,7 +819,7 @@ ACC.accounts = function (today) {
   for (const u in db.users) {
     const r = db.users[u], p = ACC.fix(r.p), t = r.t || p.created;
     if (today && !sameDay(t, now)) continue;
-    out.push({ user: u, guest: u === '__guest', name: p.name, id: p.id, level: p.level, verified: p.verified, owner: p.owner, t: t, skins: p.owned.skins.length, matches: p.stats.matches });
+    out.push({ user: u, guest: u === '__guest', name: p.name, id: p.id, level: p.level, verified: p.verified, owner: p.owner, t: t, seen: r.upd || t, skins: p.owned.skins.length, matches: p.stats.matches });
   }
   return out.sort((a, b) => b.t - a.t);
 };

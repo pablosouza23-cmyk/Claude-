@@ -5,7 +5,8 @@
 const LOB = { stage: null, yaw: 0, drag: null, shift: 0, shiftCur: 0, preview: null, sh: { kind: 'skins', sel: null, title: 'LOJA' }, newsI: 0, thumbs: {} };
 const RARE = { comum: ['COMUM', '#8fa3b8', 0x3a4a5e], raro: ['RARO', '#3d9bff', 0x1d4f8f], epico: ['ÉPICO', '#b56bff', 0x4f2390], lendario: ['LENDÁRIO', '#ffb21a', 0x8a5208] };
 const SKIN_INFO = { heroi: 'Moletom com capuz e cabelo cacheado', camisa: 'Visual leve para o calor da ilha', jeans: 'Jaqueta e calça jeans', bone: 'Boné e roupa casual',
-  soldado: 'Uniforme camuflado de combate', soldado2: 'Sargento com equipamento completo', soldada: 'Soldada das forças especiais', swat: 'Tropa de elite com colete tático' };
+  soldado: 'Uniforme camuflado de combate', soldado2: 'Sargento com equipamento completo', soldada: 'Soldada das forças especiais', swat: 'Tropa de elite com colete tático',
+  carrasco: 'Carrasco do Pântano: máscara costurada, jaqueta encardida e pele pálida. Visual de terror.' };
 const GEM_SVG = '<svg class="gemI" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 13L2 9z" fill="url(#gmG)" stroke="#1b1450" stroke-width="1.2"/><path d="M2 9h20M8.5 3 12 9l3.5-6M12 9v13M7 9l5 13 5-13" fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".8"/></svg>';
 const COIN_SVG = '<svg class="coinI" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="url(#cnG)" stroke="#6b3d00" stroke-width="1.3"/><circle cx="12" cy="12" r="7" fill="none" stroke="#a65f00" stroke-width="1"/><path d="m12 6.8 1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff6c8" stroke="#a65f00" stroke-width=".6"/></svg>';
 // selo de verificado (assets/verified.png): troque o arquivo para mudar o desenho

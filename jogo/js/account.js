@@ -52,6 +52,7 @@ const SHOP = {
     jeans: { price: ['gold', 600], rare: 'raro' }, bone: { price: ['gold', 900], rare: 'raro' },
     soldado: { price: ['gold', 1500], rare: 'epico' }, soldado2: { price: ['gems', 60], rare: 'epico' },
     soldada: { price: ['gems', 90], rare: 'lendario' }, swat: { price: ['gems', 150], rare: 'lendario' },
+    carrasco: { price: ['gems', 199], rare: 'lendario' },
   },
   emotes: {
     wave: { price: null, rare: 'comum' }, clap: { price: null, rare: 'comum' }, shrug: { price: null, rare: 'comum' }, dance: { price: null, rare: 'comum' },

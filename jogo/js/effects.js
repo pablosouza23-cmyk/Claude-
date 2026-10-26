@@ -217,9 +217,12 @@ SND.init = function () {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
   } catch (e) { SND.ctx = null; }
 };
+// por padrão só os tiros e as explosões fazem barulho; o resto (cliques, passos, acertos...) liga nas configurações
+SND.SHOTS = { shot: 1, smg: 1, sniper: 1, shotgun: 1, pistol: 1, laser: 1, shotFar: 1, boom: 1 };
 SND.play = function (type, vol) {
   const c = SND.ctx;
   if (!c || !SND.on) return;
+  if (!SND.SHOTS[type] && !(typeof G !== 'undefined' && G.settings && G.settings.sfx === 'todos')) return;
   try {
     const t = c.currentTime;
     vol = (vol === undefined ? 1 : vol) * (SND.vol === undefined ? 1 : SND.vol);

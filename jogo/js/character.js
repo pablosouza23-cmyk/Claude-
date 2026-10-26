@@ -18,6 +18,8 @@ CH.AV = {
   camisa: { png: ['m017_opacity'] },
   jeans: {},
   soldada: {},
+  // personagem feito a partir de outro modelo (sem arquivo novo): roupa gasta e escura, pele pálida e máscara 3D
+  carrasco: { base: 'jeans', grade: 'grim', mask: true },
 };
 CH.PLAYER_PAL = 'heroi';
 CH.BOT_PALS = ['swat', 'soldado', 'bone', 'camisa', 'soldado2', 'jeans', 'soldada', 'swat', 'bone', 'soldado'];
@@ -103,7 +105,7 @@ CH.buildClips = function (buf) {
 CH.load = async function (onStep) {
   const get = async p => { const r = await fetch(CH.url(CH.BASE + p)); if (!r.ok) throw new Error('falta ' + p); return r.arrayBuffer(); };
   CH.buildClips(await get('anims.bin'));
-  const keys = Object.keys(CH.AV);
+  const keys = Object.keys(CH.AV).filter(k => !CH.AV[k].base);
   for (let i = 0; i < keys.length; i++) {
     const k = keys[i], cfg = CH.AV[k];
     const av = CH.buildAvatar(k, await get(k + '.bin'));
@@ -118,7 +120,78 @@ CH.load = async function (onStep) {
     CH.data[k] = av;
     if (onStep) onStep((i + 1) / keys.length);
   }
+  for (const k in CH.AV) if (CH.AV[k].base && CH.data[CH.AV[k].base]) CH.data[k] = CH.variant(k, CH.AV[k]);
   CH.ready = true;
+};
+
+// ---------- personagens derivados ----------
+// "grim": dessatura, puxa para o verde-oliva e escurece (roupa encardida, pele pálida de filme de terror)
+CH.grade = function (tex, kind) {
+  const im = tex.image, w0 = im.width, h0 = im.height, sc = Math.min(1, 1024 / Math.max(w0, h0));
+  const c = document.createElement('canvas'); c.width = Math.round(w0 * sc); c.height = Math.round(h0 * sc);
+  const g = c.getContext('2d'); g.drawImage(im, 0, 0, c.width, c.height);
+  const d = g.getImageData(0, 0, c.width, c.height), a = d.data;
+  for (let i = 0; i < a.length; i += 4) {
+    const l = a[i] * 0.3 + a[i + 1] * 0.59 + a[i + 2] * 0.11;
+    const n = (Math.random() - 0.5) * 18; // sujeira
+    a[i] = Math.max(0, Math.min(255, (l * 0.86 + a[i] * 0.14) * 0.92 + n));
+    a[i + 1] = Math.max(0, Math.min(255, (l * 0.86 + a[i + 1] * 0.14) * 0.94 + n));
+    a[i + 2] = Math.max(0, Math.min(255, (l * 0.86 + a[i + 2] * 0.14) * 0.74 + n));
+  }
+  g.putImageData(d, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.flipY = tex.flipY;
+  return t;
+};
+CH.variant = function (key, cfg) {
+  const src = CH.data[cfg.base];
+  const mats = src.mats.map(m => { const c = m.clone(); if (m.map && m.map.image) c.map = CH.grade(m.map, cfg.grade); c.name = key + '_' + m.name; return c; });
+  const av = Object.assign({}, src, { key: key, mats: mats, mask: !!cfg.mask });
+  if (cfg.mask) {
+    // posição da máscara no osso da cabeça, medida no esqueleto em repouso
+    const inst = CH.rig(src);
+    inst.holder.rotation.y = -src.yaw;
+    inst.top.updateMatrixWorld(true);
+    const R = inst.bones, wp = b => b.getWorldPosition(new THREE.Vector3());
+    const eyes = wp(R.Bip01_LEye).add(wp(R.Bip01_REye)).multiplyScalar(0.5);
+    const fw = new THREE.Vector3(0, 0, 1);
+    const mw = new THREE.Matrix4().compose(eyes.clone().addScaledVector(fw, -0.028).add(new THREE.Vector3(0, -0.035, 0)), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
+    av.maskM = R.Bip01_Head.matrixWorld.clone().invert().multiply(mw);
+  }
+  return av;
+};
+// máscara original do Carrasco: casca branca encardida com costura no meio, fendas e furinhos
+CH.maskMesh = function () {
+  if (!CH.cache.mask) {
+    const geo = new THREE.SphereGeometry(1, 28, 20, Math.PI / 2 - 1.15, 2.3, 0.32, 2.35);
+    geo.scale(0.092, 0.132, 0.1);
+    const pos = geo.attributes.position, uv = geo.attributes.uv;
+    for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / 0.184 + 0.5, pos.getY(i) / 0.264 + 0.5);
+    const S = 256, c = document.createElement('canvas'); c.width = c.height = S;
+    const g = c.getContext('2d');
+    const gr = g.createRadialGradient(S / 2, S * 0.45, 10, S / 2, S / 2, S * 0.6);
+    gr.addColorStop(0, '#e6e0cc'); gr.addColorStop(1, '#a89e84');
+    g.fillStyle = gr; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 900; i++) { g.fillStyle = 'rgba(70,55,35,' + Math.random() * 0.12 + ')'; g.fillRect(Math.random() * S, Math.random() * S, 2 + Math.random() * 4, 2 + Math.random() * 4); }
+    // olhos: fendas inclinadas
+    g.fillStyle = '#0c0a08';
+    for (const sd of [-1, 1]) { g.save(); g.translate(S / 2 + sd * 46, S * 0.42); g.rotate(sd * 0.22); g.beginPath(); g.ellipse(0, 0, 26, 11, 0, 0, 7); g.fill(); g.restore(); }
+    // furinhos de respirar em leque na boca
+    for (let r = 0; r < 3; r++) for (let k = -3 + (r % 2) * 0.5; k <= 3; k++) { g.beginPath(); g.arc(S / 2 + k * 15, S * 0.68 + r * 14, 3.4, 0, 7); g.fill(); }
+    // costura vertical
+    g.strokeStyle = '#3b2a1c'; g.lineWidth = 3; g.beginPath(); g.moveTo(S / 2, 10); g.lineTo(S / 2, S * 0.3); g.stroke();
+    g.lineWidth = 2; for (let y = 16; y < S * 0.3; y += 12) { g.beginPath(); g.moveTo(S / 2 - 7, y); g.lineTo(S / 2 + 7, y + 4); g.stroke(); }
+    // arranhões
+    g.strokeStyle = 'rgba(60,40,25,.7)'; g.lineWidth = 2.5;
+    for (const [x, y] of [[70, 150], [78, 160], [86, 170]]) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + 34, y - 46); g.stroke(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    CH.cache.mask = { geo: geo, mat: new THREE.MeshStandardMaterial({ map: t, roughness: 0.55, side: THREE.DoubleSide }) };
+  }
+  const m = new THREE.Mesh(CH.cache.mask.geo, CH.cache.mask.mat);
+  m.castShadow = true;
+  // tira de couro em volta da cabeça segurando a máscara
+  if (!CH.cache.strap) CH.cache.strap = { geo: new THREE.TorusGeometry(1, 0.075, 6, 28).rotateX(Math.PI / 2).scale(0.079, 1, 0.09).translate(0, 0.03, -0.072), mat: new THREE.MeshStandardMaterial({ color: 0x2a1d14, roughness: 0.85 }) };
+  const st = new THREE.Mesh(CH.cache.strap.geo, CH.cache.strap.mat); st.scale.y = 0.12; m.add(st);
+  return m;
 };
 
 // Junta as texturas opacas do avatar numa só (um desenho por personagem em vez de 3 a 6).
@@ -345,6 +418,7 @@ CH.make = function (key, hq) {
   const mats = av.mats.map(m => m.clone());
   const r = CH.rig(av, mats);
   r.holder.rotation.y = -av.yaw;
+  if (av.mask && av.maskM && r.bones.Bip01_Head) { const mk = CH.maskMesh(); mk.matrixAutoUpdate = false; mk.matrix.copy(av.maskM); r.bones.Bip01_Head.add(mk); }
   const root = new THREE.Group();
   const body = new THREE.Group();
   body.rotation.order = 'YXZ';

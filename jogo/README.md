@@ -82,6 +82,15 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v3.3
+- **Pular a janela:** chegando perto de uma janela e de frente para ela, aparece o botão **PULAR JANELA** (no computador, Espaço). O personagem apoia no peitoril, passa por cima com o corpo inclinado e cai do outro lado.
+- **Correr:** botão **CORRER** (no computador, Shift). Fica 38% mais rápido. Com o botão ligado, o personagem continua correndo para a frente mesmo soltando o controle. Mirar, agachar, atirar ou andar para trás desliga.
+- **Sons:** por padrão só os **tiros** (e as explosões) fazem barulho. Cliques, passos, acertos, recarga e o resto podem voltar em Configurações › Áudio › Efeitos sonoros › Todos.
+- **Novo personagem: Carrasco do Pântano** (lendário, 199 gemas): máscara 3D costurada com olhos em fenda e tira de couro, jaqueta encardida e pele pálida. É um personagem original do jogo, inspirado em filmes de terror (sem usar personagem de filme com dono).
+- **Correções:**
+  - **Mira da escopeta (12):** mirando, o corpo da arma tapava o meio da tela. Agora o olho fica rente ao topo da arma, como numa mira de ferro de verdade. Vale também para a pistola e o revólver.
+  - **Mira aparecendo no lobby:** quem saía da partida mirando continuava com a mira da arma na tela do lobby. Agora ela some ao sair.
+
 ## Correções da v3.2
 - **Luneta da sniper:** o preto em volta da lente agora fica **embaixo** dos botões de toque. Atirar, mirar, pular e o resto continuam visíveis e funcionando com a luneta aberta.
 - **Painel do dono:**

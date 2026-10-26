@@ -6,7 +6,7 @@ const V3 = THREE.Vector3;
 
 const G = {
   state: 'menu', time: 0, built: false,
-  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'ilha', mode: 'br', csSize: 4, csGun: 'FUZIL', brTeam: 1, crossStyle: 'cruz', crossCol: 'branco' },
+  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'ilha', mode: 'br', csSize: 4, csGun: 'FUZIL', brTeam: 1, sfx: 'tiros', crossStyle: 'cruz', crossCol: 'branco' },
   actors: [], bots: [], walls: [], loot: [], nades: [], props: [],
 };
 
@@ -1495,6 +1495,50 @@ function aimAssist(p, dt) {
   return isTouch ? 0.55 + bestS * 0.3 : 0.8;
 }
 
+// ---------- pular a janela ----------
+// janela por perto, de frente para ela e com o chão abaixo do peitoril
+function nearWindow(p) {
+  if (!W.windows || !W.windows.length) return null;
+  const fx = -Math.sin(G.yaw), fz = -Math.cos(G.yaw);
+  let best = null, bd = 1e9;
+  for (const w of W.windows) {
+    const dx = p.pos.x - w.x, dz = p.pos.z - w.z;
+    if (dx * dx + dz * dz > 4) continue;
+    const along = dx * w.nx + dz * w.nz, lat = dx * w.nz - dz * w.nx;
+    if (Math.abs(along) > 1.35 || Math.abs(along) < 0.12 || Math.abs(lat) > w.w / 2 - 0.12) continue;
+    const feet = w.y - p.pos.y;
+    if (feet < 0.35 || feet > 1.5) continue;
+    const side = Math.sign(along); // 1 = do lado de fora
+    if (fx * -w.nx * side + fz * -w.nz * side < 0.35) continue; // olhando para a janela
+    if (Math.abs(along) < bd) { bd = Math.abs(along); best = { w: w, side: side }; }
+  }
+  return best;
+}
+function startVault(p, nw) {
+  const w = nw.w, s = nw.side;
+  const tx = w.x - w.nx * s * 0.95, tz = w.z - w.nz * s * 0.95;
+  const ty = W.groundAt(tx, tz, w.y + 0.6);
+  p.vault = { t: 0, fx: p.pos.x, fy: p.pos.y, fz: p.pos.z, tx: tx, ty: ty, tz: tz, sill: w.y, face: Math.atan2(-w.nx * s, -w.nz * s) };
+  p.aimOn = false; p.inspect = false; p.emote = null; p.reloadT = 0;
+  G.nearWin = null;
+}
+function updateVault(p, dt) {
+  const v = p.vault;
+  v.t = Math.min(1, v.t + dt / 0.72);
+  const k = v.t, h = U.smooth(0, 1, k);
+  // sobe até o peitoril, apoia e passa por cima, descendo do outro lado
+  const top = v.sill + 0.42;
+  const y = k < 0.45 ? U.lerp(v.fy, top, Math.sin(k / 0.45 * Math.PI / 2)) : U.lerp(top, v.ty, Math.pow((k - 0.45) / 0.55, 1.6));
+  p.pos.set(U.lerp(v.fx, v.tx, h), y, U.lerp(v.fz, v.tz, h));
+  p.vel.set(0, 0, 0); p.vy = 0; p.onGround = false; p.speed = 3;
+  p.face = U.dampAngle(p.face, v.face, 18, dt);
+  p.ch.body.rotation.y = p.face; p.ch.root.position.copy(p.pos); p.ch.root.visible = true;
+  CH.animate(p.ch, dt, { mode: 'ground', speed: 2.5, vx: Math.sin(p.face) * 2.5, vz: Math.cos(p.face) * 2.5, aim: 0, air: true, pitch: 0, crouch: false, armed: false });
+  // corpo inclinado para a frente na passada (depois do animate, que zera a inclinação)
+  p.ch.body.rotation.x = Math.sin(k * Math.PI) * 0.5;
+  if (k >= 1) { p.vault = null; p.pos.y = v.ty; p.onGround = true; p.ch.landT = 0.22; p.ch.body.rotation.x = 0; }
+}
+
 // inspecionar a arma (tecla I ou o botão do olho): o personagem gira a arma na frente da câmera
 const INSPECT_T = 3.2;
 function startInspect(p) {
@@ -1541,13 +1585,24 @@ function updatePlayer(dt) {
     CH.animate(p.ch, dt, { mode: 'ground', speed: 0, aim: 0, pitch: 0, armed: !!curSlot(p), gunAt: fpGunAt(p) });
     return;
   }
+  // pulando a janela: o movimento é da animação
+  if (p.vault) { updateVault(p, dt); return; }
+  // correr: Shift segurado ou o botão CORRER (que também mantém o personagem correndo sem segurar o controle)
+  const holdRun = keys.ShiftLeft || keys.ShiftRight;
+  if (G.sprint && (p.aimOn || p.crouch || mv.my < -0.3)) { G.sprint = false; const rb = $('btnRun'); if (rb) rb.classList.remove('on'); }
+  if (G.sprint && Math.hypot(mv.mx, mv.my) < 0.2) mv.my = 1;
+  const sprinting = (G.sprint || holdRun) && mv.my > 0.4 && !p.aimOn && !p.crouch && p.healT <= 0 && G.time - p.lastFire > 0.4 && !p.nadeHand;
   const sy = Math.sin(G.yaw), cy = Math.cos(G.yaw);
   const wx = -sy * mv.my + cy * mv.mx, wz = -cy * mv.my - sy * mv.mx;
   if (consume('crouch', 'KeyC')) p.crouch = !p.crouch;
-  let maxS = (p.crouch ? 2.6 : 6.2) * (curW(p) && curW(p).slow ? curW(p).slow : 1);
+  let maxS = (p.crouch ? 2.6 : 6.2) * (curW(p) && curW(p).slow ? curW(p).slow : 1) * (sprinting ? 1.38 : 1);
   if (p.aimOn) maxS = Math.min(maxS, 3.2);
   if (p.healT > 0) maxS = 2.2;
-  moveActor(p, wx, wz, maxS, dt, consume('jump', 'Space'));
+  // perto de uma janela, pular (Espaço ou o botão PULAR JANELA) passa por ela
+  G.nearWin = p.onGround && !p.inspect ? nearWindow(p) : null;
+  const jumpNow = consume('jump', 'Space'), vaultNow = consume('vault');
+  if (G.nearWin && (vaultNow || jumpNow)) { startVault(p, G.nearWin); updateVault(p, dt); return; }
+  moveActor(p, wx, wz, maxS, dt, jumpNow);
 
   // ações
   p.wallCd -= dt;

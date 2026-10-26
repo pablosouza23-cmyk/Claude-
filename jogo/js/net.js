@@ -539,6 +539,8 @@ NET.hostEnd = function () {
 };
 NET.backToRoom = function () {
   clearMatch();
+  G.ads = false; G.nearWin = null; G.sprint = false;
+  H.scope.classList.remove('show'); H.reticle.innerHTML = ''; H.cache.sight = '';
   G.state = 'lobby';
   H.hud.classList.add('hidden'); H.touch.classList.add('hidden');
   setupShowcase();

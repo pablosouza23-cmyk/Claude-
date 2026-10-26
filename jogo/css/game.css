@@ -757,3 +757,9 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 .srvOk { background: rgba(60,200,110,.14); border: 1px solid rgba(60,200,110,.45); } .srvOk .ico { color: #5be37d; width: 16px; height: 16px; flex: none; }
 .srvOff { background: rgba(255,80,60,.14); border: 1px solid rgba(255,90,60,.55); } .srvOff .ico { color: #ff7a5a; width: 18px; height: 18px; flex: none; }
 .srvOff div { display: flex; flex-direction: column; gap: 3px; } .srvOff span { color: #ffd2c8; } .srvOff small { opacity: .85; line-height: 1.35; }
+#btnRun { right: calc(max(16px, env(safe-area-inset-right)) + 186px * var(--btn)); bottom: 18px; width: calc(46px * var(--btn)); height: calc(46px * var(--btn)); }
+#btnRun.on { background: rgba(255,200,60,.35); border-color: #ffd23c; } #btnRun.on .ico { color: #ffe27a; }
+#vaultBtn { position: absolute; left: 50%; bottom: 128px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 9px 20px; font-size: 15px; font-weight: 800; letter-spacing: .06em;
+  color: #fff; background: rgba(10,20,34,.78); border: 2px solid #ffd23c; border-radius: 26px; pointer-events: auto; cursor: pointer; animation: dlgPop .18s ease-out; }
+#vaultBtn .ico { width: 20px; height: 20px; color: #ffd23c; } #vaultBtn.hidden { display: none; }
+@media (max-aspect-ratio: 1/1) { #btnRun { bottom: 70px; } }

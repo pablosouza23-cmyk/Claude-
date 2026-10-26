@@ -376,7 +376,7 @@ W.buildSteps = function (scene, quality, mapId) {
   if (W.root) { scene.remove(W.root); W.root.traverse(o => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); }); }
   W.root = new THREE.Group(); scene.add(W.root);
   const R = W.root;
-  W.statics = []; W.grid = new Map(); W.dynamic = []; W.houses = []; W.lootSpots = []; W.olSets = []; W.occupied = []; W.spinners = [];
+  W.statics = []; W.grid = new Map(); W.dynamic = []; W.houses = []; W.lootSpots = []; W.windows = []; W.olSets = []; W.occupied = []; W.spinners = [];
   W.grassCenter = { x: 1e9, z: 1e9 };
   const steps = [];
   if (!W.sky) steps.push(['Céu e nuvens', () => { W.buildSky(scene); W.buildClouds(scene, rnd); if (typeof renderer !== 'undefined') W.buildEnv(renderer, scene); }]);
@@ -870,6 +870,10 @@ W.house = function (parts, x, z, rot, base, idx, styleName, size) {
       fr(a - 0.04, o[2], 0.08, hh); fr(b + 0.04, o[2], 0.08, hh);
       fr(o[0], o[3], w + 0.16, 0.08);
       if (!isDoor) {
+        // janela: guarda o centro, a direção para fora e a altura do peitoril (para pular a janela)
+        const lx = along === 'x' ? o[0] : fixed, lz = along === 'x' ? fixed : o[0];
+        const nlx = along === 'x' ? 0 : out, nlz = along === 'x' ? out : 0;
+        W.windows.push({ x: wx(lx, lz), z: wz(lx, lz), nx: nlx * c + nlz * s, nz: -nlx * s + nlz * c, y: base + o[2], top: base + o[3], w: w });
         fr(o[0], o[2] - 0.08, w + 0.16, 0.08);
         for (const sd of [-1, 1]) {
           const p = o[0] + sd * (w / 2 + w / 4 + 0.1);

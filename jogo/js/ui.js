@@ -15,6 +15,7 @@ const ICON = {
   exit: '<path d="M10 3h9a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-9v-2h9V5h-9zM8 7l1.4 1.4L6.8 11H15v2H6.8l2.6 2.6L8 17l-5-5z"/>',
   bullet: '<path d="M10 2c1.8 1.4 3 4 3 6.5V20H7V8.5C7 6 8.2 3.4 10 2zM6 21h8v1.5H6z" transform="translate(2 0)"/>',
   aim: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 17.9V17h-2v2.9A8 8 0 0 1 4.1 13H7v-2H4.1A8 8 0 0 1 11 4.1V7h2V4.1a8 8 0 0 1 6.9 6.9H17v2h2.9a8 8 0 0 1-6.9 6.9zM12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>',
+  run: '<circle cx="15.5" cy="3.8" r="2.2"/><path d="M5 21.5 8.3 15l2.4 1.8-1 4.7h2l1.4-6.3-2.4-2.2 1-3.4c1.2 1.6 3 2.7 5.3 2.9v-2c-1.7-.2-3-1.2-3.8-2.6l-1-1.6a2 2 0 0 0-2.4-.8L4 8.3V12h2V9.6l2.3-.9L6.3 14 3 20.5zM18 15h4v2h-4zm-1 3h5v2h-5zm2-6h3v2h-3z"/>',
   jump: '<circle cx="14.5" cy="3.8" r="2.2"/><path d="m9 22 1.6-6.2 2.6 2.4V22h2v-5.3l-2.5-2.5.8-3.4A7 7 0 0 0 19 13v-2a5 5 0 0 1-4.3-2.4l-1-1.6a2 2 0 0 0-2.6-.7L6 8.6V13h2V10l1.7-.8L7 22z"/>',
   crouch: '<circle cx="13" cy="4" r="2.2"/><path d="M8 21h2.2l1.3-4.2 2.5 1.6V21h2v-4l-2.6-2.3.6-2.6 1.6 1.7H19v-2h-2.5l-2.6-3.2a2 2 0 0 0-2.7-.4L7 10.4V14h2v-2.6l1.6-.9-1.2 4.4z"/>',
   reload: '<path d="M12 4a8 8 0 0 1 7.7 5.9l2.3-.8-1.3 5.4-4.3-3.4 1.5-.5A6 6 0 1 0 18 14h2.1A8 8 0 1 1 12 4z"/>',
@@ -49,7 +50,7 @@ const ICON = {
   smile: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zM8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM12 17.5c2.3 0 4.2-1.5 5-3.5H7c.8 2 2.7 3.5 5 3.5z"/>',
 };
 // nomes dos personagens que dá para escolher
-const SKINS = [['heroi', 'Cacheado'], ['swat', 'SWAT'], ['soldado', 'Soldado'], ['soldado2', 'Sargento'], ['bone', 'Boné'], ['camisa', 'Camiseta'], ['jeans', 'Jeans'], ['soldada', 'Soldada']];
+const SKINS = [['heroi', 'Cacheado'], ['swat', 'SWAT'], ['soldado', 'Soldado'], ['soldado2', 'Sargento'], ['bone', 'Boné'], ['camisa', 'Camiseta'], ['jeans', 'Jeans'], ['soldada', 'Soldada'], ['carrasco', 'Carrasco']];
 const skinName = k => (SKINS.find(x => x[0] === k) || SKINS[0])[1];
 // emotes (animações de captura de movimento): [clipe, nome, ícone, duração máx.]
 const EMOTES = [['dance', 'Dança', '🕺', 8], ['dance2', 'Dança louca', '🤪', 8], ['dance3', 'Passinho', '🔥', 8], ['dance4', 'Balanço', '🎶', 8],
@@ -151,6 +152,14 @@ function setFPWeapon(id) {
   h.add(gm);
   const p = WPN.build(id);
   fpGun.userData.sightY = p.sightY; fpGun.userData.sightZ = p.sightZ;
+  // mira de ferro (escopeta, pistolas): o olho fica rente ao ponto mais alto da arma entre o olho e a massa de mira,
+  // senão o corpo da arma tapa o meio da tela
+  if (!/dot|cyan|diamond|orange|brackets|scope/.test(WEAPONS[id].sight)) {
+    const pos = p.g.attributes.position;
+    let top = p.sightY;
+    for (let i = 0; i < pos.count; i++) { const z = pos.getZ(i); if (z <= p.sightZ + 0.01 && z > p.sightZ - 0.7) top = Math.max(top, pos.getY(i)); }
+    fpGun.userData.sightY = top + 0.006;
+  }
   const sec = WEAPONS[id].secondary;
   fpGun.userData.hL.position.set(0.0, p.foreY !== undefined ? p.foreY - 0.03 : -0.07, sec ? 0.0 : (p.foreZ !== undefined ? p.foreZ : Math.min(0.3, p.len * 0.5)));
   fpGun.userData.hL.visible = !sec;
@@ -382,7 +391,7 @@ function initHUD() {
   document.querySelectorAll('[data-icon]').forEach(el => { el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)); });
   ['hud', 'touch', 'hpFill', 'hpNum', 'vestBadge', 'helmBadge', 'aliveNum', 'killNum', 'compassStrip', 'compassNum', 'notifs', 'areaBanner', 'areaName',
     'killBanner', 'kbCount', 'kbName', 'minimap', 'zoneTime', 'zoneText', 'topStatus', 'prep', 'prepNum', 'bigText', 'jumpHint', 'diveStats', 'diveHint', 'altMark',
-    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'wbGel', 'wbInsp', 'inspTag',
+    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'wbGel', 'wbInsp', 'inspTag', 'vaultBtn',
     'healRing', 'reloadBar'].forEach(id => { H[id] = $(id); });
   H.scopeWrap = H.scope.querySelector('.sWrap');
   H.mm = H.minimap.getContext('2d');
@@ -463,6 +472,8 @@ function updateHUD(dt) {
     if (canOpenAirdrop()) { use = 'ABRIR SUPRIMENTO'; useCol = '#ffb21e'; }
     else { const it = nearestWeaponLoot(p, 2.2); if (it) { use = 'PEGAR ' + lootLabel(it).toUpperCase(); useCol = WPN.RARITY[WEAPONS[it.type.slice(2)].rarity].color; } }
   }
+  // pular a janela
+  setClass(H.vaultBtn, 'vb', 'hidden', !(G.nearWin && p.alive && !p.vault));
   if (H.cache.use !== use) {
     H.cache.use = use;
     H.useBtn.innerHTML = use ? icon('bag') + '<span>' + (isTouch ? '' : '[E] ') + use + '</span>' : '';
@@ -667,6 +678,8 @@ function showScreen(id) {
 
 function goMenu() {
   if (G.state === 'play' || G.state === 'pause' || G.state === 'end') clearMatch();
+  G.ads = false; G.nearWin = null; G.sprint = false;
+  H.scope.classList.remove('show'); H.reticle.innerHTML = ''; H.cache.sight = '';
   G.state = 'menu';
   H.hud.classList.add('hidden'); H.touch.classList.add('hidden');
   setupShowcase();
@@ -734,6 +747,7 @@ function startMatch(msg) {
   G.mode = (msg ? msg.mode : G.settings.mode) === 'cs' ? 'cs' : 'br';
   H.hud.classList.toggle('cs', G.mode === 'cs');
   G.teamSize = 1; G.teamCount = 0; TEAM.tags = []; TEAM.spec = null;
+  G.sprint = false; G.nearWin = null; $('btnRun').classList.remove('on');
   H.hud.classList.remove('team'); $('teamBox').classList.add('hidden');
   if (LOB.clearParty) LOB.clearParty();
   if (G.mode === 'cs') {
@@ -1028,6 +1042,7 @@ const SETTINGS_UI = {
     { k: 'music', label: 'Música', type: 'toggle' },
     { k: 'vol', label: 'Volume', type: 'range', min: 0, max: 1, step: 0.05, show: v => Math.round(v * 100) },
     { k: 'vibra', label: 'Vibração', type: 'toggle' },
+    { k: 'sfx', label: 'Efeitos sonoros', type: 'seg', opts: [['tiros', 'Só tiros'], ['todos', 'Todos']] },
   ],
 };
 let setTab = 'geral', settingsFrom = 'menu';
@@ -1063,7 +1078,7 @@ function renderSettings() {
   }
 }
 // ---------- editor de HUD: arrastar e redimensionar os botões; salva em G.settings.hud ----------
-const HUD_EDIT = ['btnFire', 'btnFireL', 'btnAim', 'btnJump', 'btnCrouch', 'btnReload', 'btnInv', 'btnEmote', 'joyBase', 'weaponBar', 'hudTR', 'hudTL'];
+const HUD_EDIT = ['btnFire', 'btnFireL', 'btnAim', 'btnJump', 'btnCrouch', 'btnReload', 'btnInv', 'btnEmote', 'btnRun', 'joyBase', 'weaponBar', 'hudTR', 'hudTL'];
 let heWork = null, heSel = null, heFrom = null;
 function applyHudLayout() {
   const L = G.settings.hud || {};
@@ -1276,6 +1291,8 @@ function initInput() {
   holdBtn($('btnInv'), () => { UI.screen === 'inv' ? closeInventory() : openInventory('inv'); });
   holdBtn($('btnEmote'), () => { openEmoteWheel(); });
   holdBtn($('useBtn'), () => { input.use = true; });
+  holdBtn($('vaultBtn'), () => { input.vault = true; });
+  holdBtn($('btnRun'), () => { G.sprint = !G.sprint; $('btnRun').classList.toggle('on', G.sprint); });
   holdBtn($('btnSaltar'), () => { input.jump = true; });
   holdBtn($('btnChute'), () => { input.chute = true; });
   holdBtn($('btnBoard'), () => { input.board = true; });
@@ -1423,7 +1440,8 @@ function frame(now) {
   if (bodycam) POST.begin(renderer);
   if (isTouch && renderer.shadowMap.enabled) { PERF.sh = (PERF.sh + 1) % 2; if (!PERF.sh) renderer.shadowMap.needsUpdate = true; }
   renderer.render(scene, camera);
-  if (G.ads && fpScene && fpGun.visible && G.state !== 'end') {
+  // a arma da mira (1ª pessoa) só aparece dentro da partida
+  if (G.ads && fpScene && fpGun.visible && (G.state === 'play' || G.state === 'pause')) {
     renderer.autoClear = false;
     renderer.clearDepth();
     fpScene.environment = scene.environment;

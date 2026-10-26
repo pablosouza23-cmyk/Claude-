@@ -8753,7 +8753,9 @@ LOB.renderAdmin = function () {
   }
   const rows = ACC.accounts(tab === 'hoje');
   body.innerHTML = '<p class="hint adNote">' + icon('info') + (tab === 'hoje' ? rows.length + ' conta(s) criada(s) hoje' : rows.length + ' conta(s) no total') +
-    ' neste aparelho. Para ver as contas de todos os celulares é preciso um servidor (veja o README).</p>' +
+    (CLOUD.status === 'on' ? ' no banco on-line (contas de quem joga pelo seu link do claude.ai como Colaborador ou Editor).' :
+      ' só neste aparelho: o banco on-line não está ligado aqui (abra pelo link do claude.ai, logado como dono).') +
+    ' Contas criadas no arquivo HTML, no GitHub Pages ou por quem só pode ver o link ficam no celular de cada pessoa.</p>' +
     (rows.length ? '<table class="adTable"><thead><tr><th>JOGADOR</th><th>ID</th><th>NV</th><th>CRIADA</th><th>VERIFICADO</th><th></th></tr></thead><tbody>' + rows.map(r =>
       '<tr><td><b>' + escapeHTML(r.name) + '</b>' + (r.verified ? VERIFIED_SVG : '') + (r.owner ? ' ' + icon('crown') : '') + '<small>' + (r.guest ? 'convidado' : escapeHTML(r.user)) + '</small></td><td class="mono">' + r.id + '</td><td>' + r.level + '</td><td>' + fmtDate(r.t) + '</td>' +
       '<td><button class="tog' + (r.verified ? ' on' : '') + '" data-vf="' + r.id + '" aria-pressed="' + r.verified + '"><i></i></button></td><td class="adAct"><button class="chip" data-to="' + r.id + '" aria-label="Enviar correio">' + icon('mail') + '</button><button class="chip" data-cid="' + r.id + '">ID</button></td></tr>').join('') + '</tbody></table>' : '<p class="hint">Nenhuma conta criada hoje ainda.</p>');

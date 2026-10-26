@@ -82,7 +82,30 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
-## Banco de dados das contas (v2.6)
+## Novidades da v2.7
+- **Servidor das contas na Netlify** (`netlify/functions/contas.mjs` + `server/contas-core.mjs`):
+  - as contas ficam no **Netlify Blobs**, o armazenamento que já vem com o site, de graça e sem outra conta;
+  - qualquer pessoa que criar conta no site aparece no **painel do dono**, em "CRIADAS HOJE" e "TODAS";
+  - login com a mesma senha em qualquer celular ou computador;
+  - a senha fica só como hash scrypt, e cada login recebe um token de sessão;
+  - o correio do dono, o ID novo e o verificado chegam no outro celular em até 30 segundos;
+  - no painel, o botão **SENHA** troca a senha de quem esqueceu;
+  - contas antigas, criadas só no aparelho, sobem para o servidor no primeiro login com a senha.
+- **Como publicar com o servidor** (o "arrastar a pasta" da Netlify **não** cria funções, então precisa ser pelo GitHub):
+  1. Na Netlify, abra o site → **Site configuration** → **Build & deploy** → **Link repository** e escolha o repositório no GitHub.
+  2. Em **Branch to deploy**, escolha o branch do jogo. Em **Base directory**, escreva `jogo`. Deixe **Build command** vazio e **Publish directory** como `jogo`.
+  3. Clique em **Deploy**. A Netlify instala o `@netlify/blobs` sozinha (está no `package.json`) e cria o endereço `/api/contas`.
+  4. Para conferir, abra `https://SEU-SITE.netlify.app/api/contas`. Tem que aparecer `{"ok":true,"app":"battle-island"...}`.
+  5. Opcional: em **Environment variables**, crie `OWNER_HASH` com o hash do seu código de dono novo para trocar o código sem mexer no programa.
+- **Ranking global** (botão **RANKING** no lobby): o top 100 de abates e o top 20 por arma, de todas as contas do servidor. Os abates por arma contam a partir desta versão.
+- **Fuzil Dourado** na loja (aba **ARMAS**): custa 120 gemas **ou** 6.000 de ouro. O dano é o mesmo e o visual é de ouro polido, na mão, nas costas e na câmera de 1ª pessoa. Dá para ligar e desligar.
+- **Roda do mouse** troca de arma na partida.
+
+## Sobre receber o dinheiro das vendas
+O CPF e a conta do banco **não ficam no jogo** (o código é público). Eles vão no **Google Play Console**: **Configurações → Perfil de pagamentos**. O Google paga as compras de gemas nessa conta. Não coloque CPF nem dados do banco em nenhum arquivo do jogo.
+
+## Novidades da v2.6
+### Banco de dados das contas no link do claude.ai
 - Aberto pelo **link do claude.ai**, o jogo usa um banco de dados on-line:
   - cada conta fica salva no documento `accounts/<usuário>`, com nível, moedas, itens, correio e amigos. A senha fica só como hash;
   - você entra com usuário e senha em qualquer aparelho em que estiver logado no claude.ai, e o jogo lembra qual conta você usou por último;

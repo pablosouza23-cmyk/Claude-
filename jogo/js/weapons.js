@@ -411,6 +411,13 @@ WPN.glowMat = function () {
 };
 
 // malha completa (corpo + contorno + brilho) pronta para pôr na cena
+// ouro polido para as armas douradas da loja
+WPN.goldMat = function () {
+  if (WPN._gold) return WPN._gold;
+  const metal = TX.tex('gunMetal');
+  WPN._gold = new THREE.MeshStandardMaterial({ color: 0xffc845, map: metal, bumpMap: metal, bumpScale: 0.7, metalness: 0.95, roughness: 0.24, envMapIntensity: 1.7, emissive: 0x3a2400, emissiveIntensity: 0.35 });
+  return WPN._gold;
+};
 WPN.mesh = function (id, olThick) {
   const p = WPN.build(id);
   const g = new THREE.Group();

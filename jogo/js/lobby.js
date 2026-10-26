@@ -158,9 +158,10 @@ LOB.renderAuth = function () {
   const users = m === 'login' || m === 'reset' ? ACC.userList() : [];
   $('authUsers').innerHTML = users.length ? '<small>Contas neste aparelho:</small>' + users.map(u => '<button type="button" class="chip" data-u="' + escapeHTML(u) + '">' + escapeHTML(u) + '</button>').join('') : '';
   $('authUsers').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { $('aUser').value = b.dataset.u; $('aPass').focus(); }));
-  const cloud = CLOUD.on(), ok = ACC.storageOk(), bad = !cloud && (!ok || /^(content|blob):/.test(location.protocol));
+  const cloud = CLOUD.on() || SRV.on, ok = ACC.storageOk(), bad = !cloud && (!ok || /^(content|blob):/.test(location.protocol));
   $('authWarn').classList.toggle('hidden', !bad);
-  $('authNote').innerHTML = cloud ? icon('check') + ' Sua conta fica salva <b>on-line</b>, no banco de dados do jogo. Entre com o mesmo usuário e senha em qualquer aparelho.' :
+  $('authNote').innerHTML = SRV.on ? icon('check') + ' Sua conta fica salva no <b>servidor do jogo</b>. Entre com o mesmo usuário e senha em qualquer celular ou computador.' :
+    cloud ? icon('check') + ' Sua conta fica salva <b>on-line</b>, no banco de dados do jogo. Entre com o mesmo usuário e senha em qualquer aparelho.' :
     'Sua conta fica salva neste aparelho. Para jogar em outro celular, gere o código de transferência no perfil.';
   $('authWarn').innerHTML = icon('warn') + (!ok ? 'Este navegador não está salvando dados (modo anônimo ou visualizador de arquivos). A conta vai sumir ao fechar. Abra o jogo no Chrome normal.' :
     'O jogo foi aberto direto do arquivo baixado e o celular pode apagar a conta ao fechar. Para a conta ficar salva, jogue pelo link do jogo no Chrome.');
@@ -171,11 +172,31 @@ LOB.renderAuth = function () {
   $('aPass').autocomplete = m === 'new' ? 'new-password' : 'current-password';
   $('authErr').textContent = '';
 };
-LOB.submitAuth = function () {
+LOB.submitAuth = async function () {
   const m = LOB.authMode;
   let err;
   const user = LOB.cleanUser($('aUser').value);
   $('aUser').value = user;
+  if (SRV.on && (m === 'login' || m === 'new' || m === 'reset')) {
+    // contas no servidor do jogo
+    if (LOB.authBusy) return;
+    LOB.authBusy = true; $('aGo').disabled = true; $('authErr').textContent = 'Conectando…';
+    if (m === 'login') err = await SRV.login(user, $('aPass').value);
+    else if (m === 'new') {
+      if (!ACC.validUser(user)) err = 'Usuário: 3 a 16 letras minúsculas, números, _ ou .';
+      else if (String($('aPass').value).trim().length < 4) err = 'A senha precisa de pelo menos 4 caracteres.';
+      else {
+        const nick = String($('aNick').value || user).trim().slice(0, 14) || user, guest = ACC.db().users.__guest;
+        const prof = guest && guest.p.stats && guest.p.stats.matches > 0 ? Object.assign(JSON.parse(JSON.stringify(guest.p)), { name: nick }) : ACC.newProfile(nick);
+        err = await SRV.register(user, $('aPass').value, prof);
+      }
+    } else err = 'Contas salvas no servidor: peça ao dono do jogo para trocar sua senha pelo painel do dono.';
+    LOB.authBusy = false; $('aGo').disabled = false;
+    if (err) { $('authErr').textContent = err; SND.play('ui'); return; }
+    $('aPass').value = ''; $('authErr').textContent = '';
+    LOB.enter(m === 'new' ? 'Conta criada e salva no servidor! Bem-vindo, ' + ACC.p.name + '.' : 'Bem-vindo de volta, ' + ACC.p.name + '!');
+    return;
+  }
   if (m === 'login') err = ACC.login(user, $('aPass').value);
   else if (m === 'new') err = ACC.register(user, $('aPass').value, $('aNick').value);
   else if (m === 'reset') err = ACC.resetPass(user, $('aNick').value, $('aPass').value);
@@ -222,6 +243,7 @@ LOB.closeShop = function () {
   goMenu();
 };
 LOB.items = function (kind) {
+  if (kind === 'guns') return Object.keys(SHOP.guns).map(id => ({ id: id, name: SHOP.guns[id].name, it: SHOP.guns[id] }));
   return kind === 'skins' ? SKINS.map(s => ({ id: s[0], name: s[1], it: SHOP.skins[s[0]] })) : EMOTES.map(e => ({ id: e[0], name: e[1], icon: e[2], it: SHOP.emotes[e[0]] }));
 };
 LOB.priceHTML = (pr) => pr ? cur(pr[0]) + '<b>' + fmtN(pr[1]) + '</b>' : '<b>GRÁTIS</b>';
@@ -233,7 +255,9 @@ LOB.renderShop = function () {
   if (!S.sel) S.sel = list[0].id;
   $('shGrid').innerHTML = list.map(o => {
     const own = ACC.owns(kind, o.id), eq = kind === 'skins' && p.skin === o.id, r = RARE[o.it.rare];
-    const art = kind === 'skins' ? (LOB.thumbs[o.id] ? '<img src="' + LOB.thumbs[o.id] + '" alt="">' : '<i class="ph">' + icon('person') + '</i>') : '<i class="emo">' + o.icon + '</i>';
+    const th = kind === 'guns' ? weaponThumbs()[o.it.gun] : null;
+    const art = kind === 'guns' ? (th ? '<img class="goldThumb" src="' + th + '" alt="">' : '<i class="ph">' + icon('bullet') + '</i>') :
+      kind === 'skins' ? (LOB.thumbs[o.id] ? '<img src="' + LOB.thumbs[o.id] + '" alt="">' : '<i class="ph">' + icon('person') + '</i>') : '<i class="emo">' + o.icon + '</i>';
     return '<button class="card' + (S.sel === o.id ? ' sel' : '') + '" data-id="' + o.id + '" style="--rc:' + r[1] + '">' + art +
       '<span class="nm">' + o.name + '</span>' + (eq ? '<em class="tagEq">EQUIPADO</em>' : own ? '<em class="tagOwn">' + icon('check') + '</em>' : '<span class="pr">' + LOB.priceHTML(o.it.price) + '</span>') + '</button>';
   }).join('');
@@ -244,7 +268,8 @@ LOB.renderShop = function () {
 LOB.select = function (id) {
   const S = LOB.sh;
   S.sel = id;
-  if (S.kind === 'skins') { const k = id === ACC.p.skin ? null : id; if (LOB.preview !== k) { LOB.preview = k; swapShowcase(); } showEmote('wave'); }
+  if (S.kind === 'guns') { /* a arma dourada aparece nas costas do personagem depois de comprada */ }
+  else if (S.kind === 'skins') { const k = id === ACC.p.skin ? null : id; if (LOB.preview !== k) { LOB.preview = k; swapShowcase(); } showEmote('wave'); }
   else showEmote(id);
   document.querySelectorAll('#shGrid .card').forEach(b => b.classList.toggle('sel', b.dataset.id === id));
   LOB.renderDetail();
@@ -253,17 +278,25 @@ LOB.renderDetail = function () {
   const S = LOB.sh, kind = S.kind, id = S.sel, o = LOB.items(kind).find(x => x.id === id), r = RARE[o.it.rare], p = ACC.p;
   const own = ACC.owns(kind, id), eq = kind === 'skins' && p.skin === id;
   let btn;
-  if (kind === 'skins') btn = eq ? '<button class="mBtn ok" disabled>' + icon('check') + 'EQUIPADO</button>' : own ? '<button class="mBtn primary" id="shAct">EQUIPAR</button>' :
+  if (kind === 'guns') {
+    const on = own && ACC.p.goldOff.indexOf(id) < 0;
+    btn = own ? '<button class="mBtn ' + (on ? 'ok' : 'primary') + '" id="shAct">' + (on ? icon('check') + 'USANDO' : 'USAR DOURADA') + '</button>' :
+      '<button class="mBtn primary buy" id="shAct">COMPRAR ' + LOB.priceHTML(o.it.price) + '</button>' + (o.it.alt ? '<button class="mBtn primary buy alt" id="shAlt">COMPRAR ' + LOB.priceHTML(o.it.alt) + '</button>' : '');
+  } else if (kind === 'skins') btn = eq ? '<button class="mBtn ok" disabled>' + icon('check') + 'EQUIPADO</button>' : own ? '<button class="mBtn primary" id="shAct">EQUIPAR</button>' :
     '<button class="mBtn primary buy" id="shAct">COMPRAR ' + LOB.priceHTML(o.it.price) + '</button>';
   else btn = own ? '<button class="mBtn ok" id="shAct">' + icon('play') + 'TESTAR</button>' : '<button class="mBtn primary buy" id="shAct">COMPRAR ' + LOB.priceHTML(o.it.price) + '</button>';
   $('shDetail').innerHTML = '<span class="rare" style="--rc:' + r[1] + '">' + r[0] + '</span><b class="dn">' + o.name + '</b><p>' +
-    (kind === 'skins' ? SKIN_INFO[id] || '' : 'Emote com animação de captura de movimento. Use na partida pelo botão ' + icon('smile') + '.') + '</p>' + btn +
-    (kind === 'emotes' && own ? '<small class="hint">Você já tem este emote.</small>' : '');
+    (kind === 'guns' ? o.it.desc : kind === 'skins' ? SKIN_INFO[id] || '' : 'Emote com animação de captura de movimento. Use na partida pelo botão ' + icon('smile') + '.') + '</p>' + btn +
+    (kind === 'emotes' && own ? '<small class="hint">Você já tem este emote.</small>' : '') +
+    (kind === 'guns' && own ? '<small class="hint">Toque para ' + (ACC.p.goldOff.indexOf(id) < 0 ? 'voltar à arma normal' : 'usar a dourada') + '.</small>' : '');
   const b = $('shAct');
   if (b) b.addEventListener('click', () => { SND.play('ui'); LOB.act(); });
+  const b2 = $('shAlt');
+  if (b2) b2.addEventListener('click', () => { SND.play('ui'); LOB.act(true); });
 };
-LOB.act = function () {
+LOB.act = function (useAlt) {
   const S = LOB.sh, kind = S.kind, id = S.sel, it = SHOP[kind][id];
+  if (kind === 'guns') { LOB.actGun(id, it, useAlt); return; }
   if (ACC.owns(kind, id)) {
     if (kind === 'skins') { ACC.p.skin = id; ACC.emit(); LOB.preview = null; LOB.applyProfile(); swapShowcase(); notify('ok', 'Personagem equipado'); if (NET.on()) NET.setAvatar(id); }
     else showEmote(id);
@@ -286,6 +319,54 @@ LOB.act = function () {
     else showEmote(id);
     LOB.renderShop();
   }, true], ['CANCELAR']]);
+};
+
+// arma dourada: comprar (gemas ou ouro) ou ligar/desligar
+LOB.actGun = function (id, it, useAlt) {
+  const refresh = () => { if (G.show) G.show.ch.gold = ACC.goldGuns(); swapShowcase(); LOB.renderShop(); };
+  if (ACC.owns('guns', id)) { ACC.toggleGold(id); refresh(); return; }
+  const pr = useAlt && it.alt ? it.alt : it.price;
+  if (!ACC.canPay(pr)) {
+    const falta = pr[1] - ACC.p[pr[0]];
+    LOB.dialog(pr[0] === 'gems' ? 'GEMAS INSUFICIENTES' : 'OURO INSUFICIENTE', 'Faltam <b>' + fmtN(falta) + '</b> ' + (pr[0] === 'gems' ? 'gemas' : 'de ouro') + ' para ' + it.name + '.',
+      [[pr[0] === 'gems' ? 'RECARGAR' : 'TROCAR GEMAS', () => LOB.openRecharge(), true], ['AGORA NÃO']]);
+    return;
+  }
+  LOB.dialog('CONFIRMAR COMPRA', 'Comprar <b>' + it.name + '</b> por <span class="inlineP">' + LOB.priceHTML(pr) + '</span>?', [['COMPRAR', () => {
+    const err = ACC.buyGun(id, useAlt);
+    if (err) { notify('info', err); return; }
+    SND.play('pick'); notify('ok', it.name + ' é sua! Já aparece na mão e nas costas.');
+    refresh(); showEmote('cheer2');
+  }, true], ['CANCELAR']]);
+};
+
+// ---------- ranking global ----------
+LOB.openRank = function () {
+  LOB.rkTab = LOB.rkTab || 'geral';
+  showScreen('rankScr');
+  LOB.rank = null;
+  LOB.renderRank();
+  const got = (d, where) => { LOB.rank = d; LOB.rankWhere = where; if (UI.screen === 'rankScr') LOB.renderRank(); };
+  if (SRV.on) SRV.call({ op: 'rank' }).then(d => got(d, 'servidor'), () => got(ACC.localRank(), 'aparelho'));
+  else got(ACC.localRank(), CLOUD.on() ? 'on-line' : 'aparelho');
+};
+const MEDAL = ['#ffd23c', '#d7dde4', '#e0905a'];
+LOB.renderRank = function () {
+  document.querySelectorAll('#rkTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === LOB.rkTab));
+  const body = $('rkBody'), d = LOB.rank, me = ACC.p && ACC.p.id;
+  if (!d) { body.innerHTML = '<p class="hint rkNote">Carregando o ranking…</p>'; return; }
+  const row = (r, i, val, unit) => '<div class="rkRow' + (r.id === me ? ' me' : '') + '"><b class="rkPos" style="' + (i < 3 ? 'color:' + MEDAL[i] : '') + '">' + (i < 3 ? icon('crown') : '') + (i + 1) + '</b>' +
+    '<div class="rkId"><b>' + escapeHTML(r.n) + (r.vf ? VERIFIED_SVG : '') + '</b><small>ID ' + r.id + (r.lvl ? ' · NV ' + r.lvl : '') + (r.w !== undefined ? ' · ' + r.w + ' vitória(s)' : '') + '</small></div><span class="rkVal"><b>' + fmtN(val) + '</b>' + unit + '</span></div>';
+  const note = '<p class="hint rkNote">' + icon('info') + d.total + ' jogador(es) · ' + (LOB.rankWhere === 'servidor' ? 'ranking global do servidor (atualiza a cada minuto)' : 'contas salvas neste aparelho (o ranking global aparece no site com servidor)') + '</p>';
+  if (LOB.rkTab === 'geral') {
+    body.innerHTML = note + (d.top.length ? d.top.map((r, i) => row(r, i, r.k, ' abates')).join('') : '<p class="hint">Ninguém no ranking ainda. Jogue uma partida!</p>');
+    return;
+  }
+  const ws = Object.keys(d.byWeapon).sort((a, b) => d.byWeapon[b].reduce((s, x) => s + x.k, 0) - d.byWeapon[a].reduce((s, x) => s + x.k, 0));
+  if (!LOB.rkW || ws.indexOf(LOB.rkW) < 0) LOB.rkW = ws[0];
+  body.innerHTML = note + (ws.length ? '<div class="rkWeapons">' + ws.map(w => '<button class="chip' + (w === LOB.rkW ? ' hot' : '') + '" data-w="' + escapeHTML(w) + '">' + escapeHTML(w) + '</button>').join('') + '</div>' +
+    d.byWeapon[LOB.rkW].map((r, i) => row(r, i, r.k, ' com ' + escapeHTML(LOB.rkW))).join('') : '<p class="hint">Ainda não há abates registrados por arma. Eles contam a partir desta versão.</p>');
+  body.querySelectorAll('[data-w]').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.rkW = b.dataset.w; LOB.renderRank(); }));
 };
 
 // retratos dos personagens para os cartões (desenhados uma vez com o próprio renderer)
@@ -387,7 +468,7 @@ LOB.renderProfile = function () {
     '<label class="fld inline"><span>Apelido</span><input id="pfName" maxlength="14" value="' + escapeHTML(p.name) + '">' + (p.verified ? VERIFIED_SVG : '') + '</label>' +
     '<div class="pfIdRow"><button id="pfIdBtn" class="idTag" aria-label="Copiar ID">ID <b>' + p.id + '</b>' + icon('copy') + '</button>' + (p.verified ? '<span class="vfTag">' + VERIFIED_SVG + 'VERIFICADO</span>' : '') + (p.owner ? '<span class="vfTag own">' + icon('crown') + 'DONO</span>' : '') + '</div>' +
     '<div class="pfAcc">' + (guest ? icon('warn') + 'Convidado: crie uma conta para não perder o progresso' : icon('user') + 'Conta: <b>' + escapeHTML(ACC.user) + '</b> · ' +
-      (CLOUD.status === 'on' ? 'salva on-line' : CLOUD.status === 'readonly' ? 'sem permissão para salvar on-line' : CLOUD.status === 'error' ? 'erro ao salvar on-line, tentando de novo' : 'salva neste aparelho')) + '</div>' +
+      (SRV.on && SRV.user === ACC.user ? (SRV.status === 'error' ? 'erro ao salvar no servidor, tentando de novo' : SRV.status === 'session' ? 'sessão expirada: saia e entre de novo' : 'salva no servidor') : CLOUD.status === 'on' ? 'salva on-line' : CLOUD.status === 'readonly' ? 'sem permissão para salvar on-line' : CLOUD.status === 'error' ? 'erro ao salvar on-line, tentando de novo' : 'salva neste aparelho')) + '</div>' +
     '<div class="pfLvl"><b>NÍVEL ' + p.level + '</b><div class="xpBar"><div style="width:' + Math.min(100, p.xp / ACC.need(p.level) * 100) + '%"></div></div><small>' + fmtN(p.xp) + ' / ' + fmtN(ACC.need(p.level)) + ' XP</small></div></div></div>' +
     '<div class="pfStats">' + [['PARTIDAS', st.matches], ['VITÓRIAS', st.wins], ['TOP 5', st.top5], ['ABATES', st.kills], ['K/D', kd], ['MAIS ABATES', st.best], ['DANO TOTAL', fmtN(st.dmg)], ['PERSONAGENS', p.owned.skins.length + '/' + SKINS.length]]
       .map(s => '<div><small>' + s[0] + '</small><b>' + s[1] + '</b></div>').join('') + '</div>' +
@@ -469,17 +550,18 @@ LOB.claimAll = function () {
 };
 
 // ---------- painel do dono ----------
-LOB.ownerPrompt = function () {
+LOB.ownerPrompt = function (then) {
   LOB.dialog('CÓDIGO DO DONO', 'Digite o código do dono do jogo para liberar o painel nesta conta.<input id="ownCode" class="codeIn" autocomplete="off" spellcheck="false" autocapitalize="characters">', [['LIBERAR', () => {
     const err = ACC.unlockOwner($('ownCode').value);
     if (err) { notify('info', err); return; }
     notify('ok', 'Painel do dono liberado. Confira o correio!');
-    LOB.renderProfile();
+    if (then) then(); else LOB.renderProfile();
   }, true], ['CANCELAR']]);
   const el = $('ownCode'); el.addEventListener('keydown', e => e.stopPropagation()); setTimeout(() => el.focus(), 50);
 };
 LOB.openAdmin = function (tab) {
   if (!ACC.p.owner) return;
+  if (SRV.on && !SRV.ownerCode()) { LOB.ownerPrompt(() => LOB.openAdmin(tab)); return; }
   LOB.adTab = tab || LOB.adTab || 'hoje';
   showScreen('adminScr');
   LOB.renderAdmin();
@@ -508,25 +590,50 @@ LOB.renderAdmin = function () {
       if (g) items.push({ k: 'gold', n: g });
       if (m) items.push({ k: 'gems', n: m });
       if (to !== 'todos' && !/^\d{1,10}$/.test(to)) { notify('info', 'Use o ID do jogador (só números) ou "todos"'); return; }
-      const n = ACC.sendMail(to, ACC.letter('Equipe Battle Island', $('adTitle').value.trim() || 'Mensagem', $('adText').value.trim(), items));
-      LOB.dialog(n ? 'ENVIADO' : 'NINGUÉM RECEBEU', n ? 'Mensagem enviada para <b>' + n + '</b> conta(s) deste aparelho.' : 'Nenhuma conta com esse ID neste aparelho.', [['OK', null, true]]);
+      const letter = ACC.letter('Equipe Battle Island', $('adTitle').value.trim() || 'Mensagem', $('adText').value.trim(), items);
+      const done = (n, where) => LOB.dialog(n ? 'ENVIADO' : 'NINGUÉM RECEBEU', n ? 'Mensagem enviada para <b>' + n + '</b> conta(s)' + where + '.' : 'Nenhuma conta com esse ID' + where + '.', [['OK', null, true]]);
+      if (SRV.on) SRV.admin('mail', { to: to, letter: letter }).then(j => done(j.n, ' do servidor'), e => notify('info', SRV.msg(e)));
+      else done(ACC.sendMail(to, letter), ' deste aparelho');
     });
     return;
   }
-  const rows = ACC.accounts(tab === 'hoje');
+  if (SRV.on && !LOB.adRows) {
+    body.innerHTML = '<p class="hint adNote">' + icon('info') + 'Buscando as contas no servidor…</p>';
+    const d = new Date();
+    SRV.admin('list', { today: tab === 'hoje', since: tab === 'hoje' ? new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() : 0 })
+      .then(j => { LOB.adRows = j.rows; LOB.adTotal = j.total; if (UI.screen === 'adminScr' && LOB.adTab === tab) LOB.renderAdmin(); LOB.adRows = null; },
+        e => { body.innerHTML = '<p class="hint adNote">' + icon('warn') + SRV.msg(e) + '</p>'; if (e.code === 'owner') { try { localStorage.removeItem('battleIsland.own'); } catch (x) { /* ok */ } } });
+    return;
+  }
+  const rows = SRV.on ? LOB.adRows : ACC.accounts(tab === 'hoje');
   body.innerHTML = '<p class="hint adNote">' + icon('info') + (tab === 'hoje' ? rows.length + ' conta(s) criada(s) hoje' : rows.length + ' conta(s) no total') +
-    (CLOUD.status === 'on' ? ' no banco on-line (contas de quem joga pelo seu link do claude.ai como Colaborador ou Editor).' :
+    (SRV.on ? ' no servidor do jogo (todas as contas criadas no site, de qualquer celular).' : CLOUD.status === 'on' ? ' no banco on-line (contas de quem joga pelo seu link do claude.ai como Colaborador ou Editor).' :
       ' só neste aparelho: o banco on-line não está ligado aqui (abra pelo link do claude.ai, logado como dono).') +
-    ' Contas criadas no arquivo HTML, no GitHub Pages ou por quem só pode ver o link ficam no celular de cada pessoa.</p>' +
+    (SRV.on ? '' : ' Contas criadas no arquivo HTML, no GitHub Pages ou por quem só pode ver o link ficam no celular de cada pessoa.') + '</p>' +
     (rows.length ? '<table class="adTable"><thead><tr><th>JOGADOR</th><th>ID</th><th>NV</th><th>CRIADA</th><th>VERIFICADO</th><th></th></tr></thead><tbody>' + rows.map(r =>
       '<tr><td><b>' + escapeHTML(r.name) + '</b>' + (r.verified ? VERIFIED_SVG : '') + (r.owner ? ' ' + icon('crown') : '') + '<small>' + (r.guest ? 'convidado' : escapeHTML(r.user)) + '</small></td><td class="mono">' + r.id + '</td><td>' + r.level + '</td><td>' + fmtDate(r.t) + '</td>' +
-      '<td><button class="tog' + (r.verified ? ' on' : '') + '" data-vf="' + r.id + '" aria-pressed="' + r.verified + '"><i></i></button></td><td class="adAct"><button class="chip" data-to="' + r.id + '" aria-label="Enviar correio">' + icon('mail') + '</button><button class="chip" data-cid="' + r.id + '">ID</button></td></tr>').join('') + '</tbody></table>' : '<p class="hint">Nenhuma conta criada hoje ainda.</p>');
-  body.querySelectorAll('[data-vf]').forEach(b => b.addEventListener('click', () => { SND.play('ui'); ACC.setVerified(b.dataset.vf, !b.classList.contains('on')); LOB.renderAdmin(); }));
+      '<td><button class="tog' + (r.verified ? ' on' : '') + '" data-vf="' + r.id + '" aria-pressed="' + r.verified + '"><i></i></button></td><td class="adAct"><button class="chip" data-to="' + r.id + '" aria-label="Enviar correio">' + icon('mail') + '</button><button class="chip" data-cid="' + r.id + '">ID</button>' + (SRV.on ? '<button class="chip" data-pw="' + escapeHTML(r.user) + '">SENHA</button>' : '') + '</td></tr>').join('') + '</tbody></table>' : '<p class="hint">Nenhuma conta criada hoje ainda.</p>');
+  body.querySelectorAll('[data-vf]').forEach(b => b.addEventListener('click', () => {
+    SND.play('ui');
+    const on = !b.classList.contains('on');
+    if (SRV.on) SRV.admin('verify', { id: b.dataset.vf, on: on }).then(() => LOB.renderAdmin(), e => notify('info', SRV.msg(e)));
+    else { ACC.setVerified(b.dataset.vf, on); LOB.renderAdmin(); }
+  }));
+  body.querySelectorAll('[data-pw]').forEach(b => b.addEventListener('click', () => {
+    SND.play('ui');
+    const u = b.dataset.pw;
+    LOB.dialog('TROCAR SENHA', 'Nova senha para <b>' + escapeHTML(u) + '</b> (mínimo 4 caracteres):<input id="newPw" class="codeIn" autocomplete="off" spellcheck="false" style="text-transform:none">', [['SALVAR', () => {
+      SRV.admin('resetPass', { user: u, pass: $('newPw').value }).then(() => notify('ok', 'Senha de ' + u + ' trocada'), e => notify('info', SRV.msg(e)));
+    }, true], ['CANCELAR']]);
+    const el = $('newPw'); el.addEventListener('keydown', e => e.stopPropagation()); setTimeout(() => el.focus(), 50);
+  }));
   body.querySelectorAll('[data-cid]').forEach(b => b.addEventListener('click', () => {
     SND.play('ui');
     const old = b.dataset.cid;
     LOB.dialog('MUDAR ID', 'ID atual: <b>' + old + '</b><br>Novo ID (1 a 10 números, ex.: 0, 7, 100):<input id="newId" class="codeIn" inputmode="numeric" autocomplete="off">', [['SALVAR', () => {
-      const v = $('newId').value.trim(), err = ACC.changeId(old, v);
+      const v = $('newId').value.trim();
+      if (SRV.on) { SRV.admin('changeId', { oldId: old, newId: v }).then(() => { notify('ok', 'ID alterado para ' + v); if (ACC.p.id === old) SRV.poll(); LOB.renderAdmin(); }, e => notify('info', SRV.msg(e))); return; }
+      const err = ACC.changeId(old, v);
       if (err) notify('info', err); else { notify('ok', 'ID alterado para ' + v); LOB.renderAdmin(); }
     }, true], ['CANCELAR']]);
     const el = $('newId'); el.addEventListener('keydown', e => e.stopPropagation()); setTimeout(() => el.focus(), 50);
@@ -671,7 +778,7 @@ LOB.matchEnd = function () {
   const p = G.player;
   if (!ACC.p || !p || LOB.rewarded === G.matchId) { $('resReward').innerHTML = ''; return; }
   LOB.rewarded = G.matchId;
-  const r = ACC.reward({ place: G.place || G.actors.length, total: G.actors.length, kills: p.kills, dmg: p.dmgDealt || 0, time: G.time, cs: G.mode === 'cs' });
+  const r = ACC.reward({ place: G.place || G.actors.length, total: G.actors.length, kills: p.kills, dmg: p.dmgDealt || 0, time: G.time, cs: G.mode === 'cs', wk: p.wk || {} });
   if (!r) return;
   $('resReward').innerHTML = '<div class="rw">' + COIN_SVG + '<b>+' + fmtN(r.gold) + '</b><small>OURO</small></div><div class="rw xp"><i>XP</i><b>+' + fmtN(r.xp) + '</b><small>EXPERIÊNCIA</small></div>' +
     (r.gems ? '<div class="rw">' + GEM_SVG + '<b>+' + r.gems + '</b><small>GEMAS</small></div>' : '') +
@@ -707,6 +814,7 @@ LOB.init = function () {
     else if (k === 'arsenal') openInventory('arsenal');
     else if (k === 'profile') LOB.openProfile();
     else if (k === 'friends') FR.openScr();
+    else if (k === 'rank') LOB.openRank();
   }));
   click('shBack', () => LOB.closeShop());
   document.querySelectorAll('#shTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.sh.kind = b.dataset.t; LOB.sh.sel = b.dataset.t === 'skins' ? ACC.p.skin : null; if (LOB.preview) { LOB.preview = null; swapShowcase(); } LOB.renderShop(); }));
@@ -716,6 +824,8 @@ LOB.init = function () {
   click('pfClose', () => goMenu());
   click('mpClose', () => LOB.closeMaps());
   click('frClose', () => FR.close());
+  click('rkClose', () => goMenu());
+  document.querySelectorAll('#rkTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.rkTab = b.dataset.t; LOB.renderRank(); }));
   click('roomFriends', () => FR.openScr('amigos'));
   document.querySelectorAll('#frTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); FR.tab = b.dataset.t; FR.render(); }));
   document.querySelectorAll('#modeTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.setMode(b.dataset.m); }));

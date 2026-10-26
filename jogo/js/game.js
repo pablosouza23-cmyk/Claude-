@@ -122,6 +122,7 @@ function onResize() {
 // ------------------------------------------------------------------ atores
 function makeActor(name, pal, isPlayer) {
   const ch = CH.make(pal, isPlayer);
+  if (isPlayer && typeof ACC !== 'undefined' && ACC.p) ch.gold = ACC.goldGuns();
   scene.add(ch.root);
   return {
     name: name, ch: ch, isPlayer: isPlayer,
@@ -318,6 +319,7 @@ function killActor(a, killer, weapon) {
   a.vel.set(0, 0, 0);
   if (killer && killer !== a && !killer.isPlayer && !killer.human && Math.random() < 0.45) { killer.emote = Math.random() < 0.5 ? 'cheer2' : 'laugh'; killer.emoteT = 2.2; }
   if (killer && killer !== a) { killer.kills++; killFeed(killer.name, a.name, weapon); if (killer.isPlayer) killBanner(killer.kills, a.name); }
+  if (killer && killer === G.player && killer !== a) countWeaponKill(weapon);
   else killFeed(a.name, null, 'Zona');
   // mochila caída com o que a pessoa carregava (como no vídeo)
   if (G.mode === 'cs') { NET.onKill(a, killer, weapon); return; } // as rodadas cuidam do fim
@@ -333,6 +335,13 @@ function killActor(a, killer, weapon) {
   } else if (G.player.alive && aliveCount() === 1) {
     G.endT = 2.0; G.place = 1;
   }
+}
+
+// abates por arma do jogador deste aparelho (vai para o ranking por arma)
+function countWeaponKill(weapon) {
+  const p = G.player, k = String(weapon || 'Soco').toUpperCase();
+  p.wk = p.wk || {};
+  p.wk[k] = (p.wk[k] || 0) + 1;
 }
 
 function dropBag(a) {

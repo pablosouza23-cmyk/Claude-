@@ -370,6 +370,7 @@ CH.setGuns = function (ch, inHand, onBack) {
     if (inHand) {
       const p = WPN.build(inHand, !ch.hq);
       ch.gunMesh.geometry = p.g; ch.gunGlow.geometry = p.glow || _emptyGeo; ch.gunGlow.visible = !!p.glow;
+      ch.gunMesh.material = ch.gold && ch.gold[inHand] ? WPN.goldMat() : WPN.gunMat();
       ch.muzzle.position.set(0, p.muzzleY !== undefined ? p.muzzleY : 0.03, p.len + 0.02);
       ch.grip = p;
     }
@@ -377,7 +378,7 @@ CH.setGuns = function (ch, inHand, onBack) {
   }
   if (ch.stowId !== onBack) {
     ch.stowId = onBack;
-    if (onBack) { const p = WPN.build(onBack, true); ch.stowMesh.geometry = p.g; ch.stowGlow.geometry = p.glow || _emptyGeo; ch.stowGlow.visible = !!p.glow; }
+    if (onBack) { const p = WPN.build(onBack, true); ch.stowMesh.geometry = p.g; ch.stowGlow.geometry = p.glow || _emptyGeo; ch.stowGlow.visible = !!p.glow; ch.stowMesh.material = ch.gold && ch.gold[onBack] ? WPN.goldMat() : WPN.gunMat(); }
     ch.stow.visible = !!onBack;
   }
 };

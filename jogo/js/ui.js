@@ -123,11 +123,14 @@ function buildFP() {
 }
 
 function setFPWeapon(id) {
-  if (fpGun.userData.id === id) return;
-  fpGun.userData.id = id;
+  const gold = !!(G.player && G.player.ch.gold && G.player.ch.gold[id]);
+  if (fpGun.userData.id === id && fpGun.userData.gold === gold) return;
+  fpGun.userData.id = id; fpGun.userData.gold = gold;
   const h = fpGun.userData.holder;
   while (h.children.length) h.remove(h.children[0]);
-  h.add(WPN.mesh(id, 0.006));
+  const gm = WPN.mesh(id, 0.006);
+  if (gold) gm.userData.main.material = WPN.goldMat();
+  h.add(gm);
   const p = WPN.build(id);
   fpGun.userData.sightY = p.sightY; fpGun.userData.sightZ = p.sightZ;
   const sec = WEAPONS[id].secondary;
@@ -1070,6 +1073,20 @@ function initInput() {
   });
   document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement) G.mouseFire = false; });
   window.addEventListener('contextmenu', (e) => e.preventDefault());
+  // roda do mouse: troca para a próxima arma (ou a anterior) entre as que você tem
+  let wheelT = 0;
+  window.addEventListener('wheel', (e) => {
+    if (G.state !== 'play' || UI.screen || !G.player || !G.player.alive || G.player.phase !== 'ground') return;
+    e.preventDefault();
+    const now = performance.now();
+    if (now - wheelT < 140 || Math.abs(e.deltaY) < 1) return;
+    wheelT = now;
+    const p = G.player, own = [0, 1, 2].filter(i => p.slots[i]);
+    if (!own.length) return;
+    const k = own.indexOf(p.cur), dir = e.deltaY > 0 ? 1 : -1;
+    const next = own[k < 0 ? (dir > 0 ? 0 : own.length - 1) : (k + dir + own.length) % own.length];
+    if (next !== p.cur || p.nadeHand) { if (p.nadeHand) { p.nadeHand = false; } selectSlot(p, next); }
+  }, { passive: false });
 
   const touch = $('touch'), base = $('joyBase'), knob = $('joyKnob');
   let joyId = null, lookId = null, jx0 = 0, jy0 = 0, lx = 0, ly = 0;
@@ -1307,9 +1324,11 @@ function boot() {
     // espera o banco de dados on-line (só existe aberto pelo link do claude.ai) antes de entrar na conta
     $('loadStep').textContent = 'Conectando sua conta…';
     $('loadScr').classList.remove('hidden', 'out');
-    CLOUD.init().catch(() => false).then(() => {
+    Promise.all([CLOUD.init().catch(() => false), SRV.init().catch(() => false)]).then(async () => {
+      // com o servidor do jogo, a conta vem dele; o convidado continua só no aparelho
+      const inside = SRV.on ? (await SRV.restore()) || (ACC.getSession() === '__guest' && ACC.restore()) : ACC.restore();
       $('loadScr').classList.add('out'); setTimeout(() => $('loadScr').classList.add('hidden'), 400);
-      if (!ACC.restore()) { LOB.pendingRoom = code; LOB.showAuth(); return; }
+      if (!inside) { LOB.pendingRoom = code; LOB.showAuth(); return; }
       LOB.enter();
       if (code) LOB.joinLink(code);
     });

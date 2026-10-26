@@ -81,7 +81,7 @@
     <div id="reloadBar"></div>
   </div>
   <button id="useBtn" class="hidden"></button>
-  <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha · R recarrega · E pegar · Q granada · G gel · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · Esc pausa</div>
+  <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha · R recarrega · E pegar · Q granada · G gel · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · roda do mouse troca a arma · Esc pausa</div>
   <div id="fps" class="hidden"></div>
 </div>
 
@@ -133,6 +133,7 @@
     <button data-go="emotes" data-icon="smile"><span>EMOTES</span></button>
     <button data-go="recharge" class="hot" data-icon="crown"><span>RECARGA</span></button>
     <button data-go="arsenal" data-icon="bullet"><span>ARSENAL</span></button>
+    <button data-go="rank" data-icon="crown"><span>RANKING</span></button>
     <button data-go="friends" data-icon="users"><span>AMIGOS</span><em id="lbFrN" class="badgeN hidden">0</em></button>
     <button data-go="profile" data-icon="user"><span>PERFIL</span></button>
   </nav>
@@ -142,13 +143,13 @@
     <button id="mPlay" class="playBtn"><b>JOGAR</b><small>SOLO · SALA COM AMIGOS</small></button>
   </div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v2.5</div>
+  <div class="ver">v2.7</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
   <header class="shHead">
     <button id="shBack" class="xBtn" data-icon="left" aria-label="Voltar"></button><b id="shTitle">LOJA</b>
-    <div id="shTabs" class="tabs"><button data-t="skins">PERSONAGENS</button><button data-t="emotes">EMOTES</button></div>
+    <div id="shTabs" class="tabs"><button data-t="skins">PERSONAGENS</button><button data-t="emotes">EMOTES</button><button data-t="guns">ARMAS</button></div>
     <div class="curSlot"></div>
   </header>
   <div id="shGrid" class="shGrid"></div>
@@ -183,6 +184,13 @@
     <div class="panelHead"><b>AMIGOS</b><div id="frTabs" class="tabs"><button data-t="amigos">AMIGOS</button><button data-t="pedidos">PEDIDOS</button><button data-t="add">ADICIONAR</button></div><button id="frClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
     <p id="frStatus" class="frStatus"></p>
     <div id="frBody" class="frBody"></div>
+  </div>
+</div>
+
+<div id="rankScr" class="screen dim hidden">
+  <div class="panel rkPanel">
+    <div class="panelHead"><b>RANKING GLOBAL</b><div id="rkTabs" class="tabs"><button data-t="geral">ABATES</button><button data-t="armas">POR ARMA</button></div><button id="rkClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <div id="rkBody" class="rkBody"></div>
   </div>
 </div>
 
@@ -378,7 +386,7 @@
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v2.5 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v2.7 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>

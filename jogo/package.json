@@ -1,0 +1,10 @@
+{
+  "name": "battle-island",
+  "private": true,
+  "version": "2.7.0",
+  "description": "Battle Island: jogo e servidor das contas (Netlify Functions + Netlify Blobs)",
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "11.1.3"
+  }
+}

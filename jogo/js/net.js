@@ -414,7 +414,7 @@ NET.clientRecv = function (d) {
       if (!a || !a.alive && a !== G.player) { if (a) a.alive = false; }
       if (!a) break;
       a.alive = false; a.hp = 0; a.vel.set(0, 0, 0);
-      if (k && k !== a) { k.kills++; killFeed(k.name, a.name, d.w); if (k === G.player) killBanner(k.kills, a.name); }
+      if (k && k !== a) { k.kills++; killFeed(k.name, a.name, d.w); if (k === G.player) { killBanner(k.kills, a.name); countWeaponKill(d.w); } }
       else killFeed(a.name, null, d.w || 'Zona');
       if (G.mode === 'cs') break;
       if (a.phase === 'ground') { const bag = bagMesh(); bag.position.set(a.pos.x + 0.4, W.groundAt(a.pos.x, a.pos.z, a.pos.y + 0.5), a.pos.z - 0.3); scene.add(bag); G.props.push(bag); }

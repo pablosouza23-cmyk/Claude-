@@ -68,6 +68,10 @@ const SHOP = {
     { id: 'gemas_1300', brl: 100, gems: 1000, bonus: 300, tag: 'MELHOR VALOR' },
   ],
   exchange: { gems: 10, gold: 800 },
+  // armas douradas: mesmo dano, visual de ouro; dá para pagar com gemas ou com ouro
+  guns: {
+    FUZIL_OURO: { gun: 'FUZIL', name: 'Fuzil Dourado', price: ['gems', 120], alt: ['gold', 6000], rare: 'lendario', desc: 'Fuzil de Assalto todo em ouro polido. Mesmo dano, visual lendário na mão e nas costas.' },
+  },
 };
 
 // ---------- contas ----------
@@ -78,8 +82,8 @@ ACC.SESSION = 'battleIsland.session';
 ACC.newId = () => String(Math.floor(1e9 + Math.random() * 9e9));
 ACC.newProfile = function (name) {
   return { name: name || 'Jogador', id: ACC.newId(), verified: false, owner: false, level: 1, xp: 0, gold: 500, gems: 0,
-    owned: { skins: ['heroi', 'camisa'], emotes: ['wave', 'clap', 'shrug', 'dance'] }, skin: 'heroi',
-    stats: { matches: 0, wins: 0, kills: 0, top5: 0, dmg: 0, best: 0 }, buys: [], daily: '', created: Date.now(),
+    owned: { skins: ['heroi', 'camisa'], emotes: ['wave', 'clap', 'shrug', 'dance'], guns: [] }, skin: 'heroi',
+    stats: { matches: 0, wins: 0, kills: 0, top5: 0, dmg: 0, best: 0, wk: {} }, buys: [], daily: '', created: Date.now(), goldOff: [],
     friends: [], freq: [], fsent: [],
     mail: [ACC.letter('Equipe Battle Island', 'Bem-vindo à ilha!', 'Valeu por jogar! Aqui vai um presente para começar. Ganhe ouro nas partidas e confira a loja.', [{ k: 'gold', n: 300 }, { k: 'gems', n: 10 }])] };
 };
@@ -98,7 +102,8 @@ ACC.writeDb = function (db) {
   let local = true;
   try { localStorage.setItem(ACC.KEY, JSON.stringify(db)); } catch (e) { local = false; }
   CLOUD.push();
-  return local || CLOUD.on();
+  SRV.push();
+  return local || CLOUD.on() || SRV.on;
 };
 // sessão: lembra quem está logado (no aparelho e, on-line, na conta do claude.ai de quem está jogando)
 ACC.setSession = function (user) {
@@ -119,7 +124,9 @@ ACC.fix = function (p) {
   const d = ACC.newProfile(p.name);
   for (const k in d) if (p[k] === undefined) p[k] = d[k];
   if (ACC.ID_REMAP[p.id] !== undefined) { p.idOrig = p.id; p.id = ACC.ID_REMAP[p.id]; }
-  for (const k in d.stats) if (p.stats[k] === undefined) p.stats[k] = 0;
+  for (const k in d.stats) if (p.stats[k] === undefined) p.stats[k] = k === 'wk' ? {} : 0;
+  if (!p.owned.guns) p.owned.guns = [];
+  if (!p.goldOff) p.goldOff = [];
   for (const s of d.owned.skins) if (p.owned.skins.indexOf(s) < 0) p.owned.skins.push(s);
   for (const s of d.owned.emotes) if (p.owned.emotes.indexOf(s) < 0) p.owned.emotes.push(s);
   return p;
@@ -197,6 +204,7 @@ ACC.restore = function () {
 };
 ACC.logout = function () {
   ACC.save();
+  SRV.logout();
   ACC.user = null; ACC.p = null;
   ACC.setSession(null);
   CLOUD.watch(null);
@@ -211,6 +219,7 @@ ACC.save = function () {
 ACC.onChange = (fn) => ACC.listeners.push(fn);
 ACC.emit = function () { ACC.save(); for (const f of ACC.listeners) try { f(ACC.p); } catch (e) { console.error(e); } };
 ACC.deleteAccount = function () {
+  SRV.del();
   const db = ACC.db(); delete db.users[ACC.user]; ACC.writeDb(db);
   ACC.user = null; ACC.p = null;
   ACC.setSession(null);
@@ -337,6 +346,119 @@ CLOUD.watch = function (user) {
   }, () => { CLOUD.unsub = null; });
 };
 
+// ---------- servidor do jogo (Netlify: /api/contas) ----------
+// Com o site na Netlify, as contas ficam no servidor: login de qualquer celular, painel do dono com as contas
+// de todo mundo e correio entre aparelhos. Sem servidor (arquivo, GitHub Pages) tudo continua no aparelho.
+const SRV = { url: '/api/contas', on: false, tok: null, user: null, KEY: 'battleIsland.srv', last: '', busy: false, status: 'off' };
+const SRV_ERR = { bad_user: 'Usuário: 3 a 16 letras minúsculas, números, _ ou .', short_pass: 'A senha precisa de pelo menos 4 caracteres.', exists: 'Esse usuário já existe. Toque em ENTRAR.',
+  not_found: 'Usuário não encontrado. Confira o nome ou crie a conta.', bad_pass: 'Senha incorreta. Toque no olho para ver o que está digitando. Esqueceu? Peça ao dono do jogo para trocar.',
+  session: 'Sua sessão expirou. Entre de novo.', bad_profile: 'Conta grande demais para salvar.', owner: 'Código do dono errado.', id_taken: 'Já existe uma conta com esse ID.', bad_id: 'O ID precisa ter de 1 a 10 números.' };
+SRV.msg = (e) => SRV_ERR[e && e.code] || 'Sem conexão com o servidor do jogo. Tente de novo.';
+SRV.call = async function (body, ms) {
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const to = setTimeout(() => { if (ctl) ctl.abort(); }, ms || 15000);
+  try {
+    const r = await fetch(SRV.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined, cache: 'no-store' });
+    let j = null;
+    try { j = await r.json(); } catch (e) { /* não é o servidor do jogo */ }
+    if (!j) throw { code: 'http', status: r.status };
+    if (!r.ok || !j.ok) throw { code: j.error || 'http', status: r.status };
+    return j;
+  } finally { clearTimeout(to); }
+};
+SRV.init = async function () {
+  if (!/^https?:$/.test(location.protocol) || /claude\.ai|claudeusercontent/.test(location.host)) return false;
+  for (let i = 0; i < 2 && !SRV.on; i++) {
+    try { const j = await SRV.call({ op: 'ping' }, 15000); SRV.on = j.app === 'battle-island'; } catch (e) { if (e && e.status === 404) break; SRV.on = false; }
+  }
+  SRV.status = SRV.on ? 'on' : 'off';
+  if (SRV.on) setInterval(() => { if (typeof G === 'undefined' || G.state !== 'play') SRV.poll(); }, 30000);
+  return SRV.on;
+};
+SRV.session = function (u, tok) {
+  SRV.user = u || null; SRV.tok = tok || null;
+  try { if (u) localStorage.setItem(SRV.KEY, JSON.stringify({ u: u, tok: tok })); else localStorage.removeItem(SRV.KEY); } catch (e) { /* ignora */ }
+};
+// guarda a conta do servidor na memória local e entra nela
+SRV.adopt = function (u, j) {
+  const mem = ACC.db();
+  mem.users[u] = Object.assign(mem.users[u] || { salt: '', hash: '' }, { p: j.p, t: j.t || (j.p && j.p.created) || Date.now(), upd: j.upd || 0, srv: 1 });
+  SRV.last = JSON.stringify(j.p);
+  ACC.mem = mem;
+  try { localStorage.setItem(ACC.KEY, JSON.stringify(mem)); } catch (e) { /* ignora */ }
+  ACC.use(u, mem.users[u].p);
+  SRV.applyInbox(j.inbox);
+};
+SRV.restore = async function () {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(SRV.KEY) || 'null'); } catch (e) { /* ignora */ }
+  if (!SRV.on || !s || !s.u || !s.tok) return false;
+  try { const j = await SRV.call({ op: 'me', u: s.u, tok: s.tok }); SRV.session(s.u, s.tok); SRV.adopt(s.u, j); return true; }
+  catch (e) { if (e.code === 'session') SRV.session(null); return false; }
+};
+SRV.login = async function (u, pass) {
+  try {
+    const j = await SRV.call({ op: 'login', u: u, pass: pass });
+    SRV.session(u, j.tok); SRV.adopt(u, j); return null;
+  } catch (e) {
+    // conta antiga, criada só neste aparelho: sobe para o servidor com a mesma senha
+    if (e.code === 'not_found') {
+      const l = ACC.db().users[u];
+      if (l && l.hash && ACC.passOk(l, pass)) return SRV.register(u, pass, l.p);
+    }
+    return SRV.msg(e);
+  }
+};
+SRV.register = async function (u, pass, profile) {
+  try {
+    const j = await SRV.call({ op: 'register', u: u, pass: pass, p: profile });
+    SRV.session(u, j.tok); SRV.adopt(u, j); return null;
+  } catch (e) { return SRV.msg(e); }
+};
+// correio e ajustes do dono que chegaram pelo servidor
+SRV.applyInbox = function (items) {
+  if (!items || !items.length || !ACC.p) return;
+  const done = [];
+  for (const it of items) {
+    if (it.kind === 'patch') { if (it.set && typeof it.set === 'object') { if ('verified' in it.set) ACC.p.verified = !!it.set.verified; if ('id' in it.set) ACC.p.id = String(it.set.id); } }
+    else if (!ACC.p.mail.some(m => m.mid === it.mid)) ACC.p.mail.unshift({ mid: it.mid, from: it.from, title: it.title, text: it.text, items: it.items || [], t: it.t, read: false, got: false });
+    done.push(it.mid);
+  }
+  ACC.emit();
+  SRV.call({ op: 'ack', u: SRV.user, tok: SRV.tok, mids: done }).catch(() => {});
+  if (typeof notify === 'function' && items.some(i => i.kind !== 'patch')) notify('info', 'Chegou correio novo!');
+};
+SRV.poll = async function () {
+  if (!SRV.on || !SRV.tok || ACC.user !== SRV.user) return;
+  try { const j = await SRV.call({ op: 'me', u: SRV.user, tok: SRV.tok }); SRV.status = 'on'; SRV.applyInbox(j.inbox); }
+  catch (e) { if (e.code === 'session') SRV.status = 'session'; }
+};
+SRV.push = function () {
+  if (!SRV.on || !SRV.tok || !ACC.p || ACC.user !== SRV.user) return;
+  clearTimeout(SRV.timer);
+  SRV.timer = setTimeout(SRV.flush, 1200);
+};
+SRV.flush = async function () {
+  if (SRV.busy || !SRV.tok || !ACC.p || ACC.user !== SRV.user) return;
+  const js = JSON.stringify(ACC.p);
+  if (js === SRV.last) return;
+  SRV.busy = true;
+  try { await SRV.call({ op: 'save', u: SRV.user, tok: SRV.tok, p: ACC.p }); SRV.last = js; SRV.status = 'on'; }
+  catch (e) { SRV.status = e.code === 'session' ? 'session' : 'error'; if (e.code !== 'session') setTimeout(SRV.push, 8000); }
+  SRV.busy = false;
+  if (JSON.stringify(ACC.p) !== SRV.last) SRV.push();
+};
+SRV.logout = function () {
+  if (SRV.on && SRV.tok) { SRV.flush(); SRV.call({ op: 'logout', u: SRV.user, tok: SRV.tok }).catch(() => {}); }
+  SRV.session(null); SRV.last = '';
+};
+SRV.del = function () {
+  if (SRV.on && SRV.tok && ACC.user === SRV.user) SRV.call({ op: 'delete', u: SRV.user, tok: SRV.tok }).catch(() => {});
+  SRV.session(null);
+};
+SRV.ownerCode = () => { try { return localStorage.getItem('battleIsland.own') || ''; } catch (e) { return ''; } };
+SRV.admin = (cmd, extra) => SRV.call(Object.assign({ op: 'admin', code: SRV.ownerCode(), cmd: cmd }, extra || {}));
+
 // ---------- progresso e moedas ----------
 ACC.need = (lvl) => 400 + (lvl - 1) * 150;
 ACC.owns = (kind, id) => !!ACC.p && ACC.p.owned[kind].indexOf(id) >= 0;
@@ -349,6 +471,41 @@ ACC.buy = function (kind, id) {
   ACC.p.owned[kind].push(id);
   ACC.emit();
   return null;
+};
+// armas douradas: compra com a moeda escolhida (gemas ou ouro) e liga/desliga o visual
+ACC.goldGuns = function () {
+  const out = {};
+  if (!ACC.p) return out;
+  for (const id of ACC.p.owned.guns) { const g = SHOP.guns[id]; if (g && ACC.p.goldOff.indexOf(id) < 0) out[g.gun] = true; }
+  return out;
+};
+ACC.buyGun = function (id, useAlt) {
+  const it = SHOP.guns[id];
+  if (!it || ACC.owns('guns', id)) return 'Você já tem essa arma.';
+  const pr = useAlt && it.alt ? it.alt : it.price;
+  if (!ACC.canPay(pr)) return pr[0] === 'gold' ? 'Ouro insuficiente.' : 'Gemas insuficientes. Faça uma recarga.';
+  ACC.p[pr[0]] -= pr[1];
+  ACC.p.owned.guns.push(id);
+  ACC.emit();
+  return null;
+};
+ACC.toggleGold = function (id) {
+  const i = ACC.p.goldOff.indexOf(id);
+  if (i >= 0) ACC.p.goldOff.splice(i, 1); else ACC.p.goldOff.push(id);
+  ACC.emit();
+};
+// ranking feito a partir de uma lista de perfis (no servidor, ou com as contas deste aparelho)
+ACC.rankFrom = function (profiles) {
+  const players = profiles.filter(p => p && p.stats).map(p => ({ n: p.name, id: p.id, vf: !!p.verified, lvl: p.level || 1, k: p.stats.kills || 0, w: p.stats.wins || 0, wk: p.stats.wk || {} }));
+  const top = players.slice().sort((a, b) => b.k - a.k || b.w - a.w).slice(0, 100).map(p => ({ n: p.n, id: p.id, vf: p.vf, lvl: p.lvl, k: p.k, w: p.w }));
+  const byWeapon = {};
+  for (const p of players) for (const w in p.wk) (byWeapon[w] = byWeapon[w] || []).push({ n: p.n, id: p.id, vf: p.vf, k: p.wk[w] });
+  for (const w in byWeapon) byWeapon[w] = byWeapon[w].sort((a, b) => b.k - a.k).slice(0, 20);
+  return { top: top, byWeapon: byWeapon, total: players.length, t: Date.now() };
+};
+ACC.localRank = function () {
+  const db = ACC.db();
+  return ACC.rankFrom(Object.keys(db.users).filter(u => u !== '__guest').map(u => (u === ACC.user ? ACC.p : db.users[u].p)));
 };
 ACC.exchange = function () {
   const ex = SHOP.exchange;
@@ -367,6 +524,7 @@ ACC.reward = function (r) {
   p.gold += gold; p.xp += xp;
   const st = p.stats;
   st.matches++; st.kills += r.kills; st.dmg += Math.round(r.dmg); st.best = Math.max(st.best, r.kills);
+  for (const k in r.wk || {}) st.wk[k] = (st.wk[k] || 0) + r.wk[k];
   if (r.place === 1) st.wins++;
   if (r.place <= 5 && !r.cs) st.top5++;
   const ups = [];
@@ -492,6 +650,7 @@ ACC.sendMail = function (target, letter) {
 ACC.OWNER_HASH = 'e671ec3f728a094705745f7f788862c1690c8d893a2c021a78811b9e791e58e8';
 ACC.unlockOwner = function (code) {
   if (SHA.hex('battle-dono:' + String(code || '').trim().toUpperCase()) !== ACC.OWNER_HASH) return 'Código errado.';
+  try { localStorage.setItem('battleIsland.own', String(code).trim().toUpperCase()); } catch (e) { /* ignora */ }
   const first = !ACC.p.owner;
   ACC.p.owner = true; ACC.p.verified = true;
   if (first) ACC.p.mail.unshift(ACC.letter('Sistema', 'Pacote do dono', 'Painel do dono liberado nesta conta. Aqui estão todos os personagens e emotes.', [{ k: 'allSkins' }, { k: 'allEmotes' }, { k: 'verified' }]));

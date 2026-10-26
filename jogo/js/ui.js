@@ -41,6 +41,10 @@ const ICON = {
   left: '<path d="M15.4 4 7.4 12l8 8 1.4-1.4L10.2 12l6.6-6.6z"/>',
   right: '<path d="M8.6 4 7.2 5.4 13.8 12l-6.6 6.6L8.6 20l8-8z"/>',
   crown: '<path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5zm2 13h14v2H5z"/>',
+  mail: '<path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2.6V17h16V7.6l-8 5.2zM5.6 7 12 11.2 18.4 7z"/>',
+  gift: '<path d="M9 3c1.3 0 2.4.8 3 1.8C12.6 3.8 13.7 3 15 3a2.8 2.8 0 0 1 2.4 4.2H21v4h-1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9H3v-4h3.6A2.8 2.8 0 0 1 9 3zm-.2 2a.9.9 0 0 0 0 1.9H11C10.6 5.7 9.8 5 8.8 5zm6.4 0c-1 0-1.8.7-2.2 1.9h2.2a.9.9 0 0 0 0-1.9zM6 11.2V19h5v-7.8zm7 0V19h5v-7.8z"/>',
+  trash: '<path d="M9 3h6l1 1h4v2H4V4h4zM6 8h12l-1 13H7zm3 2v9h2v-9zm4 0v9h2v-9z"/>',
+  shield: '<path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5zm-1.2 13.6-3.3-3.3 1.4-1.4 1.9 1.9 4.9-4.9 1.4 1.4z"/>',
   smile: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zM8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM12 17.5c2.3 0 4.2-1.5 5-3.5H7c.8 2 2.7 3.5 5 3.5z"/>',
 };
 // nomes dos personagens que dá para escolher
@@ -718,7 +722,7 @@ function renderRoom() {
   const host = NET.isHost();
   $('roomCode').textContent = NET.code || '-----';
   const list = $('roomList');
-  list.innerHTML = NET.players.map(p => '<li class="' + (p.pid === NET.pid ? 'me' : '') + '">' + icon(p.pid === 0 ? 'crown' : 'person') + '<span>' + escapeHTML(p.name) + '</span><small>' + skinName(p.av) + '</small>' + (p.pid === 0 ? '<em>ANFITRIÃO</em>' : p.pid === NET.pid ? '<em>VOCÊ</em>' : '') + '</li>').join('') +
+  list.innerHTML = NET.players.map(p => '<li class="' + (p.pid === NET.pid ? 'me' : '') + '">' + icon(p.pid === 0 ? 'crown' : 'person') + '<span>' + escapeHTML(p.name) + (p.vf ? VERIFIED_SVG : '') + '</span><small>' + skinName(p.av) + '</small>' + (p.pid === 0 ? '<em>ANFITRIÃO</em>' : p.pid === NET.pid ? '<em>VOCÊ</em>' : '') + '</li>').join('') +
     (NET.players.length < 2 ? '<li><small>Ninguém entrou ainda. Mande o código.</small></li>' : '');
   $('roomBots').checked = NET.bots;
   $('roomBots').disabled = !host;

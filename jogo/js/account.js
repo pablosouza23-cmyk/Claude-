@@ -74,10 +74,13 @@ const SHOP = {
 const ACC = { p: null, user: null, listeners: [] };
 ACC.KEY = 'battleIsland.accounts';
 ACC.SESSION = 'battleIsland.session';
+// ID do jogador: 10 dígitos, como nos battle royales de celular
+ACC.newId = () => String(Math.floor(1e9 + Math.random() * 9e9));
 ACC.newProfile = function (name) {
-  return { name: name || 'Jogador', level: 1, xp: 0, gold: 500, gems: 0,
+  return { name: name || 'Jogador', id: ACC.newId(), verified: false, owner: false, level: 1, xp: 0, gold: 500, gems: 0,
     owned: { skins: ['heroi', 'camisa'], emotes: ['wave', 'clap', 'shrug', 'dance'] }, skin: 'heroi',
-    stats: { matches: 0, wins: 0, kills: 0, top5: 0, dmg: 0, best: 0 }, buys: [], daily: '', created: Date.now() };
+    stats: { matches: 0, wins: 0, kills: 0, top5: 0, dmg: 0, best: 0 }, buys: [], daily: '', created: Date.now(),
+    mail: [ACC.letter('Equipe Battle Island', 'Bem-vindo à ilha!', 'Valeu por jogar! Aqui vai um presente para começar. Ganhe ouro nas partidas e confira a loja.', [{ k: 'gold', n: 300 }, { k: 'gems', n: 10 }])] };
 };
 ACC.db = function () {
   try { return JSON.parse(localStorage.getItem(ACC.KEY) || 'null') || { users: {} }; } catch (e) { return { users: {} }; }
@@ -110,7 +113,7 @@ ACC.register = function (user, pass, name) {
   // quem jogou como convidado leva o progresso para a conta nova
   const guest = db.users.__guest;
   const profile = guest && guest.p.stats.matches > 0 ? Object.assign(guest.p, { name: nick }) : ACC.newProfile(nick);
-  db.users[user] = { salt: salt, hash: ACC.hashPass(salt, pass), p: profile };
+  db.users[user] = { salt: salt, hash: ACC.hashPass(salt, pass), p: profile, t: Date.now() };
   if (guest && profile === guest.p) delete db.users.__guest;
   if (!ACC.writeDb(db)) return 'Não deu para salvar neste navegador (modo anônimo?).';
   ACC.use(user, profile);
@@ -126,7 +129,7 @@ ACC.login = function (user, pass) {
 };
 ACC.guest = function () {
   const db = ACC.db();
-  if (!db.users.__guest) { db.users.__guest = { salt: '', hash: '', p: ACC.newProfile('Convidado' + Math.floor(Math.random() * 900 + 100)) }; ACC.writeDb(db); }
+  if (!db.users.__guest) { db.users.__guest = { salt: '', hash: '', p: ACC.newProfile('Convidado' + Math.floor(Math.random() * 900 + 100)), t: Date.now() }; ACC.writeDb(db); }
   ACC.use('__guest', db.users.__guest.p);
 };
 ACC.isGuest = () => ACC.user === '__guest';
@@ -277,4 +280,83 @@ PAY.buy = async function (pack) {
   }
   if (PAY.TEST_MODE) { ACC.credit(pack, 'teste-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), 'teste'); return true; }
   throw new Error('Recarga disponível só no app da Play Store.');
+};
+
+// ---------- correio ----------
+// carta: { mid, from, title, text, items: [{ k: 'gold'|'gems'|'skin'|'emote'|'allSkins'|'allEmotes'|'verified', n, id }], t, read, got }
+ACC.letter = (from, title, text, items) => ({ mid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), from: from, title: title, text: text, items: items || [], t: Date.now(), read: false, got: false });
+ACC.unread = () => ACC.p ? ACC.p.mail.filter(m => !m.read || (m.items.length && !m.got)).length : 0;
+ACC.itemText = function (it) {
+  const sk = (id) => (typeof SKINS !== 'undefined' && (SKINS.find(x => x[0] === id) || [])[1]) || id;
+  const em = (id) => (typeof EMOTES !== 'undefined' && (EMOTES.find(x => x[0] === id) || [])[1]) || id;
+  return it.k === 'gold' ? it.n + ' de ouro' : it.k === 'gems' ? it.n + ' gemas' : it.k === 'skin' ? 'Personagem ' + sk(it.id) : it.k === 'emote' ? 'Emote ' + em(it.id) :
+    it.k === 'allSkins' ? 'Todos os personagens' : it.k === 'allEmotes' ? 'Todos os emotes' : it.k === 'verified' ? 'Selo de verificado' : it.k;
+};
+ACC.grant = function (p, it) {
+  const add = (kind, id) => { if (p.owned[kind].indexOf(id) < 0) p.owned[kind].push(id); };
+  if (it.k === 'gold') p.gold += it.n;
+  else if (it.k === 'gems') p.gems += it.n;
+  else if (it.k === 'skin') add('skins', it.id);
+  else if (it.k === 'emote') add('emotes', it.id);
+  else if (it.k === 'allSkins') for (const id in SHOP.skins) add('skins', id);
+  else if (it.k === 'allEmotes') for (const id in SHOP.emotes) add('emotes', id);
+  else if (it.k === 'verified') p.verified = true;
+};
+ACC.claim = function (mid) {
+  const m = ACC.p.mail.find(x => x.mid === mid);
+  if (!m || m.got) return null;
+  for (const it of m.items) ACC.grant(ACC.p, it);
+  m.got = true; m.read = true;
+  ACC.emit();
+  return m;
+};
+ACC.readMail = function (mid) { const m = ACC.p.mail.find(x => x.mid === mid); if (m && !m.read) { m.read = true; ACC.emit(); } };
+ACC.delMail = function (mid) { ACC.p.mail = ACC.p.mail.filter(x => x.mid !== mid); ACC.emit(); };
+// manda uma carta para um ID ou para todas as contas ('todos'); devolve quantas receberam
+ACC.sendMail = function (target, letter) {
+  const db = ACC.db();
+  if (ACC.user && db.users[ACC.user]) db.users[ACC.user].p = ACC.p;
+  let n = 0;
+  for (const u in db.users) {
+    const p = u === ACC.user ? ACC.p : ACC.fix(db.users[u].p);
+    if (target !== 'todos' && p.id !== target) continue;
+    p.mail.unshift(Object.assign({}, letter, { mid: letter.mid + n, items: letter.items.map(x => Object.assign({}, x)) }));
+    db.users[u].p = p;
+    n++;
+  }
+  ACC.writeDb(db);
+  if (n) ACC.emit();
+  return n;
+};
+
+// ---------- painel do dono ----------
+// O código do dono fica só como hash. Para trocar, rode no console do navegador SHA.hex('battle-dono:' + 'SEU-CODIGO')
+// e cole o resultado em OWNER_HASH. Lembre: sem servidor tudo fica no aparelho, então isto não é segurança forte.
+ACC.OWNER_HASH = 'e671ec3f728a094705745f7f788862c1690c8d893a2c021a78811b9e791e58e8';
+ACC.unlockOwner = function (code) {
+  if (SHA.hex('battle-dono:' + String(code || '').trim().toUpperCase()) !== ACC.OWNER_HASH) return 'Código errado.';
+  const first = !ACC.p.owner;
+  ACC.p.owner = true; ACC.p.verified = true;
+  if (first) ACC.p.mail.unshift(ACC.letter('Sistema', 'Pacote do dono', 'Painel do dono liberado nesta conta. Aqui estão todos os personagens e emotes.', [{ k: 'allSkins' }, { k: 'allEmotes' }, { k: 'verified' }]));
+  ACC.emit();
+  return null;
+};
+const sameDay = (t, d) => { const a = new Date(t); return a.getFullYear() === d.getFullYear() && a.getMonth() === d.getMonth() && a.getDate() === d.getDate(); };
+// contas guardadas neste aparelho; today = só as criadas hoje
+ACC.accounts = function (today) {
+  const db = ACC.db(), now = new Date(), out = [];
+  if (ACC.user && db.users[ACC.user]) db.users[ACC.user].p = ACC.p;
+  for (const u in db.users) {
+    const r = db.users[u], p = ACC.fix(r.p), t = r.t || p.created;
+    if (today && !sameDay(t, now)) continue;
+    out.push({ user: u, guest: u === '__guest', name: p.name, id: p.id, level: p.level, verified: p.verified, owner: p.owner, t: t, skins: p.owned.skins.length, matches: p.stats.matches });
+  }
+  return out.sort((a, b) => b.t - a.t);
+};
+ACC.setVerified = function (id, on) {
+  const db = ACC.db();
+  if (ACC.user && db.users[ACC.user]) db.users[ACC.user].p = ACC.p;
+  for (const u in db.users) { const p = u === ACC.user ? ACC.p : db.users[u].p; if (p.id === id) { p.verified = on; db.users[u].p = p; } }
+  ACC.writeDb(db);
+  ACC.emit();
 };

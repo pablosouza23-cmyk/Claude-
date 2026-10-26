@@ -118,8 +118,8 @@
 
 <div id="menuScr" class="screen lobby hidden">
   <header class="lbTop">
-    <button id="lbProfile" class="lbProf" aria-label="Perfil"><i id="lbAvatar" class="avatar"></i><div class="lbId"><b id="lbName">Jogador</b><div class="lbLv"><span>NV <em id="lbLvl">1</em></span><div class="xpBar"><div id="lbXp"></div></div></div></div></button>
-    <div class="lbRightTop"><div class="curSlot"></div><button id="lbSet" class="xBtn" data-icon="gear" aria-label="Configurações"></button></div>
+    <button id="lbProfile" class="lbProf" aria-label="Perfil"><i id="lbAvatar" class="avatar"></i><div class="lbId"><b id="lbName">Jogador</b><small id="lbId" class="lbUid"></small><div class="lbLv"><span>NV <em id="lbLvl">1</em></span><div class="xpBar"><div id="lbXp"></div></div></div></div></button>
+    <div class="lbRightTop"><div class="curSlot"></div><button id="lbMail" class="xBtn mailBtn" data-icon="mail" aria-label="Correio"><em id="lbMailN" class="badgeN hidden">0</em></button><button id="lbSet" class="xBtn" data-icon="gear" aria-label="Configurações"></button></div>
   </header>
   <nav id="lbNav" class="lbNav">
     <button data-go="shop" data-icon="bag"><span>LOJA</span></button>
@@ -135,7 +135,7 @@
     <button id="mPlay" class="playBtn"><b>JOGAR</b><small>SOLO · SALA COM AMIGOS</small></button>
   </div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v2.3</div>
+  <div class="ver">v2.4</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -161,6 +161,20 @@
   <div class="panel pfPanel">
     <div class="panelHead"><b>PERFIL</b><button id="pfClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
     <div id="pfBody" class="pfBody"></div>
+  </div>
+</div>
+
+<div id="mailScr" class="screen dim hidden">
+  <div class="panel mlPanel">
+    <div class="panelHead"><b>CORREIO</b><button id="mlAll" class="chip hot">COLETAR TUDO</button><button id="mlClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <div class="mlWrap"><div id="mlList" class="mlList"></div><div id="mlBody" class="mlBody"></div></div>
+  </div>
+</div>
+
+<div id="adminScr" class="screen dim hidden">
+  <div class="panel adPanel">
+    <div class="panelHead"><b>PAINEL DO DONO</b><div id="adTabs" class="tabs"><button data-t="hoje">CRIADAS HOJE</button><button data-t="todas">TODAS</button><button data-t="enviar">ENVIAR CORREIO</button></div><button id="adClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <div id="adBody" class="adBody"></div>
   </div>
 </div>
 
@@ -345,7 +359,7 @@
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v2.3 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v2.4 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>

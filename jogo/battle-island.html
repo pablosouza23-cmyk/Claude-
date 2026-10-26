@@ -559,14 +559,14 @@ body.hud-editing #joyBase { opacity: .9; }
 .roomMap { justify-content: center; } .roomMap b { color: var(--yellow); }
 
 /* ---------- diálogo ---------- */
-#dlg { position: fixed; inset: 0; z-index: 45; display: flex; align-items: center; justify-content: center; background: rgba(2,5,12,.6); padding: 16px; animation: dlgIn .15s ease-out; }
-.dlgBox { width: min(380px, 100%); max-height: 100%; overflow-y: auto; padding: 16px 18px; text-align: center; background: linear-gradient(rgba(16,26,46,.98), rgba(8,14,26,.98)); border: 1px solid var(--line); border-top: 3px solid var(--yellow); border-radius: 6px; box-shadow: 0 16px 40px rgba(0,0,0,.5); }
+#dlg { position: fixed; inset: 0; z-index: 45; display: flex; align-items: center; justify-content: center; background: rgba(2,5,12,.6); padding: 16px; }
+.dlgBox { animation: dlgPop .16s ease-out; width: min(380px, 100%); max-height: 100%; overflow-y: auto; padding: 16px 18px; text-align: center; background: linear-gradient(rgba(16,26,46,.98), rgba(8,14,26,.98)); border: 1px solid var(--line); border-top: 3px solid var(--yellow); border-radius: 6px; box-shadow: 0 16px 40px rgba(0,0,0,.5); }
 .dlgT { display: block; font-size: 20px; letter-spacing: 1.5px; margin-bottom: 8px; }
 .dlgM { font-size: 14px; color: #dfe8f3; line-height: 1.45; } .dlgM svg { width: 18px; height: 18px; vertical-align: -3px; }
 .dlgB { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; } .dlgB .mBtn { justify-content: center; height: 44px; font-size: 18px; }
 .dlgPrize { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 8px; font-size: 34px; } .dlgPrize svg { width: 40px; height: 40px; vertical-align: middle; }
 .hist { list-style: none; margin: 0; padding: 0; text-align: left; } .hist li { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.08); } .hist small { margin-left: auto; color: var(--muted); }
-@keyframes dlgIn { from { opacity: 0; } }
+@keyframes dlgPop { from { transform: scale(.94); } }
 
 /* ---------- prêmios no resultado ---------- */
 .resReward { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 6px 0 2px; }
@@ -575,7 +575,7 @@ body.hud-editing #joyBase { opacity: .9; }
 .rw svg { width: 26px; height: 26px; } .rw b { font-size: 20px; } .rw small { font-size: 10px; letter-spacing: 1.5px; color: var(--muted); }
 .rw.xp i { font-style: normal; font-weight: 700; font-size: 15px; color: #6fe3ff; height: 26px; line-height: 26px; } .rw:nth-child(2) { animation-delay: .15s; } .rw:nth-child(3) { animation-delay: .3s; }
 .lvUp { width: 100%; font-size: 14px; letter-spacing: 1px; color: #1d1300; background: linear-gradient(90deg, #ffd23c, #ffb000); border-radius: 3px; padding: 3px; animation: rwIn .5s .4s ease-out both; }
-@keyframes rwIn { from { opacity: 0; transform: translateY(8px) scale(.9); } }
+@keyframes rwIn { from { transform: translateY(8px) scale(.9); } }
 
 @media (max-height: 380px) {
   .lbNav button { height: 34px; font-size: 13px; width: 140px; } .news { min-height: 74px; padding: 6px 12px 16px; } .news b { font-size: 17px; }
@@ -588,6 +588,42 @@ body.hud-editing #joyBase { opacity: .9; }
   .shDetail { width: auto; left: 12px; } .rcGrid { grid-template-columns: repeat(2, 1fr); } .pfStats { grid-template-columns: repeat(2, 1fr); } .mpList { grid-template-columns: 1fr; }
   .screen.auth { justify-content: center; background: rgba(4,8,16,.8); }
 }
+
+/* ---------- verificado, ID, correio e painel do dono ---------- */
+.vfI { width: 1.05em; height: 1.05em; margin-left: 4px; vertical-align: -.16em; flex: none; }
+.lbUid { display: block; font-size: 10px; color: var(--muted); letter-spacing: .5px; line-height: 1.1; }
+.pfIdRow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.idTag { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; font-size: 13px; color: var(--muted); background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 12px; }
+.idTag b { color: #fff; letter-spacing: 1px; } .idTag .ico { width: 13px; height: 13px; }
+.vfTag { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; letter-spacing: 1px; color: #8fd0ff; background: rgba(29,155,240,.15); border: 1px solid rgba(29,155,240,.5); padding: 1px 8px; border-radius: 12px; }
+.vfTag.own { color: #ffe08a; background: rgba(255,194,26,.14); border-color: rgba(255,194,26,.5); } .vfTag .ico { width: 13px; height: 13px; }
+.mailBtn { position: relative; } .badgeN { position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: #ff3b3b; color: #fff; font-style: normal; font-size: 11px; font-weight: 700; line-height: 17px; text-align: center; box-shadow: 0 0 0 2px #0b1220; }
+.mlPanel { width: min(760px, 100%); height: min(380px, 100%); } .mlPanel .panelHead .chip { margin-left: auto; } .mlPanel .chip:disabled { opacity: .45; }
+.mlWrap { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(200px, 38%) 1fr; }
+.mlList { overflow-y: auto; border-right: 1px solid var(--line); padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.mlItem { position: relative; display: flex; align-items: center; gap: 8px; padding: 7px 10px; text-align: left; border-radius: 4px; background: rgba(255,255,255,.04); border: 1px solid transparent; }
+.mlItem > .ico { width: 22px; height: 22px; color: var(--muted); flex: none; } .mlItem.new > .ico { color: var(--yellow); }
+.mlItem b { display: block; font-size: 14px; font-weight: 500; } .mlItem.new b { font-weight: 700; } .mlItem small { font-size: 11px; color: var(--muted); }
+.mlItem.sel { background: rgba(61,139,255,.2); border-color: rgba(61,139,255,.55); }
+.dotNew { position: absolute; right: 8px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #ff3b3b; }
+.mlBody { overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.mlT { font-size: 20px; } .mlF { font-size: 11px; color: var(--muted); margin-top: -6px; } .mlBody p { margin: 0; font-size: 14px; color: #dfe8f3; line-height: 1.4; }
+.mlItems { display: flex; flex-wrap: wrap; gap: 6px; } .mlItems.big { justify-content: center; margin: 4px 0; }
+.mlGift { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 4px; background: rgba(255,194,26,.1); border: 1px solid rgba(255,194,26,.35); font-size: 13px; }
+.mlGift svg { width: 20px; height: 20px; } .mlGift .ico { color: #ffd23c; } .mlGift.got { opacity: .5; }
+.mlBody .mBtn { justify-content: center; height: 42px; font-size: 18px; gap: 8px; } .mlDel { align-self: flex-start; } .mlEmpty { padding: 10px; }
+.adPanel { width: min(820px, 100%); height: min(390px, 100%); } .adPanel .panelHead .tabs { margin-right: auto; } .adPanel .tabs button { padding: 5px 12px; font-size: 13px; }
+.adBody { flex: 1; overflow: auto; padding: 8px 12px 12px; }
+.adNote { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; } .adNote .ico { width: 15px; height: 15px; flex: none; }
+.adTable { width: 100%; border-collapse: collapse; font-size: 13px; } .adTable th { text-align: left; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); font-weight: 500; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.adTable td { padding: 5px 6px; border-bottom: 1px solid rgba(255,255,255,.06); vertical-align: middle; } .adTable td small { display: block; font-size: 11px; color: var(--muted); }
+.adTable td .ico { width: 14px; height: 14px; color: var(--yellow); vertical-align: -2px; } .adTable .mono { font-variant-numeric: tabular-nums; letter-spacing: .5px; }
+.adTable .chip { padding: 4px 8px; } .adTable .chip .ico { color: #fff; }
+.adForm { display: flex; flex-direction: column; gap: 7px; max-width: 520px; } .adForm .mBtn { justify-content: center; height: 42px; font-size: 18px; gap: 8px; }
+.adGifts { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; } .adGifts label { display: flex; align-items: center; gap: 6px; } .adGifts input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--yellow); }
+.adGifts .num input { width: 90px; padding: 4px 8px; font: 500 15px var(--font); color: #fff; background: #0b1424; border: 1px solid var(--line); border-radius: 4px; -webkit-user-select: text; user-select: text; } .adGifts .num svg { width: 20px; height: 20px; }
+.codeIn { display: block; width: 100%; margin-top: 10px; padding: 9px 12px; font: 600 18px var(--font); letter-spacing: 2px; text-align: center; text-transform: uppercase; color: #fff; background: #0b1424; border: 1px solid var(--line); border-radius: 4px; outline: none; -webkit-user-select: text; user-select: text; }
+@media (max-aspect-ratio: 1/1) { .mlWrap { grid-template-columns: 1fr; grid-template-rows: 40% 1fr; } .mlList { border-right: 0; border-bottom: 1px solid var(--line); } }
 
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
@@ -692,8 +728,8 @@ body.hud-editing #joyBase { opacity: .9; }
 
 <div id="menuScr" class="screen lobby hidden">
   <header class="lbTop">
-    <button id="lbProfile" class="lbProf" aria-label="Perfil"><i id="lbAvatar" class="avatar"></i><div class="lbId"><b id="lbName">Jogador</b><div class="lbLv"><span>NV <em id="lbLvl">1</em></span><div class="xpBar"><div id="lbXp"></div></div></div></div></button>
-    <div class="lbRightTop"><div class="curSlot"></div><button id="lbSet" class="xBtn" data-icon="gear" aria-label="Configurações"></button></div>
+    <button id="lbProfile" class="lbProf" aria-label="Perfil"><i id="lbAvatar" class="avatar"></i><div class="lbId"><b id="lbName">Jogador</b><small id="lbId" class="lbUid"></small><div class="lbLv"><span>NV <em id="lbLvl">1</em></span><div class="xpBar"><div id="lbXp"></div></div></div></div></button>
+    <div class="lbRightTop"><div class="curSlot"></div><button id="lbMail" class="xBtn mailBtn" data-icon="mail" aria-label="Correio"><em id="lbMailN" class="badgeN hidden">0</em></button><button id="lbSet" class="xBtn" data-icon="gear" aria-label="Configurações"></button></div>
   </header>
   <nav id="lbNav" class="lbNav">
     <button data-go="shop" data-icon="bag"><span>LOJA</span></button>
@@ -709,7 +745,7 @@ body.hud-editing #joyBase { opacity: .9; }
     <button id="mPlay" class="playBtn"><b>JOGAR</b><small>SOLO · SALA COM AMIGOS</small></button>
   </div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v2.3</div>
+  <div class="ver">v2.4</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -735,6 +771,20 @@ body.hud-editing #joyBase { opacity: .9; }
   <div class="panel pfPanel">
     <div class="panelHead"><b>PERFIL</b><button id="pfClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
     <div id="pfBody" class="pfBody"></div>
+  </div>
+</div>
+
+<div id="mailScr" class="screen dim hidden">
+  <div class="panel mlPanel">
+    <div class="panelHead"><b>CORREIO</b><button id="mlAll" class="chip hot">COLETAR TUDO</button><button id="mlClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <div class="mlWrap"><div id="mlList" class="mlList"></div><div id="mlBody" class="mlBody"></div></div>
+  </div>
+</div>
+
+<div id="adminScr" class="screen dim hidden">
+  <div class="panel adPanel">
+    <div class="panelHead"><b>PAINEL DO DONO</b><div id="adTabs" class="tabs"><button data-t="hoje">CRIADAS HOJE</button><button data-t="todas">TODAS</button><button data-t="enviar">ENVIAR CORREIO</button></div><button id="adClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <div id="adBody" class="adBody"></div>
   </div>
 </div>
 
@@ -919,7 +969,7 @@ body.hud-editing #joyBase { opacity: .9; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v2.3 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v2.4 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -6683,7 +6733,7 @@ NET.createRoom = function () {
   NET.leave();
   NET.mode = 'host'; NET.pid = 0; NET.nextPid = 1;
   NET.code = NET.makeCode();
-  NET.players = [{ pid: 0, name: G.settings.name || 'Jogador', av: G.settings.avatar || 'heroi' }];
+  NET.players = [{ pid: 0, name: G.settings.name || 'Jogador', av: G.settings.avatar || 'heroi', vf: !!(ACC.p && ACC.p.verified) }];
   NET.setStatus('Criando sala…');
   const tryOpen = (tries) => {
     const peer = new Peer(NET.PREFIX + NET.code, NET.peerOpts());
@@ -6748,7 +6798,7 @@ NET.joinRoom = function (code) {
     const c = peer.connect(NET.PREFIX + code, { reliable: true, serialization: 'json' });
     NET.conn = c;
     const to = setTimeout(() => { if (!c.open) NET.setStatus('A sala não respondeu. Confira o código e tente de novo.', true); }, 12000);
-    c.on('open', () => { clearTimeout(to); c.send({ t: 'hi', n: G.settings.name || 'Jogador', a: G.settings.avatar || 'heroi', v: NET.ver }); NET.setStatus('Conectado. Aguardando o anfitrião…'); });
+    c.on('open', () => { clearTimeout(to); c.send({ t: 'hi', n: G.settings.name || 'Jogador', a: G.settings.avatar || 'heroi', v: NET.ver, vf: !!(ACC.p && ACC.p.verified) }); NET.setStatus('Conectado. Aguardando o anfitrião…'); });
     c.on('data', d => { try { NET.clientRecv(d); } catch (e) { console.error(e); } });
     c.on('close', () => NET.lostHost());
     c.on('error', () => NET.lostHost());
@@ -6777,7 +6827,7 @@ NET.send = function (m) { if (NET.conn && NET.conn.open) NET.conn.send(m); };
 NET.bcast = function (m, except) { for (const c of NET.conns) if (c !== except && c.open) c.send(m); };
 NET.toPid = function (pid, m) { const p = NET.players.find(x => x.pid === pid); if (p && p.conn && p.conn.open) p.conn.send(m); };
 
-NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av]), bots: NET.bots, live: NET.live, map: W.mapId });
+NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av, p.vf ? 1 : 0]), bots: NET.bots, live: NET.live, map: W.mapId });
 NET.bcastRoom = function () { if (NET.isHost()) NET.bcast(NET.roomMsg()); };
 
 NET.setAvatar = function (av) {
@@ -6913,7 +6963,7 @@ NET.hostRecv = function (c, d) {
   const pl = NET.players.find(p => p.conn === c);
   if (d.t === 'hi') {
     if (pl) return;
-    const p = { pid: NET.nextPid++, name: String(d.n || 'Amigo').slice(0, 14), av: CH.AV[d.a] ? d.a : 'heroi', conn: c };
+    const p = { pid: NET.nextPid++, name: String(d.n || 'Amigo').slice(0, 14), av: CH.AV[d.a] ? d.a : 'heroi', vf: !!d.vf, conn: c };
     NET.players.push(p);
     c.send({ t: 'wel', pid: p.pid });
     NET.bcastRoom(); renderRoom();
@@ -6993,7 +7043,7 @@ NET.clientRecv = function (d) {
     case 'wel': NET.pid = d.pid; break;
     case 'full': NET.setStatus(d.live ? 'A partida já começou. Espere acabar e tente de novo.' : 'A sala está cheia.', true); break;
     case 'room':
-      NET.players = d.ps.map(p => ({ pid: p[0], name: p[1], av: p[2] }));
+      NET.players = d.ps.map(p => ({ pid: p[0], name: p[1], av: p[2], vf: !!p[3] }));
       NET.bots = d.bots; NET.code = d.code;
       if (d.map && d.map !== W.mapId && W.MAPS[d.map] && !NET.live && G.state !== 'play') LOB.switchMap(d.map, () => { if (UI.screen === 'roomScr') renderRoom(); });
       if (!NET.live && G.state !== 'play' && G.state !== 'end') { if (UI.screen !== 'roomScr') openRoom(); else renderRoom(); }
@@ -7291,10 +7341,13 @@ const SHOP = {
 const ACC = { p: null, user: null, listeners: [] };
 ACC.KEY = 'battleIsland.accounts';
 ACC.SESSION = 'battleIsland.session';
+// ID do jogador: 10 dígitos, como nos battle royales de celular
+ACC.newId = () => String(Math.floor(1e9 + Math.random() * 9e9));
 ACC.newProfile = function (name) {
-  return { name: name || 'Jogador', level: 1, xp: 0, gold: 500, gems: 0,
+  return { name: name || 'Jogador', id: ACC.newId(), verified: false, owner: false, level: 1, xp: 0, gold: 500, gems: 0,
     owned: { skins: ['heroi', 'camisa'], emotes: ['wave', 'clap', 'shrug', 'dance'] }, skin: 'heroi',
-    stats: { matches: 0, wins: 0, kills: 0, top5: 0, dmg: 0, best: 0 }, buys: [], daily: '', created: Date.now() };
+    stats: { matches: 0, wins: 0, kills: 0, top5: 0, dmg: 0, best: 0 }, buys: [], daily: '', created: Date.now(),
+    mail: [ACC.letter('Equipe Battle Island', 'Bem-vindo à ilha!', 'Valeu por jogar! Aqui vai um presente para começar. Ganhe ouro nas partidas e confira a loja.', [{ k: 'gold', n: 300 }, { k: 'gems', n: 10 }])] };
 };
 ACC.db = function () {
   try { return JSON.parse(localStorage.getItem(ACC.KEY) || 'null') || { users: {} }; } catch (e) { return { users: {} }; }
@@ -7327,7 +7380,7 @@ ACC.register = function (user, pass, name) {
   // quem jogou como convidado leva o progresso para a conta nova
   const guest = db.users.__guest;
   const profile = guest && guest.p.stats.matches > 0 ? Object.assign(guest.p, { name: nick }) : ACC.newProfile(nick);
-  db.users[user] = { salt: salt, hash: ACC.hashPass(salt, pass), p: profile };
+  db.users[user] = { salt: salt, hash: ACC.hashPass(salt, pass), p: profile, t: Date.now() };
   if (guest && profile === guest.p) delete db.users.__guest;
   if (!ACC.writeDb(db)) return 'Não deu para salvar neste navegador (modo anônimo?).';
   ACC.use(user, profile);
@@ -7343,7 +7396,7 @@ ACC.login = function (user, pass) {
 };
 ACC.guest = function () {
   const db = ACC.db();
-  if (!db.users.__guest) { db.users.__guest = { salt: '', hash: '', p: ACC.newProfile('Convidado' + Math.floor(Math.random() * 900 + 100)) }; ACC.writeDb(db); }
+  if (!db.users.__guest) { db.users.__guest = { salt: '', hash: '', p: ACC.newProfile('Convidado' + Math.floor(Math.random() * 900 + 100)), t: Date.now() }; ACC.writeDb(db); }
   ACC.use('__guest', db.users.__guest.p);
 };
 ACC.isGuest = () => ACC.user === '__guest';
@@ -7496,6 +7549,85 @@ PAY.buy = async function (pack) {
   throw new Error('Recarga disponível só no app da Play Store.');
 };
 
+// ---------- correio ----------
+// carta: { mid, from, title, text, items: [{ k: 'gold'|'gems'|'skin'|'emote'|'allSkins'|'allEmotes'|'verified', n, id }], t, read, got }
+ACC.letter = (from, title, text, items) => ({ mid: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), from: from, title: title, text: text, items: items || [], t: Date.now(), read: false, got: false });
+ACC.unread = () => ACC.p ? ACC.p.mail.filter(m => !m.read || (m.items.length && !m.got)).length : 0;
+ACC.itemText = function (it) {
+  const sk = (id) => (typeof SKINS !== 'undefined' && (SKINS.find(x => x[0] === id) || [])[1]) || id;
+  const em = (id) => (typeof EMOTES !== 'undefined' && (EMOTES.find(x => x[0] === id) || [])[1]) || id;
+  return it.k === 'gold' ? it.n + ' de ouro' : it.k === 'gems' ? it.n + ' gemas' : it.k === 'skin' ? 'Personagem ' + sk(it.id) : it.k === 'emote' ? 'Emote ' + em(it.id) :
+    it.k === 'allSkins' ? 'Todos os personagens' : it.k === 'allEmotes' ? 'Todos os emotes' : it.k === 'verified' ? 'Selo de verificado' : it.k;
+};
+ACC.grant = function (p, it) {
+  const add = (kind, id) => { if (p.owned[kind].indexOf(id) < 0) p.owned[kind].push(id); };
+  if (it.k === 'gold') p.gold += it.n;
+  else if (it.k === 'gems') p.gems += it.n;
+  else if (it.k === 'skin') add('skins', it.id);
+  else if (it.k === 'emote') add('emotes', it.id);
+  else if (it.k === 'allSkins') for (const id in SHOP.skins) add('skins', id);
+  else if (it.k === 'allEmotes') for (const id in SHOP.emotes) add('emotes', id);
+  else if (it.k === 'verified') p.verified = true;
+};
+ACC.claim = function (mid) {
+  const m = ACC.p.mail.find(x => x.mid === mid);
+  if (!m || m.got) return null;
+  for (const it of m.items) ACC.grant(ACC.p, it);
+  m.got = true; m.read = true;
+  ACC.emit();
+  return m;
+};
+ACC.readMail = function (mid) { const m = ACC.p.mail.find(x => x.mid === mid); if (m && !m.read) { m.read = true; ACC.emit(); } };
+ACC.delMail = function (mid) { ACC.p.mail = ACC.p.mail.filter(x => x.mid !== mid); ACC.emit(); };
+// manda uma carta para um ID ou para todas as contas ('todos'); devolve quantas receberam
+ACC.sendMail = function (target, letter) {
+  const db = ACC.db();
+  if (ACC.user && db.users[ACC.user]) db.users[ACC.user].p = ACC.p;
+  let n = 0;
+  for (const u in db.users) {
+    const p = u === ACC.user ? ACC.p : ACC.fix(db.users[u].p);
+    if (target !== 'todos' && p.id !== target) continue;
+    p.mail.unshift(Object.assign({}, letter, { mid: letter.mid + n, items: letter.items.map(x => Object.assign({}, x)) }));
+    db.users[u].p = p;
+    n++;
+  }
+  ACC.writeDb(db);
+  if (n) ACC.emit();
+  return n;
+};
+
+// ---------- painel do dono ----------
+// O código do dono fica só como hash. Para trocar, rode no console do navegador SHA.hex('battle-dono:' + 'SEU-CODIGO')
+// e cole o resultado em OWNER_HASH. Lembre: sem servidor tudo fica no aparelho, então isto não é segurança forte.
+ACC.OWNER_HASH = 'e671ec3f728a094705745f7f788862c1690c8d893a2c021a78811b9e791e58e8';
+ACC.unlockOwner = function (code) {
+  if (SHA.hex('battle-dono:' + String(code || '').trim().toUpperCase()) !== ACC.OWNER_HASH) return 'Código errado.';
+  const first = !ACC.p.owner;
+  ACC.p.owner = true; ACC.p.verified = true;
+  if (first) ACC.p.mail.unshift(ACC.letter('Sistema', 'Pacote do dono', 'Painel do dono liberado nesta conta. Aqui estão todos os personagens e emotes.', [{ k: 'allSkins' }, { k: 'allEmotes' }, { k: 'verified' }]));
+  ACC.emit();
+  return null;
+};
+const sameDay = (t, d) => { const a = new Date(t); return a.getFullYear() === d.getFullYear() && a.getMonth() === d.getMonth() && a.getDate() === d.getDate(); };
+// contas guardadas neste aparelho; today = só as criadas hoje
+ACC.accounts = function (today) {
+  const db = ACC.db(), now = new Date(), out = [];
+  if (ACC.user && db.users[ACC.user]) db.users[ACC.user].p = ACC.p;
+  for (const u in db.users) {
+    const r = db.users[u], p = ACC.fix(r.p), t = r.t || p.created;
+    if (today && !sameDay(t, now)) continue;
+    out.push({ user: u, guest: u === '__guest', name: p.name, id: p.id, level: p.level, verified: p.verified, owner: p.owner, t: t, skins: p.owned.skins.length, matches: p.stats.matches });
+  }
+  return out.sort((a, b) => b.t - a.t);
+};
+ACC.setVerified = function (id, on) {
+  const db = ACC.db();
+  if (ACC.user && db.users[ACC.user]) db.users[ACC.user].p = ACC.p;
+  for (const u in db.users) { const p = u === ACC.user ? ACC.p : db.users[u].p; if (p.id === id) { p.verified = on; db.users[u].p = p; } }
+  ACC.writeDb(db);
+  ACC.emit();
+};
+
 </script>
 <script>
 'use strict';
@@ -7508,6 +7640,7 @@ const SKIN_INFO = { heroi: 'Moletom com capuz e cabelo cacheado', camisa: 'Visua
   soldado: 'Uniforme camuflado de combate', soldado2: 'Sargento com equipamento completo', soldada: 'Soldada das forças especiais', swat: 'Tropa de elite com colete tático' };
 const GEM_SVG = '<svg class="gemI" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 13L2 9z" fill="url(#gmG)" stroke="#1b1450" stroke-width="1.2"/><path d="M2 9h20M8.5 3 12 9l3.5-6M12 9v13M7 9l5 13 5-13" fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".8"/></svg>';
 const COIN_SVG = '<svg class="coinI" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="url(#cnG)" stroke="#6b3d00" stroke-width="1.3"/><circle cx="12" cy="12" r="7" fill="none" stroke="#a65f00" stroke-width="1"/><path d="m12 6.8 1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff6c8" stroke="#a65f00" stroke-width=".6"/></svg>';
+const VERIFIED_SVG = '<svg class="vfI" viewBox="0 0 24 24" role="img" aria-label="verificado"><path fill="#1d9bf0" d="m12 1.5 2.6 1.9 3.2-.2 1 3 2.7 1.8-1 3 1 3-2.7 1.8-1 3-3.2-.2-2.6 1.9-2.6-1.9-3.2.2-1-3L2.5 16l1-3-1-3 2.7-1.8 1-3 3.2.2z"/><path fill="#fff" d="m10.4 15.8-3.4-3.4 1.4-1.4 2 2 5.1-5.1 1.4 1.4z"/></svg>';
 const cur = (k) => k === 'gems' ? GEM_SVG : COIN_SVG;
 const fmtN = (n) => Math.round(n).toLocaleString('pt-BR');
 const NEWS = [
@@ -7608,7 +7741,11 @@ LOB.renderCur = function () {
 };
 LOB.renderTop = function () {
   const p = ACC.p; if (!p) return;
-  $('lbName').textContent = p.name;
+  $('lbName').innerHTML = escapeHTML(p.name) + (p.verified ? VERIFIED_SVG : '');
+  $('lbId').textContent = 'ID ' + p.id;
+  const n = ACC.unread();
+  $('lbMailN').textContent = n > 9 ? '9+' : n;
+  $('lbMailN').classList.toggle('hidden', !n);
   $('lbLvl').textContent = p.level;
   $('lbXp').style.width = Math.min(100, p.xp / ACC.need(p.level) * 100) + '%';
   $('lbAvatar').style.backgroundImage = LOB.thumbs[p.skin] ? 'url(' + LOB.thumbs[p.skin] + ')' : '';
@@ -7850,18 +7987,26 @@ LOB.renderProfile = function () {
   const kd = st.matches ? (st.kills / Math.max(1, st.matches - st.wins)).toFixed(2) : '0.00';
   $('pfBody').innerHTML =
     '<div class="pfTop"><div class="pfAv" style="background-image:url(' + (LOB.thumbs[p.skin] || '') + ')"></div><div class="pfId">' +
-    '<label class="fld inline"><span>Apelido</span><input id="pfName" maxlength="14" value="' + escapeHTML(p.name) + '"></label>' +
+    '<label class="fld inline"><span>Apelido</span><input id="pfName" maxlength="14" value="' + escapeHTML(p.name) + '">' + (p.verified ? VERIFIED_SVG : '') + '</label>' +
+    '<div class="pfIdRow"><button id="pfIdBtn" class="idTag" aria-label="Copiar ID">ID <b>' + p.id + '</b>' + icon('copy') + '</button>' + (p.verified ? '<span class="vfTag">' + VERIFIED_SVG + 'VERIFICADO</span>' : '') + (p.owner ? '<span class="vfTag own">' + icon('crown') + 'DONO</span>' : '') + '</div>' +
     '<div class="pfAcc">' + (guest ? icon('warn') + 'Convidado: crie uma conta para não perder o progresso' : icon('user') + 'Conta: <b>' + escapeHTML(ACC.user) + '</b>') + '</div>' +
     '<div class="pfLvl"><b>NÍVEL ' + p.level + '</b><div class="xpBar"><div style="width:' + Math.min(100, p.xp / ACC.need(p.level) * 100) + '%"></div></div><small>' + fmtN(p.xp) + ' / ' + fmtN(ACC.need(p.level)) + ' XP</small></div></div></div>' +
     '<div class="pfStats">' + [['PARTIDAS', st.matches], ['VITÓRIAS', st.wins], ['TOP 5', st.top5], ['ABATES', st.kills], ['K/D', kd], ['MAIS ABATES', st.best], ['DANO TOTAL', fmtN(st.dmg)], ['PERSONAGENS', p.owned.skins.length + '/' + SKINS.length]]
       .map(s => '<div><small>' + s[0] + '</small><b>' + s[1] + '</b></div>').join('') + '</div>' +
-    '<div class="pfBtns">' + (guest ? '<button class="chip hot" id="pfNew">' + icon('user') + 'CRIAR CONTA</button>' : '') +
+    '<div class="pfBtns">' + (p.owner ? '<button class="chip hot" id="pfAdmin">' + icon('shield') + 'PAINEL DO DONO</button>' : '') + (guest ? '<button class="chip hot" id="pfNew">' + icon('user') + 'CRIAR CONTA</button>' : '') +
     '<button class="chip" id="pfCode">' + icon('copy') + 'CÓDIGO DE TRANSFERÊNCIA</button><button class="chip" id="pfOut">' + icon('exit') + (guest ? 'ENTRAR EM OUTRA CONTA' : 'SAIR DA CONTA') + '</button>' +
     (guest ? '' : '<button class="chip danger" id="pfDel">APAGAR CONTA</button>') + '</div>';
   $('pfName').addEventListener('keydown', e => e.stopPropagation());
   $('pfName').addEventListener('change', () => { LOB.setName($('pfName').value); });
   const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', () => { SND.play('ui'); fn(); }); };
   on('pfNew', () => LOB.showAuth('new'));
+  on('pfAdmin', () => LOB.openAdmin('hoje'));
+  // copiar o ID; tocar 5 vezes seguidas abre o código do dono
+  on('pfIdBtn', () => {
+    LOB.idTaps = (Date.now() - (LOB.idTapT || 0) < 1500 ? (LOB.idTaps || 0) : 0) + 1; LOB.idTapT = Date.now();
+    if (LOB.idTaps >= 5 && !p.owner) { LOB.idTaps = 0; LOB.ownerPrompt(); return; }
+    try { navigator.clipboard.writeText(p.id).then(() => notify('ok', 'ID copiado: ' + p.id), () => notify('info', 'ID: ' + p.id)); } catch (e) { notify('info', 'ID: ' + p.id); }
+  });
   on('pfOut', () => { ACC.logout(); LOB.showAuth('login'); });
   on('pfCode', () => {
     const code = ACC.exportCode();
@@ -7875,6 +8020,109 @@ LOB.setName = function (v) {
   if (!n || !ACC.p) return;
   ACC.p.name = n; ACC.emit(); LOB.applyProfile();
   if (G.show) G.show.name = n;
+};
+
+// ---------- correio ----------
+LOB.openMail = function () {
+  showScreen('mailScr');
+  const first = ACC.p.mail[0];
+  LOB.mailSel = first ? first.mid : null;
+  LOB.renderMail();
+};
+const fmtDate = (t) => { const d = new Date(t); return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
+LOB.itemIcon = (it) => it.k === 'gold' ? COIN_SVG : it.k === 'gems' ? GEM_SVG : it.k === 'verified' ? VERIFIED_SVG : it.k === 'emote' || it.k === 'allEmotes' ? icon('smile') : icon('person');
+LOB.renderMail = function () {
+  const list = ACC.p.mail;
+  if (LOB.mailSel) ACC.readMail(LOB.mailSel);
+  $('mlList').innerHTML = list.length ? list.map(m => '<button class="mlItem' + (m.mid === LOB.mailSel ? ' sel' : '') + (m.read ? '' : ' new') + '" data-mid="' + m.mid + '">' +
+    icon(m.items.length ? 'gift' : 'mail') + '<div><b>' + escapeHTML(m.title) + '</b><small>' + escapeHTML(m.from) + ' · ' + fmtDate(m.t) + '</small></div>' +
+    (m.items.length && !m.got ? '<em class="dotNew"></em>' : '') + '</button>').join('') : '<p class="hint mlEmpty">Nenhuma mensagem.</p>';
+  $('mlList').querySelectorAll('.mlItem').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.mailSel = b.dataset.mid; LOB.renderMail(); }));
+  const m = list.find(x => x.mid === LOB.mailSel);
+  $('mlBody').innerHTML = m ? '<b class="mlT">' + escapeHTML(m.title) + '</b><small class="mlF">De: ' + escapeHTML(m.from) + ' · ' + fmtDate(m.t) + '</small><p>' + escapeHTML(m.text).replace(/\n/g, '<br>') + '</p>' +
+    (m.items.length ? '<div class="mlItems">' + m.items.map(it => '<div class="mlGift' + (m.got ? ' got' : '') + '">' + LOB.itemIcon(it) + '<span>' + ACC.itemText(it) + '</span></div>').join('') + '</div>' +
+      (m.got ? '<button class="mBtn ok" disabled>' + icon('check') + 'COLETADO</button>' : '<button class="mBtn primary" id="mlClaim">' + icon('gift') + 'COLETAR</button>') : '') +
+    '<button class="chip mlDel" id="mlDel">' + icon('trash') + 'APAGAR</button>' : '<p class="hint">Selecione uma mensagem.</p>';
+  const c = $('mlClaim');
+  if (c) c.addEventListener('click', () => LOB.claim(m.mid));
+  const d = $('mlDel');
+  if (d) d.addEventListener('click', () => { SND.play('ui'); if (m.items.length && !m.got) { LOB.dialog('APAGAR', 'Esta mensagem tem presentes que você ainda não coletou. Apagar mesmo assim?', [['APAGAR', () => { ACC.delMail(m.mid); LOB.mailSel = null; LOB.renderMail(); }, 'danger'], ['CANCELAR']]); return; } ACC.delMail(m.mid); LOB.mailSel = null; LOB.renderMail(); });
+  const pend = list.filter(x => x.items.length && !x.got).length;
+  $('mlAll').disabled = !pend;
+  $('mlAll').textContent = pend ? 'COLETAR TUDO (' + pend + ')' : 'COLETAR TUDO';
+  LOB.renderCur();
+};
+LOB.claim = function (mid) {
+  const m = ACC.claim(mid);
+  if (!m) return;
+  SND.play('pick');
+  LOB.renderMail();
+  LOB.dialog('PRESENTE COLETADO', '<div class="mlItems big">' + m.items.map(it => '<div class="mlGift">' + LOB.itemIcon(it) + '<span>' + ACC.itemText(it) + '</span></div>').join('') + '</div>', [['OK', null, true]]);
+  if (m.items.some(it => it.k === 'verified')) LOB.applyProfile();
+};
+LOB.claimAll = function () {
+  const pend = ACC.p.mail.filter(x => x.items.length && !x.got);
+  const items = [];
+  for (const m of pend) { ACC.claim(m.mid); items.push(...m.items); }
+  if (!items.length) return;
+  SND.play('pick');
+  LOB.renderMail();
+  LOB.dialog('PRESENTES COLETADOS', '<div class="mlItems big">' + items.map(it => '<div class="mlGift">' + LOB.itemIcon(it) + '<span>' + ACC.itemText(it) + '</span></div>').join('') + '</div>', [['OK', null, true]]);
+};
+
+// ---------- painel do dono ----------
+LOB.ownerPrompt = function () {
+  LOB.dialog('CÓDIGO DO DONO', 'Digite o código do dono do jogo para liberar o painel nesta conta.<input id="ownCode" class="codeIn" autocomplete="off" spellcheck="false" autocapitalize="characters">', [['LIBERAR', () => {
+    const err = ACC.unlockOwner($('ownCode').value);
+    if (err) { notify('info', err); return; }
+    notify('ok', 'Painel do dono liberado. Confira o correio!');
+    LOB.renderProfile();
+  }, true], ['CANCELAR']]);
+  const el = $('ownCode'); el.addEventListener('keydown', e => e.stopPropagation()); setTimeout(() => el.focus(), 50);
+};
+LOB.openAdmin = function (tab) {
+  if (!ACC.p.owner) return;
+  LOB.adTab = tab || LOB.adTab || 'hoje';
+  showScreen('adminScr');
+  LOB.renderAdmin();
+};
+LOB.renderAdmin = function () {
+  const tab = LOB.adTab;
+  document.querySelectorAll('#adTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+  const body = $('adBody');
+  if (tab === 'enviar') {
+    body.innerHTML = '<div class="adForm">' +
+      '<label class="fld"><span>Para (ID do jogador ou "todos")</span><input id="adTo" value="' + (LOB.adTo || 'todos') + '" spellcheck="false"></label>' +
+      '<label class="fld"><span>Título</span><input id="adTitle" maxlength="40" value="Presente da equipe"></label>' +
+      '<label class="fld"><span>Mensagem</span><textarea id="adText" rows="2" maxlength="300">Valeu por jogar Battle Island!</textarea></label>' +
+      '<div class="adGifts"><label><input type="checkbox" id="adSkins"> Todos os personagens</label><label><input type="checkbox" id="adEmotes"> Todos os emotes</label><label><input type="checkbox" id="adVf"> Selo de verificado</label>' +
+      '<label class="num">' + COIN_SVG + '<input type="number" id="adGold" min="0" max="1000000" value="0"></label><label class="num">' + GEM_SVG + '<input type="number" id="adGems" min="0" max="100000" value="0"></label></div>' +
+      '<button class="mBtn primary" id="adSend">' + icon('mail') + 'ENVIAR</button></div>';
+    body.querySelectorAll('input, textarea').forEach(el => el.addEventListener('keydown', e => e.stopPropagation()));
+    $('adSend').addEventListener('click', () => {
+      SND.play('ui');
+      const to = $('adTo').value.trim().toLowerCase();
+      const items = [];
+      if ($('adSkins').checked) items.push({ k: 'allSkins' });
+      if ($('adEmotes').checked) items.push({ k: 'allEmotes' });
+      if ($('adVf').checked) items.push({ k: 'verified' });
+      const g = Math.max(0, Math.floor(+$('adGold').value || 0)), m = Math.max(0, Math.floor(+$('adGems').value || 0));
+      if (g) items.push({ k: 'gold', n: g });
+      if (m) items.push({ k: 'gems', n: m });
+      if (to !== 'todos' && !/^\d{10}$/.test(to)) { notify('info', 'Use um ID de 10 números ou "todos"'); return; }
+      const n = ACC.sendMail(to, ACC.letter('Equipe Battle Island', $('adTitle').value.trim() || 'Mensagem', $('adText').value.trim(), items));
+      LOB.dialog(n ? 'ENVIADO' : 'NINGUÉM RECEBEU', n ? 'Mensagem enviada para <b>' + n + '</b> conta(s) deste aparelho.' : 'Nenhuma conta com esse ID neste aparelho.', [['OK', null, true]]);
+    });
+    return;
+  }
+  const rows = ACC.accounts(tab === 'hoje');
+  body.innerHTML = '<p class="hint adNote">' + icon('info') + (tab === 'hoje' ? rows.length + ' conta(s) criada(s) hoje' : rows.length + ' conta(s) no total') +
+    ' neste aparelho. Para ver as contas de todos os celulares é preciso um servidor (veja o README).</p>' +
+    (rows.length ? '<table class="adTable"><thead><tr><th>JOGADOR</th><th>ID</th><th>NV</th><th>CRIADA</th><th>VERIFICADO</th><th></th></tr></thead><tbody>' + rows.map(r =>
+      '<tr><td><b>' + escapeHTML(r.name) + '</b>' + (r.verified ? VERIFIED_SVG : '') + (r.owner ? ' ' + icon('crown') : '') + '<small>' + (r.guest ? 'convidado' : escapeHTML(r.user)) + '</small></td><td class="mono">' + r.id + '</td><td>' + r.level + '</td><td>' + fmtDate(r.t) + '</td>' +
+      '<td><button class="tog' + (r.verified ? ' on' : '') + '" data-vf="' + r.id + '" aria-pressed="' + r.verified + '"><i></i></button></td><td><button class="chip" data-to="' + r.id + '">' + icon('mail') + '</button></td></tr>').join('') + '</tbody></table>' : '<p class="hint">Nenhuma conta criada hoje ainda.</p>');
+  body.querySelectorAll('[data-vf]').forEach(b => b.addEventListener('click', () => { SND.play('ui'); ACC.setVerified(b.dataset.vf, !b.classList.contains('on')); LOB.renderAdmin(); }));
+  body.querySelectorAll('[data-to]').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.adTo = b.dataset.to; LOB.adTab = 'enviar'; LOB.renderAdmin(); }));
 };
 
 // ---------- mapas ----------
@@ -8000,6 +8248,11 @@ LOB.init = function () {
   click('lbProfile', () => LOB.openProfile());
   click('lbSet', () => openSettings('menu'));
   click('lbMap', () => LOB.openMaps());
+  click('lbMail', () => LOB.openMail());
+  click('mlClose', () => goMenu());
+  click('mlAll', () => LOB.claimAll());
+  click('adClose', () => LOB.openProfile());
+  document.querySelectorAll('#adTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.adTab = b.dataset.t; LOB.renderAdmin(); }));
   document.querySelectorAll('#lbNav button').forEach(b => b.addEventListener('click', () => {
     SND.init(); SND.play('ui');
     const k = b.dataset.go;
@@ -8071,6 +8324,10 @@ const ICON = {
   left: '<path d="M15.4 4 7.4 12l8 8 1.4-1.4L10.2 12l6.6-6.6z"/>',
   right: '<path d="M8.6 4 7.2 5.4 13.8 12l-6.6 6.6L8.6 20l8-8z"/>',
   crown: '<path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5zm2 13h14v2H5z"/>',
+  mail: '<path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2.6V17h16V7.6l-8 5.2zM5.6 7 12 11.2 18.4 7z"/>',
+  gift: '<path d="M9 3c1.3 0 2.4.8 3 1.8C12.6 3.8 13.7 3 15 3a2.8 2.8 0 0 1 2.4 4.2H21v4h-1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9H3v-4h3.6A2.8 2.8 0 0 1 9 3zm-.2 2a.9.9 0 0 0 0 1.9H11C10.6 5.7 9.8 5 8.8 5zm6.4 0c-1 0-1.8.7-2.2 1.9h2.2a.9.9 0 0 0 0-1.9zM6 11.2V19h5v-7.8zm7 0V19h5v-7.8z"/>',
+  trash: '<path d="M9 3h6l1 1h4v2H4V4h4zM6 8h12l-1 13H7zm3 2v9h2v-9zm4 0v9h2v-9z"/>',
+  shield: '<path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5zm-1.2 13.6-3.3-3.3 1.4-1.4 1.9 1.9 4.9-4.9 1.4 1.4z"/>',
   smile: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zM8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM12 17.5c2.3 0 4.2-1.5 5-3.5H7c.8 2 2.7 3.5 5 3.5z"/>',
 };
 // nomes dos personagens que dá para escolher
@@ -8748,7 +9005,7 @@ function renderRoom() {
   const host = NET.isHost();
   $('roomCode').textContent = NET.code || '-----';
   const list = $('roomList');
-  list.innerHTML = NET.players.map(p => '<li class="' + (p.pid === NET.pid ? 'me' : '') + '">' + icon(p.pid === 0 ? 'crown' : 'person') + '<span>' + escapeHTML(p.name) + '</span><small>' + skinName(p.av) + '</small>' + (p.pid === 0 ? '<em>ANFITRIÃO</em>' : p.pid === NET.pid ? '<em>VOCÊ</em>' : '') + '</li>').join('') +
+  list.innerHTML = NET.players.map(p => '<li class="' + (p.pid === NET.pid ? 'me' : '') + '">' + icon(p.pid === 0 ? 'crown' : 'person') + '<span>' + escapeHTML(p.name) + (p.vf ? VERIFIED_SVG : '') + '</span><small>' + skinName(p.av) + '</small>' + (p.pid === 0 ? '<em>ANFITRIÃO</em>' : p.pid === NET.pid ? '<em>VOCÊ</em>' : '') + '</li>').join('') +
     (NET.players.length < 2 ? '<li><small>Ninguém entrou ainda. Mande o código.</small></li>' : '');
   $('roomBots').checked = NET.bots;
   $('roomBots').disabled = !host;

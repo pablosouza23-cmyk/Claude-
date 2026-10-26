@@ -8,6 +8,7 @@ const SKIN_INFO = { heroi: 'Moletom com capuz e cabelo cacheado', camisa: 'Visua
   soldado: 'Uniforme camuflado de combate', soldado2: 'Sargento com equipamento completo', soldada: 'Soldada das forças especiais', swat: 'Tropa de elite com colete tático' };
 const GEM_SVG = '<svg class="gemI" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 13L2 9z" fill="url(#gmG)" stroke="#1b1450" stroke-width="1.2"/><path d="M2 9h20M8.5 3 12 9l3.5-6M12 9v13M7 9l5 13 5-13" fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".8"/></svg>';
 const COIN_SVG = '<svg class="coinI" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="url(#cnG)" stroke="#6b3d00" stroke-width="1.3"/><circle cx="12" cy="12" r="7" fill="none" stroke="#a65f00" stroke-width="1"/><path d="m12 6.8 1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff6c8" stroke="#a65f00" stroke-width=".6"/></svg>';
+const VERIFIED_SVG = '<svg class="vfI" viewBox="0 0 24 24" role="img" aria-label="verificado"><path fill="#1d9bf0" d="m12 1.5 2.6 1.9 3.2-.2 1 3 2.7 1.8-1 3 1 3-2.7 1.8-1 3-3.2-.2-2.6 1.9-2.6-1.9-3.2.2-1-3L2.5 16l1-3-1-3 2.7-1.8 1-3 3.2.2z"/><path fill="#fff" d="m10.4 15.8-3.4-3.4 1.4-1.4 2 2 5.1-5.1 1.4 1.4z"/></svg>';
 const cur = (k) => k === 'gems' ? GEM_SVG : COIN_SVG;
 const fmtN = (n) => Math.round(n).toLocaleString('pt-BR');
 const NEWS = [
@@ -108,7 +109,11 @@ LOB.renderCur = function () {
 };
 LOB.renderTop = function () {
   const p = ACC.p; if (!p) return;
-  $('lbName').textContent = p.name;
+  $('lbName').innerHTML = escapeHTML(p.name) + (p.verified ? VERIFIED_SVG : '');
+  $('lbId').textContent = 'ID ' + p.id;
+  const n = ACC.unread();
+  $('lbMailN').textContent = n > 9 ? '9+' : n;
+  $('lbMailN').classList.toggle('hidden', !n);
   $('lbLvl').textContent = p.level;
   $('lbXp').style.width = Math.min(100, p.xp / ACC.need(p.level) * 100) + '%';
   $('lbAvatar').style.backgroundImage = LOB.thumbs[p.skin] ? 'url(' + LOB.thumbs[p.skin] + ')' : '';
@@ -350,18 +355,26 @@ LOB.renderProfile = function () {
   const kd = st.matches ? (st.kills / Math.max(1, st.matches - st.wins)).toFixed(2) : '0.00';
   $('pfBody').innerHTML =
     '<div class="pfTop"><div class="pfAv" style="background-image:url(' + (LOB.thumbs[p.skin] || '') + ')"></div><div class="pfId">' +
-    '<label class="fld inline"><span>Apelido</span><input id="pfName" maxlength="14" value="' + escapeHTML(p.name) + '"></label>' +
+    '<label class="fld inline"><span>Apelido</span><input id="pfName" maxlength="14" value="' + escapeHTML(p.name) + '">' + (p.verified ? VERIFIED_SVG : '') + '</label>' +
+    '<div class="pfIdRow"><button id="pfIdBtn" class="idTag" aria-label="Copiar ID">ID <b>' + p.id + '</b>' + icon('copy') + '</button>' + (p.verified ? '<span class="vfTag">' + VERIFIED_SVG + 'VERIFICADO</span>' : '') + (p.owner ? '<span class="vfTag own">' + icon('crown') + 'DONO</span>' : '') + '</div>' +
     '<div class="pfAcc">' + (guest ? icon('warn') + 'Convidado: crie uma conta para não perder o progresso' : icon('user') + 'Conta: <b>' + escapeHTML(ACC.user) + '</b>') + '</div>' +
     '<div class="pfLvl"><b>NÍVEL ' + p.level + '</b><div class="xpBar"><div style="width:' + Math.min(100, p.xp / ACC.need(p.level) * 100) + '%"></div></div><small>' + fmtN(p.xp) + ' / ' + fmtN(ACC.need(p.level)) + ' XP</small></div></div></div>' +
     '<div class="pfStats">' + [['PARTIDAS', st.matches], ['VITÓRIAS', st.wins], ['TOP 5', st.top5], ['ABATES', st.kills], ['K/D', kd], ['MAIS ABATES', st.best], ['DANO TOTAL', fmtN(st.dmg)], ['PERSONAGENS', p.owned.skins.length + '/' + SKINS.length]]
       .map(s => '<div><small>' + s[0] + '</small><b>' + s[1] + '</b></div>').join('') + '</div>' +
-    '<div class="pfBtns">' + (guest ? '<button class="chip hot" id="pfNew">' + icon('user') + 'CRIAR CONTA</button>' : '') +
+    '<div class="pfBtns">' + (p.owner ? '<button class="chip hot" id="pfAdmin">' + icon('shield') + 'PAINEL DO DONO</button>' : '') + (guest ? '<button class="chip hot" id="pfNew">' + icon('user') + 'CRIAR CONTA</button>' : '') +
     '<button class="chip" id="pfCode">' + icon('copy') + 'CÓDIGO DE TRANSFERÊNCIA</button><button class="chip" id="pfOut">' + icon('exit') + (guest ? 'ENTRAR EM OUTRA CONTA' : 'SAIR DA CONTA') + '</button>' +
     (guest ? '' : '<button class="chip danger" id="pfDel">APAGAR CONTA</button>') + '</div>';
   $('pfName').addEventListener('keydown', e => e.stopPropagation());
   $('pfName').addEventListener('change', () => { LOB.setName($('pfName').value); });
   const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', () => { SND.play('ui'); fn(); }); };
   on('pfNew', () => LOB.showAuth('new'));
+  on('pfAdmin', () => LOB.openAdmin('hoje'));
+  // copiar o ID; tocar 5 vezes seguidas abre o código do dono
+  on('pfIdBtn', () => {
+    LOB.idTaps = (Date.now() - (LOB.idTapT || 0) < 1500 ? (LOB.idTaps || 0) : 0) + 1; LOB.idTapT = Date.now();
+    if (LOB.idTaps >= 5 && !p.owner) { LOB.idTaps = 0; LOB.ownerPrompt(); return; }
+    try { navigator.clipboard.writeText(p.id).then(() => notify('ok', 'ID copiado: ' + p.id), () => notify('info', 'ID: ' + p.id)); } catch (e) { notify('info', 'ID: ' + p.id); }
+  });
   on('pfOut', () => { ACC.logout(); LOB.showAuth('login'); });
   on('pfCode', () => {
     const code = ACC.exportCode();
@@ -375,6 +388,109 @@ LOB.setName = function (v) {
   if (!n || !ACC.p) return;
   ACC.p.name = n; ACC.emit(); LOB.applyProfile();
   if (G.show) G.show.name = n;
+};
+
+// ---------- correio ----------
+LOB.openMail = function () {
+  showScreen('mailScr');
+  const first = ACC.p.mail[0];
+  LOB.mailSel = first ? first.mid : null;
+  LOB.renderMail();
+};
+const fmtDate = (t) => { const d = new Date(t); return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
+LOB.itemIcon = (it) => it.k === 'gold' ? COIN_SVG : it.k === 'gems' ? GEM_SVG : it.k === 'verified' ? VERIFIED_SVG : it.k === 'emote' || it.k === 'allEmotes' ? icon('smile') : icon('person');
+LOB.renderMail = function () {
+  const list = ACC.p.mail;
+  if (LOB.mailSel) ACC.readMail(LOB.mailSel);
+  $('mlList').innerHTML = list.length ? list.map(m => '<button class="mlItem' + (m.mid === LOB.mailSel ? ' sel' : '') + (m.read ? '' : ' new') + '" data-mid="' + m.mid + '">' +
+    icon(m.items.length ? 'gift' : 'mail') + '<div><b>' + escapeHTML(m.title) + '</b><small>' + escapeHTML(m.from) + ' · ' + fmtDate(m.t) + '</small></div>' +
+    (m.items.length && !m.got ? '<em class="dotNew"></em>' : '') + '</button>').join('') : '<p class="hint mlEmpty">Nenhuma mensagem.</p>';
+  $('mlList').querySelectorAll('.mlItem').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.mailSel = b.dataset.mid; LOB.renderMail(); }));
+  const m = list.find(x => x.mid === LOB.mailSel);
+  $('mlBody').innerHTML = m ? '<b class="mlT">' + escapeHTML(m.title) + '</b><small class="mlF">De: ' + escapeHTML(m.from) + ' · ' + fmtDate(m.t) + '</small><p>' + escapeHTML(m.text).replace(/\n/g, '<br>') + '</p>' +
+    (m.items.length ? '<div class="mlItems">' + m.items.map(it => '<div class="mlGift' + (m.got ? ' got' : '') + '">' + LOB.itemIcon(it) + '<span>' + ACC.itemText(it) + '</span></div>').join('') + '</div>' +
+      (m.got ? '<button class="mBtn ok" disabled>' + icon('check') + 'COLETADO</button>' : '<button class="mBtn primary" id="mlClaim">' + icon('gift') + 'COLETAR</button>') : '') +
+    '<button class="chip mlDel" id="mlDel">' + icon('trash') + 'APAGAR</button>' : '<p class="hint">Selecione uma mensagem.</p>';
+  const c = $('mlClaim');
+  if (c) c.addEventListener('click', () => LOB.claim(m.mid));
+  const d = $('mlDel');
+  if (d) d.addEventListener('click', () => { SND.play('ui'); if (m.items.length && !m.got) { LOB.dialog('APAGAR', 'Esta mensagem tem presentes que você ainda não coletou. Apagar mesmo assim?', [['APAGAR', () => { ACC.delMail(m.mid); LOB.mailSel = null; LOB.renderMail(); }, 'danger'], ['CANCELAR']]); return; } ACC.delMail(m.mid); LOB.mailSel = null; LOB.renderMail(); });
+  const pend = list.filter(x => x.items.length && !x.got).length;
+  $('mlAll').disabled = !pend;
+  $('mlAll').textContent = pend ? 'COLETAR TUDO (' + pend + ')' : 'COLETAR TUDO';
+  LOB.renderCur();
+};
+LOB.claim = function (mid) {
+  const m = ACC.claim(mid);
+  if (!m) return;
+  SND.play('pick');
+  LOB.renderMail();
+  LOB.dialog('PRESENTE COLETADO', '<div class="mlItems big">' + m.items.map(it => '<div class="mlGift">' + LOB.itemIcon(it) + '<span>' + ACC.itemText(it) + '</span></div>').join('') + '</div>', [['OK', null, true]]);
+  if (m.items.some(it => it.k === 'verified')) LOB.applyProfile();
+};
+LOB.claimAll = function () {
+  const pend = ACC.p.mail.filter(x => x.items.length && !x.got);
+  const items = [];
+  for (const m of pend) { ACC.claim(m.mid); items.push(...m.items); }
+  if (!items.length) return;
+  SND.play('pick');
+  LOB.renderMail();
+  LOB.dialog('PRESENTES COLETADOS', '<div class="mlItems big">' + items.map(it => '<div class="mlGift">' + LOB.itemIcon(it) + '<span>' + ACC.itemText(it) + '</span></div>').join('') + '</div>', [['OK', null, true]]);
+};
+
+// ---------- painel do dono ----------
+LOB.ownerPrompt = function () {
+  LOB.dialog('CÓDIGO DO DONO', 'Digite o código do dono do jogo para liberar o painel nesta conta.<input id="ownCode" class="codeIn" autocomplete="off" spellcheck="false" autocapitalize="characters">', [['LIBERAR', () => {
+    const err = ACC.unlockOwner($('ownCode').value);
+    if (err) { notify('info', err); return; }
+    notify('ok', 'Painel do dono liberado. Confira o correio!');
+    LOB.renderProfile();
+  }, true], ['CANCELAR']]);
+  const el = $('ownCode'); el.addEventListener('keydown', e => e.stopPropagation()); setTimeout(() => el.focus(), 50);
+};
+LOB.openAdmin = function (tab) {
+  if (!ACC.p.owner) return;
+  LOB.adTab = tab || LOB.adTab || 'hoje';
+  showScreen('adminScr');
+  LOB.renderAdmin();
+};
+LOB.renderAdmin = function () {
+  const tab = LOB.adTab;
+  document.querySelectorAll('#adTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+  const body = $('adBody');
+  if (tab === 'enviar') {
+    body.innerHTML = '<div class="adForm">' +
+      '<label class="fld"><span>Para (ID do jogador ou "todos")</span><input id="adTo" value="' + (LOB.adTo || 'todos') + '" spellcheck="false"></label>' +
+      '<label class="fld"><span>Título</span><input id="adTitle" maxlength="40" value="Presente da equipe"></label>' +
+      '<label class="fld"><span>Mensagem</span><textarea id="adText" rows="2" maxlength="300">Valeu por jogar Battle Island!</textarea></label>' +
+      '<div class="adGifts"><label><input type="checkbox" id="adSkins"> Todos os personagens</label><label><input type="checkbox" id="adEmotes"> Todos os emotes</label><label><input type="checkbox" id="adVf"> Selo de verificado</label>' +
+      '<label class="num">' + COIN_SVG + '<input type="number" id="adGold" min="0" max="1000000" value="0"></label><label class="num">' + GEM_SVG + '<input type="number" id="adGems" min="0" max="100000" value="0"></label></div>' +
+      '<button class="mBtn primary" id="adSend">' + icon('mail') + 'ENVIAR</button></div>';
+    body.querySelectorAll('input, textarea').forEach(el => el.addEventListener('keydown', e => e.stopPropagation()));
+    $('adSend').addEventListener('click', () => {
+      SND.play('ui');
+      const to = $('adTo').value.trim().toLowerCase();
+      const items = [];
+      if ($('adSkins').checked) items.push({ k: 'allSkins' });
+      if ($('adEmotes').checked) items.push({ k: 'allEmotes' });
+      if ($('adVf').checked) items.push({ k: 'verified' });
+      const g = Math.max(0, Math.floor(+$('adGold').value || 0)), m = Math.max(0, Math.floor(+$('adGems').value || 0));
+      if (g) items.push({ k: 'gold', n: g });
+      if (m) items.push({ k: 'gems', n: m });
+      if (to !== 'todos' && !/^\d{10}$/.test(to)) { notify('info', 'Use um ID de 10 números ou "todos"'); return; }
+      const n = ACC.sendMail(to, ACC.letter('Equipe Battle Island', $('adTitle').value.trim() || 'Mensagem', $('adText').value.trim(), items));
+      LOB.dialog(n ? 'ENVIADO' : 'NINGUÉM RECEBEU', n ? 'Mensagem enviada para <b>' + n + '</b> conta(s) deste aparelho.' : 'Nenhuma conta com esse ID neste aparelho.', [['OK', null, true]]);
+    });
+    return;
+  }
+  const rows = ACC.accounts(tab === 'hoje');
+  body.innerHTML = '<p class="hint adNote">' + icon('info') + (tab === 'hoje' ? rows.length + ' conta(s) criada(s) hoje' : rows.length + ' conta(s) no total') +
+    ' neste aparelho. Para ver as contas de todos os celulares é preciso um servidor (veja o README).</p>' +
+    (rows.length ? '<table class="adTable"><thead><tr><th>JOGADOR</th><th>ID</th><th>NV</th><th>CRIADA</th><th>VERIFICADO</th><th></th></tr></thead><tbody>' + rows.map(r =>
+      '<tr><td><b>' + escapeHTML(r.name) + '</b>' + (r.verified ? VERIFIED_SVG : '') + (r.owner ? ' ' + icon('crown') : '') + '<small>' + (r.guest ? 'convidado' : escapeHTML(r.user)) + '</small></td><td class="mono">' + r.id + '</td><td>' + r.level + '</td><td>' + fmtDate(r.t) + '</td>' +
+      '<td><button class="tog' + (r.verified ? ' on' : '') + '" data-vf="' + r.id + '" aria-pressed="' + r.verified + '"><i></i></button></td><td><button class="chip" data-to="' + r.id + '">' + icon('mail') + '</button></td></tr>').join('') + '</tbody></table>' : '<p class="hint">Nenhuma conta criada hoje ainda.</p>');
+  body.querySelectorAll('[data-vf]').forEach(b => b.addEventListener('click', () => { SND.play('ui'); ACC.setVerified(b.dataset.vf, !b.classList.contains('on')); LOB.renderAdmin(); }));
+  body.querySelectorAll('[data-to]').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.adTo = b.dataset.to; LOB.adTab = 'enviar'; LOB.renderAdmin(); }));
 };
 
 // ---------- mapas ----------
@@ -500,6 +616,11 @@ LOB.init = function () {
   click('lbProfile', () => LOB.openProfile());
   click('lbSet', () => openSettings('menu'));
   click('lbMap', () => LOB.openMaps());
+  click('lbMail', () => LOB.openMail());
+  click('mlClose', () => goMenu());
+  click('mlAll', () => LOB.claimAll());
+  click('adClose', () => LOB.openProfile());
+  document.querySelectorAll('#adTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.adTab = b.dataset.t; LOB.renderAdmin(); }));
   document.querySelectorAll('#lbNav button').forEach(b => b.addEventListener('click', () => {
     SND.init(); SND.play('ui');
     const k = b.dataset.go;

@@ -82,6 +82,26 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v2.4
+- **ID do jogador:** cada conta ganha um ID de 10 números, que aparece no lobby, embaixo do nome, e no Perfil. Tocar no ID copia.
+- **Selo de verificado** (o ✔ azul) ao lado do nome no lobby, no perfil e na lista da sala multiplayer. Quem dá o selo é o dono, pelo painel ou mandando pelo correio.
+- **Correio** (o envelope no topo do lobby):
+  - o número vermelho mostra quantas mensagens novas há;
+  - as mensagens podem trazer presentes (ouro, gemas, todos os personagens, todos os emotes, selo de verificado), e cada uma tem um botão **COLETAR**;
+  - também há **COLETAR TUDO** e **APAGAR**;
+  - toda conta nova recebe uma carta de boas-vindas com 300 de ouro e 10 gemas.
+- **Painel do dono:**
+  - para abrir: Perfil → toque **5 vezes seguidas no ID** → digite o código do dono. O código vem como **`DONO-ILHA-2026`**; **troque antes de publicar** (veja abaixo);
+  - ao liberar, a conta ganha o selo, a marca de DONO e uma carta com **todos os personagens e emotes**;
+  - aba **CRIADAS HOJE**: lista as contas criadas hoje, com nome, usuário, ID, nível e hora. Tem um botão para ligar ou desligar o verificado;
+  - aba **TODAS**: lista todas as contas;
+  - aba **ENVIAR CORREIO**: manda uma mensagem para um ID ou para `todos`, com todos os personagens, todos os emotes, selo, ouro e gemas.
+- **Trocar o código do dono:**
+  1. Abra o jogo no Chrome do computador e aperte F12 (Console).
+  2. Rode `SHA.hex('battle-dono:' + 'SEU-CODIGO-NOVO')`, com o código em letras maiúsculas.
+  3. Cole o resultado em `ACC.OWNER_HASH`, no arquivo `js/account.js`.
+- **Limite importante:** sem servidor, o painel só enxerga as contas **deste aparelho**, e o correio só chega a elas. Para ver as contas criadas hoje no celular de todos os jogadores e mandar correio para qualquer ID, as contas precisam ir para a nuvem (por exemplo Firebase Authentication + Firestore; o correio vira uma coleção `mail/{id}`). Pelo mesmo motivo, quem entende de programação consegue mexer nos dados guardados no próprio celular.
+
 ## Novidades da v2.3
 - **Mapa novo: Ilha Triângulo** (inspirado nos mapas clássicos de battle royale de celular, com nomes e construções próprios). Tem:
   - cidade da **Torre do Relógio** com prédios de 2 e 3 andares, escadas e terraço;

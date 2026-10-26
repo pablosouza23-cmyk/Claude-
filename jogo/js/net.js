@@ -167,7 +167,7 @@ NET.hostStart = function () {
   // Contra Squad: times alternados pela ordem de entrada na sala
   const tm = {};
   NET.players.forEach((p, i) => { tm[p.pid] = i % 2; });
-  const msg = { t: 'go', seed, ps: NET.players.map(p => [p.pid, p.name, p.av, p.lk || null]), bots: NET.bots, ang: Math.random() * Math.PI * 2, side: Math.random() - 0.5,
+  const msg = { t: 'go', seed, ps: NET.players.map(p => [p.pid, p.name, p.av, p.lk || null, tierKey(p.vf)]), bots: NET.bots, ang: Math.random() * Math.PI * 2, side: Math.random() - 0.5,
     map: cs ? 'arena' : (W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId), mode: cs ? 'cs' : 'br', size: Math.max(NET.gs || 4, Math.ceil(NET.players.length / 2)), tm: tm, bt: NET.bt || 1 };
   NET.bcast(msg);
   NET.begin(msg);
@@ -182,8 +182,9 @@ NET.begin = function (msg) {
 // monta os atores da partida multiplayer na mesma ordem em todos os aparelhos
 NET.buildActors = function (msg) {
   const rnd = U.rng(msg.seed);
-  for (const [pid, name, av, lk] of msg.ps) {
+  for (const [pid, name, av, lk, vf] of msg.ps) {
     const a = makeActor(name, av, pid === NET.pid);
+    if (pid !== NET.pid) a.vf = tierKey(vf);
     // skins dos outros jogadores (a sua já vem da sua conta)
     if (pid !== NET.pid) { const l = NET.cleanLook(lk); a.ch.skins = l.g; a.wallSkin = l.w; }
     a.pid = pid; a.human = true; a.revives = 1;
@@ -443,8 +444,8 @@ NET.clientRecv = function (d) {
       if (!a || !a.alive && a !== G.player) { if (a) a.alive = false; }
       if (!a) break;
       a.alive = false; a.hp = 0; a.vel.set(0, 0, 0);
-      if (k && k !== a) { k.kills++; killFeed(k.name, a.name, d.w); if (k === G.player) { killBanner(k.kills, a.name); countWeaponKill(d.w); } }
-      else killFeed(a.name, null, d.w || 'Zona');
+      if (k && k !== a) { k.kills++; killFeed(k, a, d.w); if (k === G.player) { killBanner(k.kills, a); countWeaponKill(d.w); } }
+      else killFeed(a, null, d.w || 'Zona');
       if (G.mode === 'cs') break;
       if (a.phase === 'ground') { const bag = bagMesh(); bag.position.set(a.pos.x + 0.4, W.groundAt(a.pos.x, a.pos.z, a.pos.y + 0.5), a.pos.z - 0.3); scene.add(bag); G.props.push(bag); }
       if (a === G.player) {

@@ -677,9 +677,11 @@ function hitMarker(head) {
   clearTimeout(hitTimer); hitTimer = setTimeout(() => H.hitmark.classList.remove('show'), 140);
   SND.play(head ? 'head' : 'hit', 0.7);
 }
+// nome com o selo de verificado da pessoa (recebe o boneco ou só o nome)
+const nameTag = (x) => { if (!x || typeof x !== 'object') return escapeHTML(String(x || '')); return escapeHTML(x.name) + (x.vf ? LOB.vf(x.vf) : ''); };
 function killBanner(n, victim) {
   H.kbCount.textContent = n;
-  H.kbName.textContent = victim;
+  H.kbName.innerHTML = nameTag(victim);
   H.killBanner.classList.remove('show'); void H.killBanner.offsetWidth; H.killBanner.classList.add('show');
   clearTimeout(kbTimer); kbTimer = setTimeout(() => H.killBanner.classList.remove('show'), 2200);
   SND.play('kill');
@@ -688,8 +690,8 @@ function killFeed(killer, victim, weapon) {
   const el = document.createElement('div');
   el.className = 'kf';
   const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  el.innerHTML = victim ? '<b>' + esc(killer) + '</b> ' + icon('skull') + ' <b>' + esc(victim) + '</b> <span>' + esc(weapon) + '</span>'
-    : '<b>' + esc(killer) + '</b> ' + icon('zone') + ' <span>zona</span>';
+  el.innerHTML = victim ? '<b>' + nameTag(killer) + '</b> ' + icon('skull') + ' <b>' + nameTag(victim) + '</b> <span>' + esc(weapon) + '</span>'
+    : '<b>' + nameTag(killer) + '</b> ' + icon('zone') + ' <span>zona</span>';
   H.killfeed.appendChild(el);
   while (H.killfeed.children.length > 4) H.killfeed.firstChild.remove();
   setTimeout(() => el.remove(), 5000);

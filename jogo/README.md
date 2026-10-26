@@ -82,6 +82,13 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v3.6
+- **Selo de verificado dentro da partida**, para azul, dourado e supremo:
+  - no **feed de abates** (quem matou e quem morreu);
+  - no aviso de **abate** que aparece para quem matou;
+  - no **painel do squad** e no **nome em cima dos colegas** de time (também no Contra Squad).
+- No multiplayer, o selo de cada jogador vai junto na mensagem de início da partida. Assim todos veem o selo dos outros.
+
 ## Novidades da v3.5
 ### Verificado em 3 níveis (resgate por código, conferido no servidor)
 - **Níveis:**

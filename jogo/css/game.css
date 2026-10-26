@@ -821,3 +821,6 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 #rlList { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; } .rlDel { margin-left: 4px; background: none; border: 0; color: #ff9a8a; font-weight: 800; cursor: pointer; }
 .okT { color: #5be37d; } .errT { color: #ff8a7a; }
 @media (max-width: 560px) { .vfTiers { grid-template-columns: 1fr; } .vfT { flex-direction: row; text-align: left; } }
+/* selo pequeno na partida (abates, banner, time) */
+.kf .vfI, #kbName .vfI, .teamBox .vfI, .csTag .vfI { width: 14px; height: 14px; vertical-align: -2px; margin-left: 3px; }
+.kf .vfI.vfGold, .kf .vfI.vfSup, #kbName .vfI.vfGold, #kbName .vfI.vfSup, .teamBox .vfI.vfGold, .teamBox .vfI.vfSup, .csTag .vfI.vfGold, .csTag .vfI.vfSup { width: 17px; height: 17px; }

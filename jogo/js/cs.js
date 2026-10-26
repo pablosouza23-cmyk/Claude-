@@ -26,8 +26,9 @@ CS.start = function (msg) {
   const count = [0, 0];
   if (msg) {
     for (const p of msg.ps) {
-      const [pid, name, av] = p, team = msg.tm ? msg.tm[pid] | 0 : 0;
+      const [pid, name, av, , vf] = p, team = msg.tm ? msg.tm[pid] | 0 : 0;
       const a = makeActor(name, av, pid === NET.pid);
+      if (pid !== NET.pid) a.vf = tierKey(vf);
       a.pid = pid; a.human = true; a.team = team; a.slot = count[team]++;
       if (pid === NET.pid) G.player = a; else a.remote = true;
       G.actors.push(a);
@@ -49,7 +50,7 @@ CS.start = function (msg) {
   tags.innerHTML = '';
   CS.tags = [];
   for (const a of G.actors) if (a !== G.player && a.team === G.player.team) {
-    const el = document.createElement('div'); el.className = 'csTag'; el.textContent = a.name; tags.appendChild(el);
+    const el = document.createElement('div'); el.className = 'csTag'; el.innerHTML = escapeHTML(a.name) + (a.vf ? LOB.vf(a.vf) : ''); tags.appendChild(el);
     CS.tags.push({ a: a, el: el });
   }
   G.drop = { state: 'done', pos: new V3(), dir: new V3(1, 0, 0), start: new V3() };

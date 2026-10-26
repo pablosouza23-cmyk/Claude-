@@ -130,6 +130,7 @@ function makeActor(name, pal, isPlayer) {
   const ch = CH.make(pal, isPlayer);
   // skins: o jogador usa as dele; alguns bots aparecem com skins para a ilha ficar mais viva
   let wallSkin = '';
+  const vf = isPlayer && typeof ACC !== 'undefined' && ACC.p ? ACC.tier(ACC.p) : '';
   if (isPlayer && typeof ACC !== 'undefined' && ACC.p) { ch.skins = ACC.gunSkins(); wallSkin = ACC.wallSkin(); }
   else if (!isPlayer && Math.random() < 0.3) {
     const ids = Object.keys(WPN.SKINS), sk = ids[Math.floor(Math.random() * ids.length)];
@@ -138,7 +139,7 @@ function makeActor(name, pal, isPlayer) {
   }
   scene.add(ch.root);
   return {
-    name: name, ch: ch, isPlayer: isPlayer, wallSkin: wallSkin,
+    name: name, ch: ch, isPlayer: isPlayer, wallSkin: wallSkin, vf: vf,
     pos: new V3(), vel: new V3(), vy: 0, onGround: true, face: 0, phase: 'plane', hs: 20, vdown: 12, board: true,
     hp: 200, maxHp: 200, armor: 0, helmet: 0, alive: true,
     slots: [null, null, null], cur: 3, nadeHand: false,
@@ -332,9 +333,9 @@ function killActor(a, killer, weapon) {
   a.hp = 0; a.alive = false;
   a.vel.set(0, 0, 0);
   if (killer && killer !== a && !killer.isPlayer && !killer.human && Math.random() < 0.45) { killer.emote = Math.random() < 0.5 ? 'cheer2' : 'laugh'; killer.emoteT = 2.2; }
-  if (killer && killer !== a) { killer.kills++; killFeed(killer.name, a.name, weapon); if (killer.isPlayer) killBanner(killer.kills, a.name); }
+  if (killer && killer !== a) { killer.kills++; killFeed(killer, a, weapon); if (killer.isPlayer) killBanner(killer.kills, a); }
   if (killer && killer === G.player && killer !== a) countWeaponKill(weapon);
-  else killFeed(a.name, null, 'Zona');
+  else killFeed(a, null, 'Zona');
   // mochila caída com o que a pessoa carregava (como no vídeo)
   if (G.mode === 'cs') { NET.onKill(a, killer, weapon); return; } // as rodadas cuidam do fim
   if (a.phase === 'ground') dropBag(a);

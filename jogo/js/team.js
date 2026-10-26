@@ -110,7 +110,7 @@ TEAM.makeTags = function () {
   if (!TEAM.on() || !G.player) return;
   let n = 1;
   for (const a of G.actors) if (a !== G.player && a.team === G.player.team) {
-    const el = document.createElement('div'); el.className = 'csTag tmTag'; el.innerHTML = '<i>' + (++n) + '</i>' + escapeHTML(a.name); tags.appendChild(el);
+    const el = document.createElement('div'); el.className = 'csTag tmTag'; el.innerHTML = '<i>' + (++n) + '</i>' + escapeHTML(a.name) + (a.vf ? LOB.vf(a.vf) : ''); tags.appendChild(el);
     TEAM.tags.push({ a: a, el: el, n: n });
   }
 };
@@ -132,7 +132,7 @@ TEAM.hud = function () {
   TEAM.hudT = G.time;
   const rows = [G.player].concat(TEAM.tags.map(t => t.a)).map((a, i) => {
     const hp = a.alive ? Math.max(0, Math.round(a.hp / a.maxHp * 100)) : 0, st = a.alive ? (a.phase === 'plane' ? 'avião' : '') : a.rsWait > 0 ? 'renascendo' : 'fora';
-    return '<div class="tm' + (a.alive ? '' : ' out') + (a === G.player ? ' me' : '') + '"><i>' + (i + 1) + '</i><span>' + escapeHTML(a.name) + (st ? ' <small>' + st + '</small>' : '') + '</span><b><em style="width:' + hp + '%"></em></b></div>';
+    return '<div class="tm' + (a.alive ? '' : ' out') + (a === G.player ? ' me' : '') + '"><i>' + (i + 1) + '</i><span>' + escapeHTML(a.name) + (a.vf ? LOB.vf(a.vf) : '') + (st ? ' <small>' + st + '</small>' : '') + '</span><b><em style="width:' + hp + '%"></em></b></div>';
   });
   setHTML(box, 'teamBox', '<small class="tmT">' + TEAM.label(G.teamSize) + ' · ' + TEAM.teamsAlive() + ' times vivos</small>' + rows.join(''));
 };

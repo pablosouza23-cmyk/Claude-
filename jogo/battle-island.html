@@ -829,6 +829,9 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 #rlList { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; } .rlDel { margin-left: 4px; background: none; border: 0; color: #ff9a8a; font-weight: 800; cursor: pointer; }
 .okT { color: #5be37d; } .errT { color: #ff8a7a; }
 @media (max-width: 560px) { .vfTiers { grid-template-columns: 1fr; } .vfT { flex-direction: row; text-align: left; } }
+/* selo pequeno na partida (abates, banner, time) */
+.kf .vfI, #kbName .vfI, .teamBox .vfI, .csTag .vfI { width: 14px; height: 14px; vertical-align: -2px; margin-left: 3px; }
+.kf .vfI.vfGold, .kf .vfI.vfSup, #kbName .vfI.vfGold, #kbName .vfI.vfSup, .teamBox .vfI.vfGold, .teamBox .vfI.vfSup, .csTag .vfI.vfGold, .csTag .vfI.vfSup { width: 17px; height: 17px; }
 
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
@@ -990,7 +993,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   </div>
   <div id="squadBar" class="squadBar"><small>SEU GRUPO</small><div id="squadSlots"></div></div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v3.5</div>
+  <div class="ver">v3.6</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1254,7 +1257,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v3.5 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v3.6 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -5976,6 +5979,7 @@ function makeActor(name, pal, isPlayer) {
   const ch = CH.make(pal, isPlayer);
   // skins: o jogador usa as dele; alguns bots aparecem com skins para a ilha ficar mais viva
   let wallSkin = '';
+  const vf = isPlayer && typeof ACC !== 'undefined' && ACC.p ? ACC.tier(ACC.p) : '';
   if (isPlayer && typeof ACC !== 'undefined' && ACC.p) { ch.skins = ACC.gunSkins(); wallSkin = ACC.wallSkin(); }
   else if (!isPlayer && Math.random() < 0.3) {
     const ids = Object.keys(WPN.SKINS), sk = ids[Math.floor(Math.random() * ids.length)];
@@ -5984,7 +5988,7 @@ function makeActor(name, pal, isPlayer) {
   }
   scene.add(ch.root);
   return {
-    name: name, ch: ch, isPlayer: isPlayer, wallSkin: wallSkin,
+    name: name, ch: ch, isPlayer: isPlayer, wallSkin: wallSkin, vf: vf,
     pos: new V3(), vel: new V3(), vy: 0, onGround: true, face: 0, phase: 'plane', hs: 20, vdown: 12, board: true,
     hp: 200, maxHp: 200, armor: 0, helmet: 0, alive: true,
     slots: [null, null, null], cur: 3, nadeHand: false,
@@ -6178,9 +6182,9 @@ function killActor(a, killer, weapon) {
   a.hp = 0; a.alive = false;
   a.vel.set(0, 0, 0);
   if (killer && killer !== a && !killer.isPlayer && !killer.human && Math.random() < 0.45) { killer.emote = Math.random() < 0.5 ? 'cheer2' : 'laugh'; killer.emoteT = 2.2; }
-  if (killer && killer !== a) { killer.kills++; killFeed(killer.name, a.name, weapon); if (killer.isPlayer) killBanner(killer.kills, a.name); }
+  if (killer && killer !== a) { killer.kills++; killFeed(killer, a, weapon); if (killer.isPlayer) killBanner(killer.kills, a); }
   if (killer && killer === G.player && killer !== a) countWeaponKill(weapon);
-  else killFeed(a.name, null, 'Zona');
+  else killFeed(a, null, 'Zona');
   // mochila caída com o que a pessoa carregava (como no vídeo)
   if (G.mode === 'cs') { NET.onKill(a, killer, weapon); return; } // as rodadas cuidam do fim
   if (a.phase === 'ground') dropBag(a);
@@ -7911,8 +7915,9 @@ CS.start = function (msg) {
   const count = [0, 0];
   if (msg) {
     for (const p of msg.ps) {
-      const [pid, name, av] = p, team = msg.tm ? msg.tm[pid] | 0 : 0;
+      const [pid, name, av, , vf] = p, team = msg.tm ? msg.tm[pid] | 0 : 0;
       const a = makeActor(name, av, pid === NET.pid);
+      if (pid !== NET.pid) a.vf = tierKey(vf);
       a.pid = pid; a.human = true; a.team = team; a.slot = count[team]++;
       if (pid === NET.pid) G.player = a; else a.remote = true;
       G.actors.push(a);
@@ -7934,7 +7939,7 @@ CS.start = function (msg) {
   tags.innerHTML = '';
   CS.tags = [];
   for (const a of G.actors) if (a !== G.player && a.team === G.player.team) {
-    const el = document.createElement('div'); el.className = 'csTag'; el.textContent = a.name; tags.appendChild(el);
+    const el = document.createElement('div'); el.className = 'csTag'; el.innerHTML = escapeHTML(a.name) + (a.vf ? LOB.vf(a.vf) : ''); tags.appendChild(el);
     CS.tags.push({ a: a, el: el });
   }
   G.drop = { state: 'done', pos: new V3(), dir: new V3(1, 0, 0), start: new V3() };
@@ -8216,7 +8221,7 @@ TEAM.makeTags = function () {
   if (!TEAM.on() || !G.player) return;
   let n = 1;
   for (const a of G.actors) if (a !== G.player && a.team === G.player.team) {
-    const el = document.createElement('div'); el.className = 'csTag tmTag'; el.innerHTML = '<i>' + (++n) + '</i>' + escapeHTML(a.name); tags.appendChild(el);
+    const el = document.createElement('div'); el.className = 'csTag tmTag'; el.innerHTML = '<i>' + (++n) + '</i>' + escapeHTML(a.name) + (a.vf ? LOB.vf(a.vf) : ''); tags.appendChild(el);
     TEAM.tags.push({ a: a, el: el, n: n });
   }
 };
@@ -8238,7 +8243,7 @@ TEAM.hud = function () {
   TEAM.hudT = G.time;
   const rows = [G.player].concat(TEAM.tags.map(t => t.a)).map((a, i) => {
     const hp = a.alive ? Math.max(0, Math.round(a.hp / a.maxHp * 100)) : 0, st = a.alive ? (a.phase === 'plane' ? 'avião' : '') : a.rsWait > 0 ? 'renascendo' : 'fora';
-    return '<div class="tm' + (a.alive ? '' : ' out') + (a === G.player ? ' me' : '') + '"><i>' + (i + 1) + '</i><span>' + escapeHTML(a.name) + (st ? ' <small>' + st + '</small>' : '') + '</span><b><em style="width:' + hp + '%"></em></b></div>';
+    return '<div class="tm' + (a.alive ? '' : ' out') + (a === G.player ? ' me' : '') + '"><i>' + (i + 1) + '</i><span>' + escapeHTML(a.name) + (a.vf ? LOB.vf(a.vf) : '') + (st ? ' <small>' + st + '</small>' : '') + '</span><b><em style="width:' + hp + '%"></em></b></div>';
   });
   setHTML(box, 'teamBox', '<small class="tmT">' + TEAM.label(G.teamSize) + ' · ' + TEAM.teamsAlive() + ' times vivos</small>' + rows.join(''));
 };
@@ -8425,7 +8430,7 @@ NET.hostStart = function () {
   // Contra Squad: times alternados pela ordem de entrada na sala
   const tm = {};
   NET.players.forEach((p, i) => { tm[p.pid] = i % 2; });
-  const msg = { t: 'go', seed, ps: NET.players.map(p => [p.pid, p.name, p.av, p.lk || null]), bots: NET.bots, ang: Math.random() * Math.PI * 2, side: Math.random() - 0.5,
+  const msg = { t: 'go', seed, ps: NET.players.map(p => [p.pid, p.name, p.av, p.lk || null, tierKey(p.vf)]), bots: NET.bots, ang: Math.random() * Math.PI * 2, side: Math.random() - 0.5,
     map: cs ? 'arena' : (W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId), mode: cs ? 'cs' : 'br', size: Math.max(NET.gs || 4, Math.ceil(NET.players.length / 2)), tm: tm, bt: NET.bt || 1 };
   NET.bcast(msg);
   NET.begin(msg);
@@ -8440,8 +8445,9 @@ NET.begin = function (msg) {
 // monta os atores da partida multiplayer na mesma ordem em todos os aparelhos
 NET.buildActors = function (msg) {
   const rnd = U.rng(msg.seed);
-  for (const [pid, name, av, lk] of msg.ps) {
+  for (const [pid, name, av, lk, vf] of msg.ps) {
     const a = makeActor(name, av, pid === NET.pid);
+    if (pid !== NET.pid) a.vf = tierKey(vf);
     // skins dos outros jogadores (a sua já vem da sua conta)
     if (pid !== NET.pid) { const l = NET.cleanLook(lk); a.ch.skins = l.g; a.wallSkin = l.w; }
     a.pid = pid; a.human = true; a.revives = 1;
@@ -8701,8 +8707,8 @@ NET.clientRecv = function (d) {
       if (!a || !a.alive && a !== G.player) { if (a) a.alive = false; }
       if (!a) break;
       a.alive = false; a.hp = 0; a.vel.set(0, 0, 0);
-      if (k && k !== a) { k.kills++; killFeed(k.name, a.name, d.w); if (k === G.player) { killBanner(k.kills, a.name); countWeaponKill(d.w); } }
-      else killFeed(a.name, null, d.w || 'Zona');
+      if (k && k !== a) { k.kills++; killFeed(k, a, d.w); if (k === G.player) { killBanner(k.kills, a); countWeaponKill(d.w); } }
+      else killFeed(a, null, d.w || 'Zona');
       if (G.mode === 'cs') break;
       if (a.phase === 'ground') { const bag = bagMesh(); bag.position.set(a.pos.x + 0.4, W.groundAt(a.pos.x, a.pos.z, a.pos.y + 0.5), a.pos.z - 0.3); scene.add(bag); G.props.push(bag); }
       if (a === G.player) {
@@ -11815,9 +11821,11 @@ function hitMarker(head) {
   clearTimeout(hitTimer); hitTimer = setTimeout(() => H.hitmark.classList.remove('show'), 140);
   SND.play(head ? 'head' : 'hit', 0.7);
 }
+// nome com o selo de verificado da pessoa (recebe o boneco ou só o nome)
+const nameTag = (x) => { if (!x || typeof x !== 'object') return escapeHTML(String(x || '')); return escapeHTML(x.name) + (x.vf ? LOB.vf(x.vf) : ''); };
 function killBanner(n, victim) {
   H.kbCount.textContent = n;
-  H.kbName.textContent = victim;
+  H.kbName.innerHTML = nameTag(victim);
   H.killBanner.classList.remove('show'); void H.killBanner.offsetWidth; H.killBanner.classList.add('show');
   clearTimeout(kbTimer); kbTimer = setTimeout(() => H.killBanner.classList.remove('show'), 2200);
   SND.play('kill');
@@ -11826,8 +11834,8 @@ function killFeed(killer, victim, weapon) {
   const el = document.createElement('div');
   el.className = 'kf';
   const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  el.innerHTML = victim ? '<b>' + esc(killer) + '</b> ' + icon('skull') + ' <b>' + esc(victim) + '</b> <span>' + esc(weapon) + '</span>'
-    : '<b>' + esc(killer) + '</b> ' + icon('zone') + ' <span>zona</span>';
+  el.innerHTML = victim ? '<b>' + nameTag(killer) + '</b> ' + icon('skull') + ' <b>' + nameTag(victim) + '</b> <span>' + esc(weapon) + '</span>'
+    : '<b>' + nameTag(killer) + '</b> ' + icon('zone') + ' <span>zona</span>';
   H.killfeed.appendChild(el);
   while (H.killfeed.children.length > 4) H.killfeed.firstChild.remove();
   setTimeout(() => el.remove(), 5000);

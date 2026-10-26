@@ -97,6 +97,14 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v3.8
+
+- Imagens dos selos trocadas: a coroa com louros agora é o SUPREMO e as asas viraram o DOURADO.
+- Editor de HUD: o minimapa e a barra de vida agora dá para arrastar e redimensionar.
+- Celular deitado: loja, menu do lobby e cards menores para caber na tela.
+- Trocar a qualidade gráfica não reinicia mais o jogo (resolução e sombras mudam na hora).
+- Novo código do verificado AZUL (influenciador), resgatado em CÓDIGO no lobby.
+
 ## Novidades da v3.7 (códigos sem servidor)
 - **Dono:** liberar o painel do dono com o código do dono dá na hora o **verificado dourado** (antes dava o azul).
 - **Códigos funcionando direto no jogo, sem hospedagem** (botões **VERIFICADO** e **CÓDIGO** do menu):

@@ -1057,7 +1057,7 @@ const SETTINGS_UI = {
     { k: 'sens4x', label: 'Luneta 4x (precisão)', type: 'range', min: 0.1, max: 3, step: 0.05, show: v => Math.round(v * 100) + '%' },
   ],
   graficos: [
-    { k: 'quality', label: 'Qualidade gráfica', type: 'seg', opts: [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta']], reload: true },
+    { k: 'quality', label: 'Qualidade gráfica', type: 'seg', opts: [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta']] },
     { k: 'fx', label: 'Estilo da imagem', type: 'seg', opts: [['normal', 'Normal'], ['bodycam', 'Bodycam']] },
     { k: 'dynRes', label: 'Resolução automática (evita travar)', type: 'toggle' },
     { k: 'fps', label: 'Mostrar FPS', type: 'toggle' },
@@ -1102,8 +1102,8 @@ function renderSettings() {
     else if (o.type === 'seg') el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
       if (S[o.k] === b.dataset.v) return;
       S[o.k] = b.dataset.v; G.saveSettings();
-      if (o.reload) location.reload();
-      else { applySettings(); renderSettings(); }
+      if (o.k === 'quality') { applyQuality(); notify('info', 'Qualidade ' + b.textContent.toUpperCase() + ' aplicada. Texturas e grama mudam quando abrir o jogo de novo.'); }
+      applySettings(); renderSettings();
     }));
     else {
       el.addEventListener('keydown', e => e.stopPropagation());
@@ -1463,8 +1463,8 @@ function adaptQuality(raw) {
   // mesmo na menor resolução continua travando: na próxima vez o jogo abre em qualidade baixa
   PERF.slow = s <= 0.55 && PERF.fps < 28 ? PERF.slow + 1 : 0;
   if (PERF.slow >= 4 && G.settings.quality !== 'baixa' && G.settings.dynRes) {
-    G.settings.quality = 'baixa'; G.saveSettings(); PERF.slow = 0;
-    notify('info', 'O celular estava travando: a qualidade foi para BAIXA (vale ao abrir o jogo de novo)');
+    G.settings.quality = 'baixa'; G.saveSettings(); PERF.slow = 0; applyQuality();
+    notify('info', 'O celular estava travando: a qualidade foi para BAIXA');
   }
 }
 function frame(now) {

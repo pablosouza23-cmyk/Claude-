@@ -218,6 +218,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .heSize { display: flex; align-items: center; gap: 6px; font-size: 13px; } .heSize input { width: 110px; accent-color: var(--yellow); }
 .chip.hot { background: linear-gradient(#ffd23c, var(--yellow2)); color: #1d1300; border-color: #ffdf6a; }
 body.hud-editing #hud, body.hud-editing #touch { z-index: 8; }
+body.hud-editing #touch { pointer-events: none; }
 body.hud-editing .hedit { outline: 2px dashed rgba(255,194,26,.85); outline-offset: 3px; pointer-events: auto !important; cursor: move; display: flex !important; }
 body.hud-editing .hedit.sel { outline-style: solid; outline-color: #ffd23c; }
 body.hud-editing #joyBase { opacity: .9; }
@@ -495,7 +496,7 @@ body.hud-editing #joyBase { opacity: .9; }
 .shHead > b { font-family: var(--logo); font-weight: 400; font-size: 26px; letter-spacing: 1.5px; text-shadow: 0 2px 0 rgba(0,0,0,.5); }
 .shHead .tabs { margin-right: auto; background: rgba(8,14,26,.7); border-radius: 4px; padding: 3px; }
 .shGrid { position: absolute; left: max(12px, env(safe-area-inset-left)); top: calc(max(8px, env(safe-area-inset-top)) + 46px); bottom: max(10px, env(safe-area-inset-bottom)); width: min(400px, 44vw);
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 7px; align-content: start; overflow-y: auto; padding: 2px 6px 6px 2px; }
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 7px; align-content: start; grid-auto-rows: max-content; overflow-y: auto; padding: 2px 6px 6px 2px; }
 .card { position: relative; flex: none; min-height: max-content; display: flex; flex-direction: column; align-items: center; padding: 0 0 5px; border-radius: 5px; overflow: hidden; background: linear-gradient(rgba(8,14,26,.4), rgba(8,14,26,.92)); border: 1px solid rgba(255,255,255,.14); border-bottom: 3px solid var(--rc); transition: transform .1s; }
 .card::before { content: ""; position: absolute; inset: 0; background: linear-gradient(160deg, color-mix(in srgb, var(--rc) 45%, transparent), transparent 60%); pointer-events: none; }
 .card img { width: 100%; height: 104px; object-fit: cover; object-position: 50% 15%; display: block; }
@@ -824,3 +825,14 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 /* selo pequeno na partida (abates, banner, time) */
 .kf .vfI, #kbName .vfI, .teamBox .vfI, .csTag .vfI { width: 14px; height: 14px; vertical-align: -2px; margin-left: 3px; }
 .kf .vfI.vfGold, .kf .vfI.vfSup, #kbName .vfI.vfGold, #kbName .vfI.vfSup, .teamBox .vfI.vfGold, .teamBox .vfI.vfSup, .csTag .vfI.vfGold, .csTag .vfI.vfSup { width: 17px; height: 17px; }
+
+/* celular deitado (tela baixa): tudo menor para caber */
+@media (max-height: 420px) {
+  .lbNav { top: 54px; transform: none; gap: 3px; max-height: calc(100vh - 60px); overflow-y: auto; } .lbNav button { height: 26px; flex: none; font-size: 12px; width: 128px; gap: 7px; padding: 0 9px; } .lbNav button .ico { width: 15px; height: 15px; }
+  .shHead > b { font-size: 20px; } .shHead .tabs button { font-size: 12px; padding: 4px 9px; }
+  .shGrid { top: calc(max(6px, env(safe-area-inset-top)) + 40px); width: min(330px, 42vw); grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 5px; }
+  .card img, .card img.skThumb, .card .ph { height: 70px; } .card .emo { height: 48px; font-size: 30px; }
+  .card .nm { font-size: 11px; margin-top: 1px; } .card .pr { font-size: 11px; } .card .pr svg { width: 12px; height: 12px; } .card em { font-size: 9px; }
+  .shDetail { width: min(210px, 30vw); padding: 8px; gap: 4px; } .shDetail .dn { font-size: 19px; } .shDetail p { font-size: 11px; }
+  .shDetail .mBtn { height: 36px; font-size: 15px; } .shDetail .mBtn svg { width: 16px; height: 16px; }
+}

@@ -62,6 +62,24 @@ function autoQuality() {
   G.saveSettings();
 }
 
+function qualityDPR(q) {
+  const dpr = window.devicePixelRatio || 1;
+  return q === 'baixa' ? Math.min(dpr, 1) * 0.75 : q === 'media' ? Math.min(dpr, isTouch ? 1.1 : 1.3) : Math.min(dpr, isTouch ? 1.5 : 2);
+}
+// troca a qualidade sem sair do jogo: resolução e sombras mudam na hora; texturas e grama na próxima abertura
+function applyQuality() {
+  const q = G.settings.quality, sh = q !== 'baixa';
+  G.baseDPR = qualityDPR(q);
+  renderer.setPixelRatio(G.baseDPR * (G.dprScale || 1));
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  renderer.shadowMap.type = q === 'alta' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+  if (renderer.shadowMap.enabled !== sh || sun.castShadow !== sh) {
+    renderer.shadowMap.enabled = sh; sun.castShadow = sh;
+    scene.traverse(o => { const m = o.material; if (m) for (const x of Array.isArray(m) ? m : [m]) x.needsUpdate = true; });
+  }
+  const sz = q === 'alta' ? (isTouch ? 1024 : 2048) : isTouch ? 768 : 1024;
+  if (sun.shadow.mapSize.x !== sz) { sun.shadow.mapSize.set(sz, sz); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
+}
 function initRenderer() {
   autoQuality();
   // anisotropia ajustada depois que o renderer existir
@@ -74,9 +92,8 @@ function initRenderer() {
     $('errorBox').classList.remove('hidden');
     throw e;
   }
-  const dpr = window.devicePixelRatio || 1;
   // no celular a tela já é pequena: resolução um pouco menor pesa bem menos e quase não se nota
-  G.baseDPR = q === 'baixa' ? Math.min(dpr, 1) * 0.75 : q === 'media' ? Math.min(dpr, isTouch ? 1.1 : 1.3) : Math.min(dpr, isTouch ? 1.5 : 2);
+  G.baseDPR = qualityDPR(q);
   G.dprScale = 1;
   renderer.setPixelRatio(G.baseDPR);
   renderer.setSize(window.innerWidth, window.innerHeight, false);

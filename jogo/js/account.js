@@ -837,6 +837,7 @@ ACC.LOCAL_CODES = {
   '67cac02d78f1e0c90e5725ee79b2c7086cbbb624769f35831044b888999833a8': { item: { k: 'badge', tier: 'dourado' }, owner: true },
   '4996f5906ad6cebfaf239e62f526389f9b12dd9ab32d06feb6668a55c27705c5': { item: { k: 'badge', tier: 'supremo' } },
   'b3727d71720bc466fcc57290184505917e4e67b39d87ef79f7a3a6695bd0fada': { item: { k: 'skin', id: 'craque' } },
+  '70de0416163cd0a9ad7f349dec9779515b27689f87f6b8933e4ad8ecba5ef04f': { item: { k: 'badge', tier: 'azul' } },
 };
 ACC.redeemLocal = function (code) {
   const p = ACC.p;
@@ -848,7 +849,8 @@ ACC.redeemLocal = function (code) {
   if (p.codes.indexOf(h) >= 0) return { err: 'Você já resgatou esse código.' };
   if (d.owner && !p.owner) return { err: 'Este código é exclusivo da conta do dono do jogo. Libere o painel do dono nesta conta primeiro.' };
   const it = d.item;
-  if (it.k === 'badge') { if (['', 'dourado', 'supremo'].indexOf(it.tier) > ['', 'dourado', 'supremo'].indexOf(p.badge || '')) p.badge = it.tier; }
+  if (it.k === 'badge' && it.tier === 'azul') p.verified = true;
+  else if (it.k === 'badge') { if (['', 'dourado', 'supremo'].indexOf(it.tier) > ['', 'dourado', 'supremo'].indexOf(p.badge || '')) p.badge = it.tier; }
   else if (it.k === 'skin') { if (p.owned.skins.indexOf(it.id) < 0) p.owned.skins.push(it.id); p.skin = it.id; }
   p.codes.push(h);
   ACC.emit();

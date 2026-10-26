@@ -82,6 +82,36 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v3.0
+- **Equipes no Battle Royale:** escolha **SOLO, DUPLA, TRIO, SQUAD (4)** ou **SQUAD 6** em JOGAR ou na sala.
+  - Os amigos da sala ficam no mesmo time, e os bots completam o seu time e formam os times adversários.
+  - Não existe fogo amigo, nem de tiro nem de granada.
+  - Ganha o último time vivo. Se você cair e o time continuar vivo, a câmera acompanha um colega, e a vitória do time conta para você.
+  - **Painel do time** no canto da tela, com número, nome e vida de cada um. Os colegas têm o nome em amarelo em cima da cabeça e aparecem no minimapa.
+  - **Bots do seu time:**
+    - pulam do avião logo depois de você e abrem o paraquedas junto;
+    - andam perto de você e atiram em quem estiver atirando em você.
+- **Grupo no lobby (como no Free Fire):**
+  - O menu tem a barra **SEU GRUPO**: o **+** abre os amigos, e **CONVIDAR** chama o amigo para a sua sala.
+  - Os amigos que entram aparecem **em pé ao seu lado no palco**, com o personagem e as skins deles e o nome em cima.
+  - O anfitrião escolhe o tamanho do time, e todos começam a partida juntos.
+- **Recarga de verdade por Pix** (no site com o servidor):
+  - As gemas só entram depois que o **Mercado Pago confirma o pagamento**. O dinheiro cai na sua conta do Mercado Pago, e de lá você transfere por Pix para o seu banco.
+  - O **modo de teste**, que dava gemas sem cobrar, foi **desligado**.
+  - O servidor **recusa gemas que não foram pagas**: gemas editadas no celular voltam para o valor certo. Gemas só sobem com Pix confirmado, presente do dono pelo correio ou o prêmio de nível (+10 a cada 5 níveis).
+  - **Como ligar:**
+    1. Crie (ou use) sua conta no [Mercado Pago](https://www.mercadopago.com.br) com o **seu CPF**. É para essa conta que o dinheiro vai.
+    2. Em **Seu negócio › Configurações › Credenciais** (ou em mercadopago.com.br/developers › Suas integrações › Criar aplicação), copie o **Access Token de produção** (começa com `APP_USR-`).
+    3. Na Netlify, em **Site configuration › Environment variables**, crie `MP_ACCESS_TOKEN` com esse valor e faça um novo deploy.
+    4. Pronto: na recarga aparece "Pagamento por Pix", com o QR Code e o copia-e-cola.
+  - O CPF e a chave Pix **não vão no código** (o repositório é público). O que liga o jogo à sua conta é o Access Token, guardado só na Netlify.
+  - No app da Play Store, o Google exige o pagamento pelo **Google Play** para itens digitais. Antes de vender por lá, falta validar a compra no servidor.
+- **Mais leve no celular:**
+  - armas com material mais simples no celular e na qualidade Baixa/Média;
+  - texturas de arma menores e um pouco menos de grama;
+  - sombras redesenhadas a cada 2 quadros e resolução um pouco menor no celular;
+  - se mesmo na menor resolução o jogo continuar travando, ele passa sozinho para a qualidade **Baixa**.
+
 ## Novidades da v2.9
 - **Skins de arma** (loja › aba **ARMAS**). O dano é o mesmo; muda só o visual, na mão, nas costas e na câmera de 1ª pessoa. Paga com gemas **ou** com ouro, e toca de novo para voltar ao visual padrão.
 

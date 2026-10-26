@@ -1191,7 +1191,8 @@ W.buildCrates = function (P, rnd) {
 // --- grama instanciada que acompanha o jogador (fixa no mundo, sem "deslizar") ---
 W.buildGrass = function (scene, quality) {
   const counts = { baixa: 3200, media: 7000, alta: 12000 };
-  W.grassN = counts[quality] || 7000;
+  // no celular, menos tufos de grama (é o que mais pesa no chão)
+  W.grassN = Math.round((counts[quality] || 7000) * (typeof isTouch !== 'undefined' && isTouch ? 0.65 : 1));
   W.grassSize = quality === 'baixa' ? 44 : quality === 'alta' ? 70 : 60;
   const blade = new THREE.BufferGeometry();
   const v = [];

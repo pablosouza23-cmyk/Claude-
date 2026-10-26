@@ -75,7 +75,8 @@ function initRenderer() {
     throw e;
   }
   const dpr = window.devicePixelRatio || 1;
-  G.baseDPR = q === 'baixa' ? Math.min(dpr, 1) * 0.75 : q === 'media' ? Math.min(dpr, 1.3) : Math.min(dpr, 2);
+  // no celular a tela já é pequena: resolução um pouco menor pesa bem menos e quase não se nota
+  G.baseDPR = q === 'baixa' ? Math.min(dpr, 1) * 0.75 : q === 'media' ? Math.min(dpr, isTouch ? 1.1 : 1.3) : Math.min(dpr, isTouch ? 1.5 : 2);
   G.dprScale = 1;
   renderer.setPixelRatio(G.baseDPR);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -94,7 +95,7 @@ function initRenderer() {
   scene.add(hemi);
   sun = new THREE.DirectionalLight(0xfff0d8, 2.9);
   sun.castShadow = renderer.shadowMap.enabled;
-  const sz = q === 'alta' ? 2048 : 1024;
+  const sz = q === 'alta' ? (isTouch ? 1024 : 2048) : isTouch ? 768 : 1024;
   sun.shadow.mapSize.set(sz, sz);
   const sc = sun.shadow.camera;
   sc.left = -34; sc.right = 34; sc.top = 34; sc.bottom = -34; sc.near = 1; sc.far = 160;
@@ -104,7 +105,11 @@ function initRenderer() {
   scene.add(sun); scene.add(sun.target);
   G.sunDir = new V3(-0.55, 1, 0.42).normalize();
 
-  TX.aniso = Math.min(q === 'baixa' ? 2 : 8, renderer.capabilities.getMaxAnisotropy());
+  TX.aniso = Math.min(q === 'baixa' ? 2 : isTouch ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
+  // texturas das armas e skins menores no celular (menos memória e carregamento mais rápido)
+  if (isTouch || q !== 'alta') for (const k of ['gunMetal', 'gunWood', 'skinGold']) TX.SIZE[k] = q === 'baixa' ? 256 : 512;
+  // sombras no celular: redesenhadas a cada 2 quadros (o sol quase não muda de um quadro para o outro)
+  if (isTouch) renderer.shadowMap.autoUpdate = false;
   if (q === 'alta') for (const k of ['ground', 'plaster', 'roof', 'wood', 'stone', 'metal', 'plain']) TX.SIZE[k] = Math.min(1024, (TX.SIZE[k] || 256) * 2);
   window.addEventListener('resize', onResize);
 }

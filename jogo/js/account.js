@@ -422,7 +422,7 @@ SRV.init = async function () {
     try { const j = await SRV.call({ op: 'ping' }, 15000); SRV.on = j.app === 'battle-island'; } catch (e) { if (e && e.status === 404) break; SRV.on = false; }
   }
   SRV.status = SRV.on ? 'on' : 'off';
-  if (SRV.on) try { SRV.gid = (await SRV.call({ op: 'config' }, 10000)).google || ''; } catch (e) { SRV.gid = ''; }
+  if (SRV.on) try { const c = await SRV.call({ op: 'config' }, 10000); SRV.gid = c.google || ''; SRV.pix = !!c.pix; } catch (e) { SRV.gid = ''; SRV.pix = false; }
   if (SRV.on) setInterval(() => { if (typeof G === 'undefined' || G.state !== 'play') SRV.poll(); }, 30000);
   return SRV.on;
 };
@@ -443,6 +443,7 @@ SRV.adopt = function (u, j) {
   try { localStorage.setItem(ACC.KEY, JSON.stringify(mem)); } catch (e) { /* ignora */ }
   ACC.use(u, mem.users[u].p);
   SRV.applyInbox(j.inbox);
+  SRV.applyPaid(j.paid);
 };
 SRV.restore = async function () {
   let s = null;
@@ -543,9 +544,22 @@ SRV.applyInbox = function (items) {
   SRV.call({ op: 'ack', u: SRV.user, tok: SRV.tok, mids: done }).catch(() => {});
   if (typeof notify === 'function' && items.some(i => i.kind !== 'patch')) notify('info', 'Chegou correio novo!');
 };
+// Pix pagos e confirmados pelo servidor: soma as gemas (uma vez só por pagamento)
+SRV.applyPaid = function (list) {
+  if (!list || !list.length || !ACC.p) return 0;
+  let n = 0;
+  for (const x of list) {
+    const pack = SHOP.packs.find(p => p.id === x.pack);
+    if (pack && ACC.credit(pack, 'pix-' + x.id, 'pix')) n += pack.gems + pack.bonus;
+  }
+  if (n && typeof notify === 'function') notify('ok', 'Pix confirmado! +' + n + ' gemas');
+  return n;
+};
+SRV.pixNew = (pack) => SRV.call({ op: 'pixNew', u: SRV.user, tok: SRV.tok, pack: pack });
+SRV.pixCheck = (id) => SRV.call({ op: 'pixCheck', u: SRV.user, tok: SRV.tok, id: id });
 SRV.poll = async function () {
   if (!SRV.on || !SRV.tok || ACC.user !== SRV.user) return;
-  try { const j = await SRV.call({ op: 'me', u: SRV.user, tok: SRV.tok }); SRV.status = 'on'; SRV.applyInbox(j.inbox); }
+  try { const j = await SRV.call({ op: 'me', u: SRV.user, tok: SRV.tok }); SRV.status = 'on'; SRV.applyInbox(j.inbox); SRV.applyPaid(j.paid); }
   catch (e) { if (e.code === 'session') SRV.status = 'session'; }
 };
 SRV.push = function () {
@@ -558,7 +572,11 @@ SRV.flush = async function () {
   const js = JSON.stringify(ACC.p);
   if (js === SRV.last) return;
   SRV.busy = true;
-  try { await SRV.call({ op: 'save', u: SRV.user, tok: SRV.tok, p: ACC.p }); SRV.last = js; SRV.status = 'on'; }
+  try {
+    const j = await SRV.call({ op: 'save', u: SRV.user, tok: SRV.tok, p: ACC.p }); SRV.last = js; SRV.status = 'on';
+    // o servidor manda nas gemas: se o celular tinha gemas que não foram pagas, volta para o valor certo
+    if (typeof j.gems === 'number' && ACC.p && JSON.stringify(ACC.p) === js && ACC.p.gems !== j.gems) { ACC.p.gems = j.gems; SRV.last = JSON.stringify(ACC.p); ACC.emit(); }
+  }
   catch (e) { SRV.status = e.code === 'session' ? 'session' : 'error'; if (e.code !== 'session') setTimeout(SRV.push, 8000); }
   SRV.busy = false;
   if (JSON.stringify(ACC.p) !== SRV.last) SRV.push();
@@ -678,10 +696,11 @@ ACC.credit = function (pack, token, via) {
 
 // ---------- pagamento ----------
 // No app da Play Store (TWA) o Chrome oferece a Digital Goods API e o PaymentRequest do Google Play.
-// Fora dele (navegador comum) não há cobrança: o modo de teste só serve para testar a loja.
-// ANTES DE PUBLICAR: deixe TEST_MODE = false e valide o purchaseToken num servidor seu
-// (Google Play Developer API) antes de creditar, para evitar fraude.
-const PAY = { TEST_MODE: true, METHOD: 'https://play.google.com/billing', svc: null, prices: {}, ready: false };
+// No site com o servidor, a recarga é por Pix (Mercado Pago): as gemas só entram depois que o servidor confirma o pagamento.
+// TEST_MODE dava gemas sem cobrar (era só para testar a loja) e fica desligado.
+// O servidor recusa gemas que não vieram de pagamento confirmado; antes de vender pela Play Store,
+// valide o purchaseToken no servidor (Google Play Developer API).
+const PAY = { TEST_MODE: false, METHOD: 'https://play.google.com/billing', svc: null, prices: {}, ready: false };
 PAY.init = async function () {
   if (!('getDigitalGoodsService' in window)) { PAY.ready = true; return; }
   try {
@@ -696,7 +715,8 @@ PAY.init = async function () {
   } catch (e) { PAY.svc = null; }
   PAY.ready = true;
 };
-PAY.mode = () => PAY.svc ? 'play' : PAY.TEST_MODE ? 'teste' : 'off';
+// play: app da Play Store · pix: site com o servidor e o Mercado Pago ligado · off: sem cobrança (não dá gemas)
+PAY.mode = () => PAY.svc ? 'play' : (SRV.on && SRV.pix && SRV.user && SRV.user === ACC.user) ? 'pix' : PAY.TEST_MODE ? 'teste' : 'off';
 PAY.priceText = function (pack) {
   const pr = PAY.prices[pack.id];
   try {

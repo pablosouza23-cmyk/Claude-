@@ -740,3 +740,13 @@ body.hud-editing #joyBase { opacity: .9; }
   .teamBox .tm span { font-size: 10px; max-width: 92px; }
   .teamBox .tm b { height: 3px; }
 }
+
+/* Pix */
+.pixBox { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pixQr { width: min(190px, 30vh); height: auto; background: #fff; padding: 6px; border-radius: 8px; image-rendering: pixelated; }
+.pixBox b { display: inline-flex; align-items: center; gap: 4px; } .pixBox b svg { width: 16px; height: 16px; }
+.pixBox small { opacity: .8; font-size: 12px; text-align: center; }
+.pixCode { width: 100%; height: 44px; font-size: 10px; }
+.pixSt { margin: 0; font-size: 12px; display: flex; align-items: center; gap: 4px; color: #ffd76a; } .pixSt .ico { width: 14px; height: 14px; }
+.dlgBox { max-height: calc(100vh - 16px); overflow-y: auto; }
+@media (max-height: 500px) { .pixBox small { display: none; } .pixCode { height: 34px; } }

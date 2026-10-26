@@ -528,8 +528,8 @@ LOB.closeRecharge = function () {
 LOB.renderRecharge = function () {
   const mode = PAY.mode();
   $('rcMode').className = 'rcMode ' + mode;
-  $('rcMode').innerHTML = mode === 'play' ? icon('check') + 'Pagamento seguro pelo Google Play' :
-    mode === 'teste' ? icon('warn') + 'MODO DE TESTE: fora do app da Play Store nenhuma cobrança é feita' : icon('info') + 'A recarga funciona no app da Play Store';
+  $('rcMode').innerHTML = mode === 'play' ? icon('check') + 'Pagamento seguro pelo Google Play' : mode === 'pix' ? icon('check') + 'Pagamento por Pix · as gemas entram assim que o banco confirmar' :
+    mode === 'teste' ? icon('warn') + 'MODO DE TESTE: fora do app da Play Store nenhuma cobrança é feita' : icon('info') + 'A recarga funciona no site oficial do jogo (com sua conta) e no app da Play Store';
   $('rcGrid').innerHTML = SHOP.packs.map((pk, i) => {
     const pct = pk.bonus ? Math.round(pk.bonus / pk.gems * 100) : 0;
     const pile = Array.from({ length: Math.min(6, i + 1) }, (_, k) => '<i style="--k:' + k + '">' + GEM_SVG + '</i>').join('');
@@ -545,13 +545,47 @@ LOB.buyPack = function (pk) {
   const total = pk.gems + pk.bonus, mode = PAY.mode();
   const done = () => { SND.play('pick'); LOB.renderRecharge(); LOB.dialog('RECARGA CONCLUÍDA', '<div class="dlgPrize">' + GEM_SVG + '<b>+' + fmtN(total) + '</b></div>As gemas já estão na sua conta.', [['OK', null, true]]); };
   const fail = (e) => { if (e && (e.name === 'AbortError' || /cancel/i.test(e.message))) return; LOB.dialog('NÃO DEU CERTO', 'A compra não foi concluída. Nada foi cobrado.<br><small>' + escapeHTML((e && e.message) || '') + '</small>', [['OK']]); };
-  if (mode === 'off') { LOB.dialog('RECARGA', 'A recarga de gemas funciona no app do Battle Island instalado pela Play Store.', [['OK']]); return; }
+  if (mode === 'off') { LOB.dialog('RECARGA', SRV.on && SRV.user !== ACC.user ? 'Entre com sua conta (usuário e senha) para recarregar por Pix.' : 'A recarga de gemas funciona no site oficial do Battle Island (por Pix) e no app da Play Store.', [['OK']]); return; }
+  if (mode === 'pix') { LOB.pixBuy(pk); return; }
   if (mode === 'teste') {
     LOB.dialog('MODO DE TESTE', 'Você está fora do app da Play Store, então <b>nenhuma cobrança real</b> será feita.<br>Simular a compra de <b>' + fmtN(total) + ' gemas</b> (' + PAY.priceText(pk) + ')?',
       [['SIMULAR COMPRA', () => PAY.buy(pk).then(done, fail), true], ['CANCELAR']]);
     return;
   }
   PAY.buy(pk).then(done, fail);
+};
+// Pix: o servidor gera a cobrança no Mercado Pago; aqui mostra o QR Code e o copia-e-cola e espera a confirmação
+LOB.pixBuy = async function (pk) {
+  const total = pk.gems + pk.bonus;
+  if (LOB.pixBusy) return;
+  LOB.pixBusy = true;
+  notify('info', 'Gerando o Pix…');
+  let j;
+  try { j = await SRV.pixNew(pk.id); } catch (e) { LOB.pixBusy = false; LOB.dialog('PIX INDISPONÍVEL', 'Não deu para gerar o Pix agora. Tente de novo em instantes.<br><small>' + escapeHTML(SRV.msg(e)) + '</small>', [['OK']]); return; }
+  LOB.pixBusy = false;
+  const id = j.id;
+  LOB.dialog('PAGAR COM PIX', '<div class="pixBox">' + (j.img ? '<img class="pixQr" alt="QR Code do Pix" src="data:image/png;base64,' + j.img + '">' : '') +
+    '<b>' + PAY.priceText(pk) + ' · ' + GEM_SVG + fmtN(total) + ' gemas</b><small>Abra o app do seu banco, escolha Pix › Ler QR Code ou Pix copia e cola.</small>' +
+    '<textarea class="codeBox pixCode" readonly>' + escapeHTML(j.code) + '</textarea><p id="pixSt" class="pixSt">' + icon('info') + 'Aguardando o pagamento…</p></div>',
+    [['COPIAR CÓDIGO', () => { try { navigator.clipboard.writeText(j.code).then(() => notify('ok', 'Código Pix copiado'), () => notify('info', 'Selecione e copie o código')); } catch (e) { notify('info', 'Selecione e copie o código'); } return false; }, true], ['FECHAR']]);
+  // confere a cada 4 segundos por até 15 minutos (se fechar, as gemas entram quando o jogo conferir de novo)
+  const t0 = Date.now();
+  clearInterval(LOB.pixIv);
+  LOB.pixIv = setInterval(async () => {
+    if (Date.now() - t0 > 15 * 60000) { clearInterval(LOB.pixIv); return; }
+    try {
+      const r = await SRV.pixCheck(id);
+      if (r.status === 'approved') {
+        clearInterval(LOB.pixIv);
+        SRV.applyPaid(r.paid);
+        SND.play('pick'); LOB.renderRecharge();
+        LOB.dialog('RECARGA CONCLUÍDA', '<div class="dlgPrize">' + GEM_SVG + '<b>+' + fmtN(total) + '</b></div>Pix confirmado! As gemas já estão na sua conta.', [['OK', null, true]]);
+      } else if (r.status === 'rejected' || r.status === 'cancelled') {
+        clearInterval(LOB.pixIv);
+        const st = $('pixSt'); if (st) st.innerHTML = icon('warn') + 'Pagamento cancelado. Nada foi cobrado.';
+      }
+    } catch (e) { /* tenta de novo */ }
+  }, 4000);
 };
 LOB.exchange = function () {
   const ex = SHOP.exchange;
@@ -906,9 +940,10 @@ LOB.dialog = function (title, html, btns) {
   d.classList.remove('hidden');
   d.querySelectorAll('.dlgB button').forEach(el => el.addEventListener('click', () => {
     SND.play('ui');
-    d.classList.add('hidden');
+    // a função pode devolver false para a caixa continuar aberta (ex.: copiar o código do Pix)
     const f = btns[+el.dataset.i][1];
-    if (f) f();
+    if (f && f() === false) return;
+    if (d.querySelector('.dlgB') === el.parentNode) d.classList.add('hidden');
   }));
 };
 

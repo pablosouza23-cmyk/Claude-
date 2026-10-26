@@ -406,11 +406,20 @@ WPN.studioEnv = function () {
   return WPN._env;
 };
 
+// celular e qualidade baixa/média: material padrão (sem a camada extra de verniz, que dobra o custo do brilho)
+WPN.lite = () => (typeof isTouch !== 'undefined' && isTouch) || (typeof G !== 'undefined' && G.settings && G.settings.quality !== 'alta');
+WPN.physMat = function (o) {
+  if (!WPN.lite()) return new THREE.MeshPhysicalMaterial(o);
+  delete o.clearcoat; delete o.clearcoatRoughness;
+  if (G.settings.quality === 'baixa') { delete o.normalMap; delete o.normalScale; }
+  return new THREE.MeshStandardMaterial(o);
+};
+
 WPN.gunMat = function () {
   if (WPN._gun) return WPN._gun;
   const metal = TX.tex('gunMetal'), wood = TX.tex('gunWood');
   // metal fosfatado com microrrelevo (normal map), verniz leve e reflexo do céu; madeira com veio
-  const m = new THREE.MeshPhysicalMaterial({ vertexColors: true, map: metal, normalMap: TX.normal('gunMetal', 2.2), normalScale: new THREE.Vector2(0.55, 0.55),
+  const m = WPN.physMat({ vertexColors: true, map: metal, normalMap: TX.normal('gunMetal', 2.2), normalScale: new THREE.Vector2(0.55, 0.55),
     roughness: 0.42, metalness: 0.6, envMap: WPN.studioEnv(), envMapIntensity: 1.25, clearcoat: 0.22, clearcoatRoughness: 0.4 });
   m.onBeforeCompile = (sh) => {
     sh.uniforms.woodMap = { value: wood };
@@ -464,7 +473,7 @@ WPN.skinMat = function (skinId) {
   if (WPN._skin[sk.style]) return WPN._skin[sk.style];
   const st = WPN.STYLES[sk.style], C = (h) => new THREE.Color(h === undefined ? 0xffffff : h);
   const tex = TX.tex(st.pat || st.col);
-  const m = new THREE.MeshPhysicalMaterial({ vertexColors: true, map: tex, normalMap: TX.normal(st.pat || st.col, st.nrm || 1.6), normalScale: new THREE.Vector2(0.6, 0.6),
+  const m = WPN.physMat({ vertexColors: true, map: tex, normalMap: TX.normal(st.pat || st.col, st.nrm || 1.6), normalScale: new THREE.Vector2(0.6, 0.6),
     roughness: st.rough, metalness: st.metal, clearcoat: st.coat || 0, clearcoatRoughness: 0.18, envMap: WPN.studioEnv(), envMapIntensity: st.env || 1.15 });
   const U2 = { uBase: { value: C(st.base) }, uAcc: { value: C(st.acc) }, uWood: { value: C(st.wood) }, uWacc: { value: C(st.wacc) }, uBright: { value: C(st.brightC) },
     uEmis: { value: C(st.emis || 0) }, uWemis: { value: C(st.wemis || st.emis || 0) }, uEmisK: { value: st.emisK || 0 }, uGlow: { value: st.glowBase || 0 },

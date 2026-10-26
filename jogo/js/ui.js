@@ -1381,7 +1381,7 @@ function tick(dt) {
 
 const clock = new THREE.Clock();
 // resolução dinâmica: se o FPS cai, a imagem fica um pouco menor; quando sobra fôlego, volta
-const PERF = { t: 0, n: 0, last: 0, fps: 60 };
+const PERF = { t: 0, n: 0, last: 0, fps: 60, sh: 0, slow: 0 };
 function adaptQuality(raw) {
   PERF.t += raw; PERF.n++;
   if (PERF.t < 2) return;
@@ -1393,6 +1393,12 @@ function adaptQuality(raw) {
   else if (PERF.fps > 56 && s < 1) s = Math.min(1, s + 0.06);
   if (s > 1) s = 1;
   if (s !== G.dprScale) { G.dprScale = s; renderer.setPixelRatio(G.baseDPR * s); renderer.setSize(window.innerWidth, window.innerHeight, false); }
+  // mesmo na menor resolução continua travando: na próxima vez o jogo abre em qualidade baixa
+  PERF.slow = s <= 0.55 && PERF.fps < 28 ? PERF.slow + 1 : 0;
+  if (PERF.slow >= 4 && G.settings.quality !== 'baixa' && G.settings.dynRes) {
+    G.settings.quality = 'baixa'; G.saveSettings(); PERF.slow = 0;
+    notify('info', 'O celular estava travando: a qualidade foi para BAIXA (vale ao abrir o jogo de novo)');
+  }
 }
 function frame(now) {
   requestAnimationFrame(frame);
@@ -1415,6 +1421,7 @@ function frame(now) {
   if (G.state === 'play') updateHUD(dt);
   const bodycam = G.settings.fx === 'bodycam';
   if (bodycam) POST.begin(renderer);
+  if (isTouch && renderer.shadowMap.enabled) { PERF.sh = (PERF.sh + 1) % 2; if (!PERF.sh) renderer.shadowMap.needsUpdate = true; }
   renderer.render(scene, camera);
   if (G.ads && fpScene && fpGun.visible && G.state !== 'end') {
     renderer.autoClear = false;

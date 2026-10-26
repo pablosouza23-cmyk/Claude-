@@ -35,6 +35,37 @@ export async function verifyGoogle(cred, clientId) {
   return { sub: String(j.sub), email: String(j.email || ''), name: String(j.given_name || j.name || '') };
 }
 
+// pacotes de gemas (o mesmo que js/account.js, SHOP.packs): o preço vale o daqui, não o que o celular mandar
+export const PACKS = {
+  gemas_20: { brl: 2, gems: 20 }, gemas_55: { brl: 5, gems: 55 }, gemas_115: { brl: 10, gems: 115 },
+  gemas_240: { brl: 20, gems: 240 }, gemas_620: { brl: 50, gems: 620 }, gemas_1300: { brl: 100, gems: 1300 },
+};
+// Pix pelo Mercado Pago: o dinheiro cai na conta do Mercado Pago do dono do jogo (aberta com o CPF dele)
+async function mpFetch(opts, path, init) {
+  const r = await ((opts && opts.fetch) || fetch)('https://api.mercadopago.com' + path, Object.assign({}, init, {
+    headers: Object.assign({ authorization: 'Bearer ' + opts.mpToken, 'content-type': 'application/json' }, (init && init.headers) || {}) }));
+  const j = await r.json().catch(() => null);
+  if (!r.ok || !j) throw new Error('mp ' + r.status);
+  return j;
+}
+// gemas pagas e confirmadas que o celular ainda não somou na conta
+const paidList = (rec) => Object.entries(rec.pix || {}).filter(([, x]) => x.status === 'approved' && !x.done).map(([id, x]) => ({ id, pack: x.pack, gems: x.gems }));
+// confere no Mercado Pago os Pix pendentes desta conta (das últimas 24 horas)
+async function checkPix(rec, opts) {
+  if (!opts || !opts.mpToken || !rec.pix) return false;
+  let changed = false;
+  for (const [id, x] of Object.entries(rec.pix)) {
+    if (x.status !== 'pending' || Date.now() - x.t > 86400000) continue;
+    try {
+      const pay = await mpFetch(opts, '/v1/payments/' + encodeURIComponent(id));
+      if (pay.status === 'approved' && Number(pay.transaction_amount) >= PACKS[x.pack].brl) { x.status = 'approved'; rec.gAllow = (rec.gAllow | 0) + x.gems; changed = true; }
+      else if (pay.status === 'rejected' || pay.status === 'cancelled') { x.status = pay.status; changed = true; }
+    } catch (e) { /* tenta de novo depois */ }
+  }
+  return changed;
+}
+const mailGems = (items) => (items || []).reduce((s, it) => s + (it && it.k === 'gems' ? Math.max(0, it.n | 0) : 0), 0);
+
 async function getRec(store, u) { return u ? await store.get('u:' + u, { type: 'json' }) : null; }
 async function allUsers(store) {
   const out = [];
@@ -74,7 +105,7 @@ export async function handle(body, store, opts) {
     case 'ping': return ok({ app: 'battle-island', v: 1 });
 
     // o que o jogo precisa saber do servidor (o ID do app do Google, se o login com Google estiver ligado)
-    case 'config': return ok({ google: (opts && opts.googleClientId) || '' });
+    case 'config': return ok({ google: (opts && opts.googleClientId) || '', pix: !!(opts && opts.mpToken) });
 
     // Entrar com Google: acha a conta ligada a essa conta Google ou cria uma nova.
     // Se vier logado (u + tok), liga a conta Google à conta atual.
@@ -105,7 +136,8 @@ export async function handle(body, store, opts) {
         if (!/^\d{1,10}$/.test(String(p.id || '')) || await idTaken(store, String(p.id), u)) p.id = newId();
         const salt = randomBytes(16).toString('hex'), now = Date.now();
         // senha aleatória que ninguém sabe: essa conta entra pelo Google (o dono pode definir uma senha pelo painel)
-        rec = { u, salt, hash: hashPass(salt, randomBytes(24).toString('hex')), p, t: now, upd: now, toks: [] };
+        p.gems = 0;
+        rec = { u, salt, hash: hashPass(salt, randomBytes(24).toString('hex')), p, t: now, upd: now, toks: [], gAllow: Math.min(100, mailGems((p.mail || []).filter(m => !m.got).flatMap(m => m.items || []))) };
         created = true;
       }
       rec.google = info.sub; rec.email = info.email;
@@ -126,8 +158,11 @@ export async function handle(body, store, opts) {
       if (await getRec(store, u)) return fail(409, 'exists');
       const p = body.p;
       if (!/^\d{1,10}$/.test(String(p.id || '')) || await idTaken(store, String(p.id), u)) p.id = newId();
+      // conta nova começa sem gemas (só as do correio de boas-vindas, que ainda vão ser resgatadas)
+      p.gems = 0;
+      const gAllow = Math.min(100, mailGems((p.mail || []).filter(m => !m.got).flatMap(m => m.items || [])));
       const salt = randomBytes(16).toString('hex'), tk = newToken(), now = Date.now();
-      await store.setJSON('u:' + u, { u, salt, hash: hashPass(salt, String(body.pass).trim()), p, t: now, upd: now, toks: [{ tk, t: now }] });
+      await store.setJSON('u:' + u, { u, salt, hash: hashPass(salt, String(body.pass).trim()), p, t: now, upd: now, toks: [{ tk, t: now }], gAllow });
       return ok({ tok: tk, p, upd: now, t: now });
     }
 
@@ -145,8 +180,9 @@ export async function handle(body, store, opts) {
     case 'me': {
       const a = await auth(store, body);
       if (!a) return fail(401, 'session');
+      if (await checkPix(a.rec, opts)) await store.setJSON('u:' + a.u, a.rec);
       const box = await inbox(store, a.u);
-      return ok({ p: a.rec.p, upd: a.rec.upd, t: a.rec.t, inbox: box.items });
+      return ok({ p: a.rec.p, upd: a.rec.upd, t: a.rec.t, inbox: box.items, paid: paidList(a.rec) });
     }
 
     case 'save': {
@@ -156,9 +192,18 @@ export async function handle(body, store, opts) {
       const p = body.p;
       // o ID só muda pelo dono (ou pela lista de IDs especiais do jogo, que chega como ID curto)
       if (String(p.id) !== String(a.rec.p.id) && (!/^\d{1,10}$/.test(String(p.id)) || await idTaken(store, String(p.id), a.u))) p.id = a.rec.p.id;
+      // gemas só sobem com Pix confirmado, correio do dono ou o prêmio de nível (+10 a cada 5 níveis)
+      const old = a.rec.p, oldG = Math.max(0, old.gems | 0), lvl = Math.floor((p.level | 0) / 5) > Math.floor((old.level | 0) / 5) ? 10 : 0;
+      const allow = (a.rec.gAllow | 0) + lvl;
+      let g = Math.max(0, p.gems | 0);
+      if (g > oldG + allow) g = oldG + allow;
+      a.rec.gAllow = Math.max(0, (a.rec.gAllow | 0) - Math.max(0, g - oldG - lvl));
+      p.gems = g;
+      // Pix que o celular já somou (aparece em p.buys com o token pix-<id>)
+      for (const [id, x] of Object.entries(a.rec.pix || {})) if (x.status === 'approved' && !x.done && (p.buys || []).some(b => b && b.token === 'pix-' + id)) x.done = 1;
       a.rec.p = p; a.rec.upd = Date.now();
       await store.setJSON('u:' + a.u, a.rec);
-      return ok({ upd: a.rec.upd });
+      return ok({ upd: a.rec.upd, gems: g });
     }
 
     case 'ack': {
@@ -183,6 +228,37 @@ export async function handle(body, store, opts) {
       await store.delete('u:' + a.u); await store.delete('in:' + a.u);
       if (a.rec.google) await store.delete('g:' + a.rec.google);
       return ok({});
+    }
+
+    // cria a cobrança Pix (QR Code e copia-e-cola) de um pacote de gemas
+    case 'pixNew': {
+      if (!opts || !opts.mpToken) return fail(400, 'no_pix');
+      const a = await auth(store, body);
+      if (!a) return fail(401, 'session');
+      const pk = PACKS[body.pack];
+      if (!pk) return fail(400, 'bad_pack');
+      let pay;
+      try {
+        pay = await mpFetch(opts, '/v1/payments', { method: 'POST', headers: { 'x-idempotency-key': randomBytes(16).toString('hex') },
+          body: JSON.stringify({ transaction_amount: pk.brl, description: 'Battle Island - ' + pk.gems + ' gemas', payment_method_id: 'pix',
+            external_reference: a.u + ':' + body.pack, payer: { email: a.rec.email || ('jogador.' + a.u.replace(/[^a-z0-9]/g, '') + '@battleisland.app') } }) });
+      } catch (e) { return fail(502, 'pix_fail'); }
+      const td = (pay.point_of_interaction && pay.point_of_interaction.transaction_data) || {};
+      a.rec.pix = a.rec.pix || {};
+      // guarda só os últimos 30 pedidos
+      const ids = Object.keys(a.rec.pix); if (ids.length > 30) for (const k of ids.slice(0, ids.length - 30)) delete a.rec.pix[k];
+      a.rec.pix[String(pay.id)] = { pack: body.pack, gems: pk.gems, brl: pk.brl, status: 'pending', t: Date.now() };
+      await store.setJSON('u:' + a.u, a.rec);
+      return ok({ id: String(pay.id), code: td.qr_code || '', img: td.qr_code_base64 || '', url: td.ticket_url || '', brl: pk.brl, gems: pk.gems });
+    }
+
+    // o celular pergunta se o Pix já foi pago
+    case 'pixCheck': {
+      const a = await auth(store, body);
+      if (!a) return fail(401, 'session');
+      if (await checkPix(a.rec, opts)) await store.setJSON('u:' + a.u, a.rec);
+      const x = (a.rec.pix || {})[String(body.id)];
+      return ok({ status: x ? x.status : 'unknown', paid: paidList(a.rec) });
     }
 
     case 'rank': {
@@ -230,6 +306,8 @@ async function admin(body, store) {
       const to = String(body.to || '');
       const targets = to === 'todos' ? recs : byId(to);
       const letter = body.letter || {};
+      const gm = mailGems(letter.items);
+      for (const r of targets) if (gm) { r.gAllow = (r.gAllow | 0) + gm; await store.setJSON('u:' + r.u, r); }
       for (const r of targets) await pushInbox(store, r.u, { mid: mid(), from: String(letter.from || 'Equipe').slice(0, 40), title: String(letter.title || 'Mensagem').slice(0, 60),
         text: String(letter.text || '').slice(0, 400), items: Array.isArray(letter.items) ? letter.items.slice(0, 10) : [], t: Date.now(), read: false, got: false });
       return ok({ n: targets.length });

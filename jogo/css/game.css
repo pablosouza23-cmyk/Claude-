@@ -616,3 +616,12 @@ body.hud-editing #joyBase { opacity: .9; }
 .adGifts .num input { width: 90px; padding: 4px 8px; font: 500 15px var(--font); color: #fff; background: #0b1424; border: 1px solid var(--line); border-radius: 4px; -webkit-user-select: text; user-select: text; } .adGifts .num svg { width: 20px; height: 20px; }
 .codeIn { display: block; width: 100%; margin-top: 10px; padding: 9px 12px; font: 600 18px var(--font); letter-spacing: 2px; text-align: center; text-transform: uppercase; color: #fff; background: #0b1424; border: 1px solid var(--line); border-radius: 4px; outline: none; -webkit-user-select: text; user-select: text; }
 @media (max-aspect-ratio: 1/1) { .mlWrap { grid-template-columns: 1fr; grid-template-rows: 40% 1fr; } .mlList { border-right: 0; border-bottom: 1px solid var(--line); } }
+
+/* ---------- login: olho da senha, contas do aparelho, aviso ---------- */
+.passRow { position: relative; display: block; } .passRow input { padding-right: 44px; }
+.eyeBtn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--muted); border-radius: 4px; }
+.eyeBtn .ico { width: 20px; height: 20px; } .eyeBtn.on { color: var(--yellow); }
+.authUsers { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; } .authUsers:empty { display: none; } .authUsers small { font-size: 11px; color: var(--muted); width: 100%; } .authUsers .chip { padding: 3px 10px; }
+.linkBtn { align-self: center; font-size: 12px; letter-spacing: 1px; color: var(--yellow); text-decoration: underline; padding: 2px 6px; }
+.authWarn { display: flex; gap: 6px; align-items: flex-start; margin: 0; padding: 6px 9px; font-size: 12px; line-height: 1.35; color: #ffe08a; background: rgba(255,194,26,.12); border: 1px solid rgba(255,194,26,.4); border-radius: 4px; }
+.authWarn .ico { width: 16px; height: 16px; flex: none; margin-top: 1px; }

@@ -105,7 +105,7 @@ ACC.use = function (user, profile) {
 ACC.register = function (user, pass, name) {
   user = String(user || '').trim().toLowerCase();
   if (!ACC.validUser(user)) return 'Usuário: 3 a 16 letras minúsculas, números, _ ou .';
-  if (String(pass || '').length < 4) return 'A senha precisa de pelo menos 4 caracteres.';
+  if (String(pass || '').trim().length < 4) return 'A senha precisa de pelo menos 4 caracteres.';
   const db = ACC.db();
   if (db.users[user]) return 'Esse usuário já existe neste aparelho. Toque em ENTRAR.';
   const salt = SHA.hex(Math.random() + ':' + Date.now()).slice(0, 16);
@@ -113,7 +113,7 @@ ACC.register = function (user, pass, name) {
   // quem jogou como convidado leva o progresso para a conta nova
   const guest = db.users.__guest;
   const profile = guest && guest.p.stats.matches > 0 ? Object.assign(guest.p, { name: nick }) : ACC.newProfile(nick);
-  db.users[user] = { salt: salt, hash: ACC.hashPass(salt, pass), p: profile, t: Date.now() };
+  db.users[user] = { salt: salt, hash: ACC.hashPass(salt, String(pass).trim()), p: profile, t: Date.now() };
   if (guest && profile === guest.p) delete db.users.__guest;
   if (!ACC.writeDb(db)) return 'Não deu para salvar neste navegador (modo anônimo?).';
   ACC.use(user, profile);
@@ -122,10 +122,38 @@ ACC.register = function (user, pass, name) {
 ACC.login = function (user, pass) {
   user = String(user || '').trim().toLowerCase();
   const db = ACC.db(), u = db.users[user];
-  if (!u || user === '__guest') return 'Usuário não encontrado neste aparelho. Crie a conta ou use o código de transferência.';
-  if (ACC.hashPass(u.salt, pass) !== u.hash) return 'Senha incorreta.';
+  if (!u || user === '__guest') {
+    const list = ACC.userList();
+    return 'Usuário "' + user + '" não encontrado neste aparelho.' + (list.length ? ' Contas salvas aqui: ' + list.join(', ') + '.' : ' Nenhuma conta salva aqui: crie a conta ou use o código de transferência.');
+  }
+  if (!ACC.passOk(u, pass)) return 'Senha incorreta. Toque no olho para ver o que está digitando, ou use ESQUECI A SENHA.';
   ACC.use(user, u.p);
   return null;
+};
+// teclado de celular: espaço sobrando no fim e primeira letra maiúscula automática não contam como senha errada
+ACC.passVariants = function (pass) {
+  const p = String(pass || ''), t = p.trim(), out = [p, t];
+  if (t) { out.push(t.charAt(0).toLowerCase() + t.slice(1)); out.push(t.charAt(0).toUpperCase() + t.slice(1)); }
+  return out.filter((x, i) => x && out.indexOf(x) === i);
+};
+ACC.passOk = (u, pass) => ACC.passVariants(pass).some(v => ACC.hashPass(u.salt, v) === u.hash);
+ACC.userList = () => Object.keys(ACC.db().users).filter(u => u !== '__guest').slice(0, 8);
+// esqueci a senha: a conta é deste aparelho, então basta confirmar o usuário e o apelido
+ACC.resetPass = function (user, nick, pass) {
+  user = String(user || '').trim().toLowerCase();
+  const db = ACC.db(), u = db.users[user];
+  if (!u || user === '__guest') return 'Usuário não encontrado neste aparelho.';
+  if (String(nick || '').trim().toLowerCase() !== String(u.p.name || '').trim().toLowerCase()) return 'O apelido não confere com o dessa conta.';
+  if (String(pass || '').trim().length < 4) return 'A nova senha precisa de pelo menos 4 caracteres.';
+  u.salt = SHA.hex(Math.random() + ':' + Date.now()).slice(0, 16);
+  u.hash = ACC.hashPass(u.salt, String(pass).trim());
+  if (!ACC.writeDb(db)) return 'Não deu para salvar neste navegador.';
+  ACC.use(user, u.p);
+  return null;
+};
+// o navegador está guardando dados? (modo anônimo, visualizador de arquivos e alguns apps não guardam)
+ACC.storageOk = function () {
+  try { localStorage.setItem('battleIsland.probe', '1'); return localStorage.getItem('battleIsland.probe') === '1'; } catch (e) { return false; }
 };
 ACC.guest = function () {
   const db = ACC.db();

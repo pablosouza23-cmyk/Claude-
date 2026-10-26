@@ -625,6 +625,15 @@ body.hud-editing #joyBase { opacity: .9; }
 .codeIn { display: block; width: 100%; margin-top: 10px; padding: 9px 12px; font: 600 18px var(--font); letter-spacing: 2px; text-align: center; text-transform: uppercase; color: #fff; background: #0b1424; border: 1px solid var(--line); border-radius: 4px; outline: none; -webkit-user-select: text; user-select: text; }
 @media (max-aspect-ratio: 1/1) { .mlWrap { grid-template-columns: 1fr; grid-template-rows: 40% 1fr; } .mlList { border-right: 0; border-bottom: 1px solid var(--line); } }
 
+/* ---------- login: olho da senha, contas do aparelho, aviso ---------- */
+.passRow { position: relative; display: block; } .passRow input { padding-right: 44px; }
+.eyeBtn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--muted); border-radius: 4px; }
+.eyeBtn .ico { width: 20px; height: 20px; } .eyeBtn.on { color: var(--yellow); }
+.authUsers { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; } .authUsers:empty { display: none; } .authUsers small { font-size: 11px; color: var(--muted); width: 100%; } .authUsers .chip { padding: 3px 10px; }
+.linkBtn { align-self: center; font-size: 12px; letter-spacing: 1px; color: var(--yellow); text-decoration: underline; padding: 2px 6px; }
+.authWarn { display: flex; gap: 6px; align-items: flex-start; margin: 0; padding: 6px 9px; font-size: 12px; line-height: 1.35; color: #ffe08a; background: rgba(255,194,26,.12); border: 1px solid rgba(255,194,26,.4); border-radius: 4px; }
+.authWarn .ico { width: 16px; height: 16px; flex: none; margin-top: 1px; }
+
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
   <linearGradient id="gmG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9f6ff"/><stop offset=".5" stop-color="#4fc3ff"/><stop offset="1" stop-color="#7a3cff"/></linearGradient>
@@ -715,13 +724,16 @@ body.hud-editing #joyBase { opacity: .9; }
     <div id="authTabs" class="tabs"><button data-a="login">ENTRAR</button><button data-a="new">CRIAR CONTA</button><button data-a="code">CÓDIGO</button></div>
     <form id="authForm" autocomplete="on" novalidate>
       <label class="fld" id="fNick"><span>Apelido no jogo</span><input id="aNick" maxlength="14" autocomplete="nickname" placeholder="Como os outros vão te ver"></label>
-      <label class="fld" id="fUser"><span>Usuário</span><input id="aUser" maxlength="16" autocapitalize="none" autocomplete="username" spellcheck="false" placeholder="ex.: pablo_23"></label>
-      <label class="fld" id="fPass"><span>Senha</span><input id="aPass" type="password" maxlength="40" autocomplete="current-password" placeholder="mínimo 4 caracteres"></label>
+      <label class="fld" id="fUser"><span>Usuário</span><input id="aUser" maxlength="16" autocapitalize="none" autocorrect="off" autocomplete="username" spellcheck="false" placeholder="ex.: pablo_23"></label>
+      <label class="fld" id="fPass"><span id="aPassL">Senha</span><span class="passRow"><input id="aPass" type="password" maxlength="40" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="current-password" placeholder="mínimo 4 caracteres"><button type="button" id="aEye" class="eyeBtn" aria-label="Mostrar senha"></button></span></label>
       <label class="fld hidden" id="fCode"><span>Código de transferência</span><textarea id="aCode" rows="3" spellcheck="false" placeholder="Cole aqui o código BI1-… gerado no outro aparelho"></textarea></label>
       <p id="authErr" class="authErr" role="alert"></p>
+      <div id="authUsers" class="authUsers"></div>
       <button id="aGo" class="mBtn primary" type="submit">ENTRAR</button>
     </form>
+    <button id="aForgot" type="button" class="linkBtn">ESQUECI A SENHA</button>
     <button id="aGuest" class="mBtn ghost">JOGAR COMO CONVIDADO</button>
+    <p id="authWarn" class="authWarn hidden"></p>
     <p class="authNote">Sua conta fica salva neste aparelho. Para jogar em outro celular, gere o código de transferência no perfil.</p>
   </div>
 </div>
@@ -7372,7 +7384,7 @@ ACC.use = function (user, profile) {
 ACC.register = function (user, pass, name) {
   user = String(user || '').trim().toLowerCase();
   if (!ACC.validUser(user)) return 'Usuário: 3 a 16 letras minúsculas, números, _ ou .';
-  if (String(pass || '').length < 4) return 'A senha precisa de pelo menos 4 caracteres.';
+  if (String(pass || '').trim().length < 4) return 'A senha precisa de pelo menos 4 caracteres.';
   const db = ACC.db();
   if (db.users[user]) return 'Esse usuário já existe neste aparelho. Toque em ENTRAR.';
   const salt = SHA.hex(Math.random() + ':' + Date.now()).slice(0, 16);
@@ -7380,7 +7392,7 @@ ACC.register = function (user, pass, name) {
   // quem jogou como convidado leva o progresso para a conta nova
   const guest = db.users.__guest;
   const profile = guest && guest.p.stats.matches > 0 ? Object.assign(guest.p, { name: nick }) : ACC.newProfile(nick);
-  db.users[user] = { salt: salt, hash: ACC.hashPass(salt, pass), p: profile, t: Date.now() };
+  db.users[user] = { salt: salt, hash: ACC.hashPass(salt, String(pass).trim()), p: profile, t: Date.now() };
   if (guest && profile === guest.p) delete db.users.__guest;
   if (!ACC.writeDb(db)) return 'Não deu para salvar neste navegador (modo anônimo?).';
   ACC.use(user, profile);
@@ -7389,10 +7401,38 @@ ACC.register = function (user, pass, name) {
 ACC.login = function (user, pass) {
   user = String(user || '').trim().toLowerCase();
   const db = ACC.db(), u = db.users[user];
-  if (!u || user === '__guest') return 'Usuário não encontrado neste aparelho. Crie a conta ou use o código de transferência.';
-  if (ACC.hashPass(u.salt, pass) !== u.hash) return 'Senha incorreta.';
+  if (!u || user === '__guest') {
+    const list = ACC.userList();
+    return 'Usuário "' + user + '" não encontrado neste aparelho.' + (list.length ? ' Contas salvas aqui: ' + list.join(', ') + '.' : ' Nenhuma conta salva aqui: crie a conta ou use o código de transferência.');
+  }
+  if (!ACC.passOk(u, pass)) return 'Senha incorreta. Toque no olho para ver o que está digitando, ou use ESQUECI A SENHA.';
   ACC.use(user, u.p);
   return null;
+};
+// teclado de celular: espaço sobrando no fim e primeira letra maiúscula automática não contam como senha errada
+ACC.passVariants = function (pass) {
+  const p = String(pass || ''), t = p.trim(), out = [p, t];
+  if (t) { out.push(t.charAt(0).toLowerCase() + t.slice(1)); out.push(t.charAt(0).toUpperCase() + t.slice(1)); }
+  return out.filter((x, i) => x && out.indexOf(x) === i);
+};
+ACC.passOk = (u, pass) => ACC.passVariants(pass).some(v => ACC.hashPass(u.salt, v) === u.hash);
+ACC.userList = () => Object.keys(ACC.db().users).filter(u => u !== '__guest').slice(0, 8);
+// esqueci a senha: a conta é deste aparelho, então basta confirmar o usuário e o apelido
+ACC.resetPass = function (user, nick, pass) {
+  user = String(user || '').trim().toLowerCase();
+  const db = ACC.db(), u = db.users[user];
+  if (!u || user === '__guest') return 'Usuário não encontrado neste aparelho.';
+  if (String(nick || '').trim().toLowerCase() !== String(u.p.name || '').trim().toLowerCase()) return 'O apelido não confere com o dessa conta.';
+  if (String(pass || '').trim().length < 4) return 'A nova senha precisa de pelo menos 4 caracteres.';
+  u.salt = SHA.hex(Math.random() + ':' + Date.now()).slice(0, 16);
+  u.hash = ACC.hashPass(u.salt, String(pass).trim());
+  if (!ACC.writeDb(db)) return 'Não deu para salvar neste navegador.';
+  ACC.use(user, u.p);
+  return null;
+};
+// o navegador está guardando dados? (modo anônimo, visualizador de arquivos e alguns apps não guardam)
+ACC.storageOk = function () {
+  try { localStorage.setItem('battleIsland.probe', '1'); return localStorage.getItem('battleIsland.probe') === '1'; } catch (e) { return false; }
 };
 ACC.guest = function () {
   const db = ACC.db();
@@ -7773,24 +7813,41 @@ LOB.showAuth = function (mode) {
 LOB.renderAuth = function () {
   const m = LOB.authMode;
   document.querySelectorAll('#authTabs button').forEach(b => b.classList.toggle('on', b.dataset.a === m));
-  $('fNick').classList.toggle('hidden', m !== 'new');
+  $('fNick').classList.toggle('hidden', m !== 'new' && m !== 'reset');
+  $('fNick').querySelector('span').textContent = m === 'reset' ? 'Apelido da conta (para confirmar)' : 'Apelido no jogo';
+  $('aPassL').textContent = m === 'reset' ? 'Nova senha' : 'Senha';
+  $('aForgot').classList.toggle('hidden', m !== 'login');
+  // contas guardadas neste aparelho: toque para preencher o usuário
+  const users = m === 'login' || m === 'reset' ? ACC.userList() : [];
+  $('authUsers').innerHTML = users.length ? '<small>Contas neste aparelho:</small>' + users.map(u => '<button type="button" class="chip" data-u="' + escapeHTML(u) + '">' + escapeHTML(u) + '</button>').join('') : '';
+  $('authUsers').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { $('aUser').value = b.dataset.u; $('aPass').focus(); }));
+  const ok = ACC.storageOk(), bad = !ok || /^(content|blob):/.test(location.protocol);
+  $('authWarn').classList.toggle('hidden', !bad);
+  $('authWarn').innerHTML = icon('warn') + (!ok ? 'Este navegador não está salvando dados (modo anônimo ou visualizador de arquivos). A conta vai sumir ao fechar. Abra o jogo no Chrome normal.' :
+    'O jogo foi aberto direto do arquivo baixado e o celular pode apagar a conta ao fechar. Para a conta ficar salva, jogue pelo link do jogo no Chrome.');
   $('fUser').classList.toggle('hidden', m === 'code');
   $('fPass').classList.toggle('hidden', m === 'code');
   $('fCode').classList.toggle('hidden', m !== 'code');
-  $('aGo').textContent = m === 'login' ? 'ENTRAR' : m === 'new' ? 'CRIAR CONTA' : 'IMPORTAR CONTA';
+  $('aGo').textContent = m === 'login' ? 'ENTRAR' : m === 'new' ? 'CRIAR CONTA' : m === 'reset' ? 'TROCAR SENHA E ENTRAR' : 'IMPORTAR CONTA';
   $('aPass').autocomplete = m === 'new' ? 'new-password' : 'current-password';
   $('authErr').textContent = '';
 };
 LOB.submitAuth = function () {
   const m = LOB.authMode;
   let err;
-  if (m === 'login') err = ACC.login($('aUser').value, $('aPass').value);
-  else if (m === 'new') err = ACC.register($('aUser').value, $('aPass').value, $('aNick').value);
+  const user = LOB.cleanUser($('aUser').value);
+  $('aUser').value = user;
+  if (m === 'login') err = ACC.login(user, $('aPass').value);
+  else if (m === 'new') err = ACC.register(user, $('aPass').value, $('aNick').value);
+  else if (m === 'reset') err = ACC.resetPass(user, $('aNick').value, $('aPass').value);
   else err = ACC.importCode($('aCode').value);
   if (err) { $('authErr').textContent = err; SND.play('ui'); return; }
   $('aPass').value = '';
-  LOB.enter(m === 'new' ? 'Conta criada! Bem-vindo, ' + ACC.p.name + '.' : 'Bem-vindo de volta, ' + ACC.p.name + '!');
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* opcional */ }
+  LOB.enter(m === 'reset' ? 'Senha trocada! Bem-vindo, ' + ACC.p.name + '.' : m === 'new' ? 'Conta criada! Bem-vindo, ' + ACC.p.name + '.' : 'Bem-vindo de volta, ' + ACC.p.name + '!');
 };
+// usuário sem acentos, espaços ou maiúsculas (feito ao enviar: mexer no campo enquanto o teclado do celular digita embaralha as letras)
+LOB.cleanUser = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9_.]/g, '');
 // entrou na conta: aplica nome/personagem, prêmio diário e vai para o lobby
 LOB.enter = function (msg) {
   LOB.applyProfile();
@@ -8243,7 +8300,10 @@ LOB.init = function () {
   document.querySelectorAll('#authTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.authMode = b.dataset.a; LOB.renderAuth(); }));
   $('authForm').addEventListener('submit', (e) => { e.preventDefault(); SND.init(); LOB.submitAuth(); });
   ['aNick', 'aUser', 'aPass', 'aCode'].forEach(id => $(id).addEventListener('keydown', e => e.stopPropagation()));
-  $('aUser').addEventListener('input', () => { $('aUser').value = $('aUser').value.toLowerCase().replace(/[^a-z0-9_.]/g, ''); });
+  $('aUser').addEventListener('blur', () => { $('aUser').value = LOB.cleanUser($('aUser').value); });
+  $('aEye').innerHTML = icon('eye');
+  $('aEye').addEventListener('click', () => { const show = $('aPass').type === 'password'; $('aPass').type = show ? 'text' : 'password'; $('aEye').classList.toggle('on', show); });
+  click('aForgot', () => { LOB.authMode = 'reset'; LOB.renderAuth(); });
   click('aGuest', () => { ACC.guest(); LOB.enter('Jogando como convidado. Crie uma conta no perfil para guardar o progresso.'); });
   click('lbProfile', () => LOB.openProfile());
   click('lbSet', () => openSettings('menu'));
@@ -8328,6 +8388,7 @@ const ICON = {
   gift: '<path d="M9 3c1.3 0 2.4.8 3 1.8C12.6 3.8 13.7 3 15 3a2.8 2.8 0 0 1 2.4 4.2H21v4h-1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9H3v-4h3.6A2.8 2.8 0 0 1 9 3zm-.2 2a.9.9 0 0 0 0 1.9H11C10.6 5.7 9.8 5 8.8 5zm6.4 0c-1 0-1.8.7-2.2 1.9h2.2a.9.9 0 0 0 0-1.9zM6 11.2V19h5v-7.8zm7 0V19h5v-7.8z"/>',
   trash: '<path d="M9 3h6l1 1h4v2H4V4h4zM6 8h12l-1 13H7zm3 2v9h2v-9zm4 0v9h2v-9z"/>',
   shield: '<path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5zm-1.2 13.6-3.3-3.3 1.4-1.4 1.9 1.9 4.9-4.9 1.4 1.4z"/>',
+  eye: '<path d="M12 5c5 0 9 4.3 10 7-1 2.7-5 7-10 7S3 14.7 2 12c1-2.7 5-7 10-7zm0 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm0 2.2a2.3 2.3 0 1 1 0 4.6 2.3 2.3 0 0 1 0-4.6z"/>',
   smile: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zM8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM12 17.5c2.3 0 4.2-1.5 5-3.5H7c.8 2 2.7 3.5 5 3.5z"/>',
 };
 // nomes dos personagens que dá para escolher

@@ -105,13 +105,16 @@
     <div id="authTabs" class="tabs"><button data-a="login">ENTRAR</button><button data-a="new">CRIAR CONTA</button><button data-a="code">CÓDIGO</button></div>
     <form id="authForm" autocomplete="on" novalidate>
       <label class="fld" id="fNick"><span>Apelido no jogo</span><input id="aNick" maxlength="14" autocomplete="nickname" placeholder="Como os outros vão te ver"></label>
-      <label class="fld" id="fUser"><span>Usuário</span><input id="aUser" maxlength="16" autocapitalize="none" autocomplete="username" spellcheck="false" placeholder="ex.: pablo_23"></label>
-      <label class="fld" id="fPass"><span>Senha</span><input id="aPass" type="password" maxlength="40" autocomplete="current-password" placeholder="mínimo 4 caracteres"></label>
+      <label class="fld" id="fUser"><span>Usuário</span><input id="aUser" maxlength="16" autocapitalize="none" autocorrect="off" autocomplete="username" spellcheck="false" placeholder="ex.: pablo_23"></label>
+      <label class="fld" id="fPass"><span id="aPassL">Senha</span><span class="passRow"><input id="aPass" type="password" maxlength="40" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="current-password" placeholder="mínimo 4 caracteres"><button type="button" id="aEye" class="eyeBtn" aria-label="Mostrar senha"></button></span></label>
       <label class="fld hidden" id="fCode"><span>Código de transferência</span><textarea id="aCode" rows="3" spellcheck="false" placeholder="Cole aqui o código BI1-… gerado no outro aparelho"></textarea></label>
       <p id="authErr" class="authErr" role="alert"></p>
+      <div id="authUsers" class="authUsers"></div>
       <button id="aGo" class="mBtn primary" type="submit">ENTRAR</button>
     </form>
+    <button id="aForgot" type="button" class="linkBtn">ESQUECI A SENHA</button>
     <button id="aGuest" class="mBtn ghost">JOGAR COMO CONVIDADO</button>
+    <p id="authWarn" class="authWarn hidden"></p>
     <p class="authNote">Sua conta fica salva neste aparelho. Para jogar em outro celular, gere o código de transferência no perfil.</p>
   </div>
 </div>

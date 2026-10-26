@@ -141,24 +141,41 @@ LOB.showAuth = function (mode) {
 LOB.renderAuth = function () {
   const m = LOB.authMode;
   document.querySelectorAll('#authTabs button').forEach(b => b.classList.toggle('on', b.dataset.a === m));
-  $('fNick').classList.toggle('hidden', m !== 'new');
+  $('fNick').classList.toggle('hidden', m !== 'new' && m !== 'reset');
+  $('fNick').querySelector('span').textContent = m === 'reset' ? 'Apelido da conta (para confirmar)' : 'Apelido no jogo';
+  $('aPassL').textContent = m === 'reset' ? 'Nova senha' : 'Senha';
+  $('aForgot').classList.toggle('hidden', m !== 'login');
+  // contas guardadas neste aparelho: toque para preencher o usuário
+  const users = m === 'login' || m === 'reset' ? ACC.userList() : [];
+  $('authUsers').innerHTML = users.length ? '<small>Contas neste aparelho:</small>' + users.map(u => '<button type="button" class="chip" data-u="' + escapeHTML(u) + '">' + escapeHTML(u) + '</button>').join('') : '';
+  $('authUsers').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { $('aUser').value = b.dataset.u; $('aPass').focus(); }));
+  const ok = ACC.storageOk(), bad = !ok || /^(content|blob):/.test(location.protocol);
+  $('authWarn').classList.toggle('hidden', !bad);
+  $('authWarn').innerHTML = icon('warn') + (!ok ? 'Este navegador não está salvando dados (modo anônimo ou visualizador de arquivos). A conta vai sumir ao fechar. Abra o jogo no Chrome normal.' :
+    'O jogo foi aberto direto do arquivo baixado e o celular pode apagar a conta ao fechar. Para a conta ficar salva, jogue pelo link do jogo no Chrome.');
   $('fUser').classList.toggle('hidden', m === 'code');
   $('fPass').classList.toggle('hidden', m === 'code');
   $('fCode').classList.toggle('hidden', m !== 'code');
-  $('aGo').textContent = m === 'login' ? 'ENTRAR' : m === 'new' ? 'CRIAR CONTA' : 'IMPORTAR CONTA';
+  $('aGo').textContent = m === 'login' ? 'ENTRAR' : m === 'new' ? 'CRIAR CONTA' : m === 'reset' ? 'TROCAR SENHA E ENTRAR' : 'IMPORTAR CONTA';
   $('aPass').autocomplete = m === 'new' ? 'new-password' : 'current-password';
   $('authErr').textContent = '';
 };
 LOB.submitAuth = function () {
   const m = LOB.authMode;
   let err;
-  if (m === 'login') err = ACC.login($('aUser').value, $('aPass').value);
-  else if (m === 'new') err = ACC.register($('aUser').value, $('aPass').value, $('aNick').value);
+  const user = LOB.cleanUser($('aUser').value);
+  $('aUser').value = user;
+  if (m === 'login') err = ACC.login(user, $('aPass').value);
+  else if (m === 'new') err = ACC.register(user, $('aPass').value, $('aNick').value);
+  else if (m === 'reset') err = ACC.resetPass(user, $('aNick').value, $('aPass').value);
   else err = ACC.importCode($('aCode').value);
   if (err) { $('authErr').textContent = err; SND.play('ui'); return; }
   $('aPass').value = '';
-  LOB.enter(m === 'new' ? 'Conta criada! Bem-vindo, ' + ACC.p.name + '.' : 'Bem-vindo de volta, ' + ACC.p.name + '!');
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* opcional */ }
+  LOB.enter(m === 'reset' ? 'Senha trocada! Bem-vindo, ' + ACC.p.name + '.' : m === 'new' ? 'Conta criada! Bem-vindo, ' + ACC.p.name + '.' : 'Bem-vindo de volta, ' + ACC.p.name + '!');
 };
+// usuário sem acentos, espaços ou maiúsculas (feito ao enviar: mexer no campo enquanto o teclado do celular digita embaralha as letras)
+LOB.cleanUser = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9_.]/g, '');
 // entrou na conta: aplica nome/personagem, prêmio diário e vai para o lobby
 LOB.enter = function (msg) {
   LOB.applyProfile();
@@ -611,7 +628,10 @@ LOB.init = function () {
   document.querySelectorAll('#authTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.authMode = b.dataset.a; LOB.renderAuth(); }));
   $('authForm').addEventListener('submit', (e) => { e.preventDefault(); SND.init(); LOB.submitAuth(); });
   ['aNick', 'aUser', 'aPass', 'aCode'].forEach(id => $(id).addEventListener('keydown', e => e.stopPropagation()));
-  $('aUser').addEventListener('input', () => { $('aUser').value = $('aUser').value.toLowerCase().replace(/[^a-z0-9_.]/g, ''); });
+  $('aUser').addEventListener('blur', () => { $('aUser').value = LOB.cleanUser($('aUser').value); });
+  $('aEye').innerHTML = icon('eye');
+  $('aEye').addEventListener('click', () => { const show = $('aPass').type === 'password'; $('aPass').type = show ? 'text' : 'password'; $('aEye').classList.toggle('on', show); });
+  click('aForgot', () => { LOB.authMode = 'reset'; LOB.renderAuth(); });
   click('aGuest', () => { ACC.guest(); LOB.enter('Jogando como convidado. Crie uma conta no perfil para guardar o progresso.'); });
   click('lbProfile', () => LOB.openProfile());
   click('lbSet', () => openSettings('menu'));

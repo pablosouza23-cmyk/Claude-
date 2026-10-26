@@ -5215,6 +5215,7 @@ function makeActor(name, pal, isPlayer) {
     reloadT: 0, fireCd: 0, lastFire: -9,
     gel: isPlayer ? 2 : 1, wallCd: 0, kits: 0, nades: 0, healT: 0, crouch: false,
     kills: 0, dmgDealt: 0, aim: 0, speed: 0, lastHurt: -9, lastAttacker: null, landT: 0,
+    revives: isPlayer ? 1 : 0, respawnT: 0, rsWait: 0,
   };
 }
 
@@ -5403,7 +5404,11 @@ function killActor(a, killer, weapon) {
   else killFeed(a.name, null, 'Zona');
   // mochila caída com o que a pessoa carregava (como no vídeo)
   if (a.phase === 'ground') dropBag(a);
+  // renascimento: jogadores (não os bots) voltam uma vez por partida no Battle Royale
+  const revive = G.mode !== 'cs' && a.revives > 0 && (a.isPlayer || a.human);
+  if (revive) { a.revives--; a.respawnT = RESPAWN_T; a.rsWait = RESPAWN_T + 12; }
   NET.onKill(a, killer, weapon);
+  if (revive) { if (a.isPlayer) bigText('VOCÊ CAIU! VAI RENASCER'); return; }
   if (a.isPlayer) {
     G.endT = 2.5;
     G.place = aliveCount() + 1;
@@ -5448,7 +5453,42 @@ function bagMesh() {
   return g;
 }
 
-function aliveCount() { let n = 0; for (const a of G.actors) if (a.alive) n++; return n; }
+// quem está esperando o renascimento ainda conta como vivo
+function aliveCount() { let n = 0; for (const a of G.actors) if (a.alive || a.rsWait > 0) n++; return n; }
+
+const RESPAWN_T = 6;
+// contagem do renascimento do jogador deste aparelho
+// (rsWait: quanto tempo os outros esperam alguém renascer; se a pessoa sair do jogo, para de contar como viva)
+function updateRespawn(dt) {
+  for (const a of G.actors) if (!a.alive && a.rsWait > 0) a.rsWait -= dt;
+  const p = G.player;
+  if (!p || p.alive || !(p.respawnT > 0)) return;
+  const before = Math.ceil(p.respawnT);
+  p.respawnT -= dt;
+  const n = Math.ceil(p.respawnT);
+  if (n !== before && n > 0 && n <= 5) bigText('RENASCENDO EM ' + n);
+  if (p.respawnT <= 0) respawnActor(p);
+}
+// volta caindo de paraquedas num ponto seguro dentro da zona, só com uma pistola
+function respawnActor(a) {
+  const z = G.zone;
+  const cx = z.waiting ? z.toX : z.cx, cz = z.waiting ? z.toZ : z.cz, r = Math.max(4, (z.waiting ? z.toR : z.r) * 0.6);
+  let x = cx, zz = cz;
+  for (let i = 0; i < 30; i++) {
+    const an = Math.random() * 6.28, d = Math.sqrt(Math.random()) * r;
+    const tx = cx + Math.cos(an) * d, tz = cz + Math.sin(an) * d;
+    if (W.height(tx, tz) > 0.4 && W.coastK(tx, tz) < W.LAND_R - 12) { x = tx; zz = tz; break; }
+  }
+  a.alive = true; a.respawnT = 0; a.rsWait = 0; a.hp = a.maxHp; a.armor = 0; a.helmet = 0;
+  a.slots = [null, null, null]; a.cur = 3; a.nadeHand = false; a.reloadT = 0; a.healT = 0;
+  a.kits = 1; a.gel = 2; a.nades = 0; a.emote = null; a.aimOn = false; a.crouch = false;
+  giveWeapon(a, 'PISTOLA', 12, 36);
+  a.pos.set(x, W.height(x, zz) + 70, zz); a.vel.set(0, 0, 0); a.vy = 0;
+  a.phase = 'fall'; a.board = false; a.hs = 10; a.vdown = 14; a.onGround = false;
+  a.ch.root.visible = true;
+  if (a.isPlayer) { G.yaw = a.face + Math.PI; G.pitch = -0.6; G.vignette = 0; bigText('SEGUNDA CHANCE!'); notify('ok', 'Você renasceu. Abra o paraquedas e pegue armas!'); }
+  NET.onRespawn(a);
+}
 
 // ------------------------------------------------------------------ gel (parede de gelo)
 const WALL_R = 3.6, WALL_ARC = 1.3, WALL_H = 2.5, WALL_T = 0.36, WALL_HP = 450, WALL_LIFE = 28, WALL_SEGS = 8;
@@ -6869,7 +6909,7 @@ NET.buildActors = function (msg) {
   const rnd = U.rng(msg.seed);
   for (const [pid, name, av] of msg.ps) {
     const a = makeActor(name, av, pid === NET.pid);
-    a.pid = pid; a.human = true;
+    a.pid = pid; a.human = true; a.revives = 1;
     a.ch.root.visible = false;
     if (pid === NET.pid) G.player = a; else a.remote = true;
     G.actors.push(a);
@@ -7001,6 +7041,9 @@ NET.hostRecv = function (c, d) {
     case 'wall': NET.remoteWall(a, d); NET.bcast({ t: 'wall', i: idx, x: d.x, y: d.y, z: d.z, yaw: d.yaw }, c); break;
     case 'nade': NET.remoteNade(a, d); NET.bcast({ t: 'nade', i: idx, p: d.p, v: d.v }, c); break;
     case 'heal': if (a.alive) a.hp = Math.min(a.maxHp, a.hp + 75); break;
+    case 'rsp':
+      if (!a.alive && a.rsWait > 0) { a.alive = true; a.respawnT = 0; a.rsWait = 0; a.hp = a.maxHp; a.armor = 0; a.helmet = 0; NET.bcast({ t: 'rsp', i: idx }, c); }
+      break;
     case 'arm': a.armor = Math.max(a.armor, d.ar | 0); a.helmet = Math.max(a.helmet, d.he | 0); break;
     case 'open':
       if (canOpenAirdropBy(a)) { openAirdrop(a); NET.toPid(pl.pid, { t: 'opened' }); }
@@ -7025,8 +7068,14 @@ NET.onDamage = function (t, real, attacker) {
 };
 NET.onKill = function (a, killer, weapon) {
   if (!NET.isHost()) return;
-  NET.bcast({ t: 'kill', i: G.actors.indexOf(a), k: killer ? G.actors.indexOf(killer) : -1, w: weapon, pl: aliveCount() + 1 });
+  NET.bcast({ t: 'kill', i: G.actors.indexOf(a), k: killer ? G.actors.indexOf(killer) : -1, w: weapon, pl: aliveCount() + 1, rs: a.respawnT > 0 ? 1 : 0 });
   NET.checkWin();
+};
+// renasceu: o cliente avisa o anfitrião; o anfitrião avisa todos
+NET.onRespawn = function (a) {
+  if (!NET.live) return;
+  if (NET.isClient()) NET.send({ t: 'rsp' });
+  else if (NET.isHost()) NET.bcast({ t: 'rsp', i: G.actors.indexOf(a) });
 };
 NET.checkWin = function () {
   if (!NET.isHost() || !NET.live) return;
@@ -7103,9 +7152,12 @@ NET.clientRecv = function (d) {
       if (k && k !== a) { k.kills++; killFeed(k.name, a.name, d.w); if (k === G.player) killBanner(k.kills, a.name); }
       else killFeed(a.name, null, d.w || 'Zona');
       if (a.phase === 'ground') { const bag = bagMesh(); bag.position.set(a.pos.x + 0.4, W.groundAt(a.pos.x, a.pos.z, a.pos.y + 0.5), a.pos.z - 0.3); scene.add(bag); G.props.push(bag); }
-      if (a === G.player) { G.endT = 2.5; G.place = d.pl || aliveCount() + 1; }
+      if (a === G.player) {
+        if (d.rs) { a.respawnT = RESPAWN_T; a.rsWait = RESPAWN_T + 12; a.revives = 0; bigText('VOCÊ CAIU! VAI RENASCER'); } else { G.endT = 2.5; G.place = d.pl || aliveCount() + 1; }
+      } else if (d.rs) a.rsWait = RESPAWN_T + 12;
       break;
     }
+    case 'rsp': { const a = G.actors[d.i]; if (a && a !== G.player) { a.alive = true; a.respawnT = 0; a.rsWait = 0; a.hp = a.maxHp; a.armor = 0; a.helmet = 0; } break; }
     case 'win': { const w = G.actors[d.i]; if (w === G.player && G.player.alive) { G.endT = 2.0; G.place = 1; } break; }
     case 'la': if (!G.loot.find(x => x.id === d.id)) spawnLoot(d.ty, d.x, d.z, d.ex, d.id); break;
     case 'lr': { const it = G.loot.find(x => x.id === d.id); if (it) removeLoot(it); break; }
@@ -9530,6 +9582,7 @@ function tick(dt) {
   updateFrustum();
   updateDrop(dt);
   updatePlayer(dt);
+  updateRespawn(dt);
   for (const a of G.actors) if (a.human && a.remote) updatePuppet(a, dt);
   for (const b of G.bots) updateBot(b, dt);
   updateWalls(dt);

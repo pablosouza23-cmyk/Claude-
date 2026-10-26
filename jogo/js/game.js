@@ -131,6 +131,7 @@ function makeActor(name, pal, isPlayer) {
     reloadT: 0, fireCd: 0, lastFire: -9,
     gel: isPlayer ? 2 : 1, wallCd: 0, kits: 0, nades: 0, healT: 0, crouch: false,
     kills: 0, dmgDealt: 0, aim: 0, speed: 0, lastHurt: -9, lastAttacker: null, landT: 0,
+    revives: isPlayer ? 1 : 0, respawnT: 0, rsWait: 0,
   };
 }
 
@@ -319,7 +320,11 @@ function killActor(a, killer, weapon) {
   else killFeed(a.name, null, 'Zona');
   // mochila caída com o que a pessoa carregava (como no vídeo)
   if (a.phase === 'ground') dropBag(a);
+  // renascimento: jogadores (não os bots) voltam uma vez por partida no Battle Royale
+  const revive = G.mode !== 'cs' && a.revives > 0 && (a.isPlayer || a.human);
+  if (revive) { a.revives--; a.respawnT = RESPAWN_T; a.rsWait = RESPAWN_T + 12; }
   NET.onKill(a, killer, weapon);
+  if (revive) { if (a.isPlayer) bigText('VOCÊ CAIU! VAI RENASCER'); return; }
   if (a.isPlayer) {
     G.endT = 2.5;
     G.place = aliveCount() + 1;
@@ -364,7 +369,42 @@ function bagMesh() {
   return g;
 }
 
-function aliveCount() { let n = 0; for (const a of G.actors) if (a.alive) n++; return n; }
+// quem está esperando o renascimento ainda conta como vivo
+function aliveCount() { let n = 0; for (const a of G.actors) if (a.alive || a.rsWait > 0) n++; return n; }
+
+const RESPAWN_T = 6;
+// contagem do renascimento do jogador deste aparelho
+// (rsWait: quanto tempo os outros esperam alguém renascer; se a pessoa sair do jogo, para de contar como viva)
+function updateRespawn(dt) {
+  for (const a of G.actors) if (!a.alive && a.rsWait > 0) a.rsWait -= dt;
+  const p = G.player;
+  if (!p || p.alive || !(p.respawnT > 0)) return;
+  const before = Math.ceil(p.respawnT);
+  p.respawnT -= dt;
+  const n = Math.ceil(p.respawnT);
+  if (n !== before && n > 0 && n <= 5) bigText('RENASCENDO EM ' + n);
+  if (p.respawnT <= 0) respawnActor(p);
+}
+// volta caindo de paraquedas num ponto seguro dentro da zona, só com uma pistola
+function respawnActor(a) {
+  const z = G.zone;
+  const cx = z.waiting ? z.toX : z.cx, cz = z.waiting ? z.toZ : z.cz, r = Math.max(4, (z.waiting ? z.toR : z.r) * 0.6);
+  let x = cx, zz = cz;
+  for (let i = 0; i < 30; i++) {
+    const an = Math.random() * 6.28, d = Math.sqrt(Math.random()) * r;
+    const tx = cx + Math.cos(an) * d, tz = cz + Math.sin(an) * d;
+    if (W.height(tx, tz) > 0.4 && W.coastK(tx, tz) < W.LAND_R - 12) { x = tx; zz = tz; break; }
+  }
+  a.alive = true; a.respawnT = 0; a.rsWait = 0; a.hp = a.maxHp; a.armor = 0; a.helmet = 0;
+  a.slots = [null, null, null]; a.cur = 3; a.nadeHand = false; a.reloadT = 0; a.healT = 0;
+  a.kits = 1; a.gel = 2; a.nades = 0; a.emote = null; a.aimOn = false; a.crouch = false;
+  giveWeapon(a, 'PISTOLA', 12, 36);
+  a.pos.set(x, W.height(x, zz) + 70, zz); a.vel.set(0, 0, 0); a.vy = 0;
+  a.phase = 'fall'; a.board = false; a.hs = 10; a.vdown = 14; a.onGround = false;
+  a.ch.root.visible = true;
+  if (a.isPlayer) { G.yaw = a.face + Math.PI; G.pitch = -0.6; G.vignette = 0; bigText('SEGUNDA CHANCE!'); notify('ok', 'Você renasceu. Abra o paraquedas e pegue armas!'); }
+  NET.onRespawn(a);
+}
 
 // ------------------------------------------------------------------ gel (parede de gelo)
 const WALL_R = 3.6, WALL_ARC = 1.3, WALL_H = 2.5, WALL_T = 0.36, WALL_HP = 450, WALL_LIFE = 28, WALL_SEGS = 8;

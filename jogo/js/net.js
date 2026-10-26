@@ -168,7 +168,7 @@ NET.buildActors = function (msg) {
   const rnd = U.rng(msg.seed);
   for (const [pid, name, av] of msg.ps) {
     const a = makeActor(name, av, pid === NET.pid);
-    a.pid = pid; a.human = true;
+    a.pid = pid; a.human = true; a.revives = 1;
     a.ch.root.visible = false;
     if (pid === NET.pid) G.player = a; else a.remote = true;
     G.actors.push(a);
@@ -300,6 +300,9 @@ NET.hostRecv = function (c, d) {
     case 'wall': NET.remoteWall(a, d); NET.bcast({ t: 'wall', i: idx, x: d.x, y: d.y, z: d.z, yaw: d.yaw }, c); break;
     case 'nade': NET.remoteNade(a, d); NET.bcast({ t: 'nade', i: idx, p: d.p, v: d.v }, c); break;
     case 'heal': if (a.alive) a.hp = Math.min(a.maxHp, a.hp + 75); break;
+    case 'rsp':
+      if (!a.alive && a.rsWait > 0) { a.alive = true; a.respawnT = 0; a.rsWait = 0; a.hp = a.maxHp; a.armor = 0; a.helmet = 0; NET.bcast({ t: 'rsp', i: idx }, c); }
+      break;
     case 'arm': a.armor = Math.max(a.armor, d.ar | 0); a.helmet = Math.max(a.helmet, d.he | 0); break;
     case 'open':
       if (canOpenAirdropBy(a)) { openAirdrop(a); NET.toPid(pl.pid, { t: 'opened' }); }
@@ -324,8 +327,14 @@ NET.onDamage = function (t, real, attacker) {
 };
 NET.onKill = function (a, killer, weapon) {
   if (!NET.isHost()) return;
-  NET.bcast({ t: 'kill', i: G.actors.indexOf(a), k: killer ? G.actors.indexOf(killer) : -1, w: weapon, pl: aliveCount() + 1 });
+  NET.bcast({ t: 'kill', i: G.actors.indexOf(a), k: killer ? G.actors.indexOf(killer) : -1, w: weapon, pl: aliveCount() + 1, rs: a.respawnT > 0 ? 1 : 0 });
   NET.checkWin();
+};
+// renasceu: o cliente avisa o anfitrião; o anfitrião avisa todos
+NET.onRespawn = function (a) {
+  if (!NET.live) return;
+  if (NET.isClient()) NET.send({ t: 'rsp' });
+  else if (NET.isHost()) NET.bcast({ t: 'rsp', i: G.actors.indexOf(a) });
 };
 NET.checkWin = function () {
   if (!NET.isHost() || !NET.live) return;
@@ -402,9 +411,12 @@ NET.clientRecv = function (d) {
       if (k && k !== a) { k.kills++; killFeed(k.name, a.name, d.w); if (k === G.player) killBanner(k.kills, a.name); }
       else killFeed(a.name, null, d.w || 'Zona');
       if (a.phase === 'ground') { const bag = bagMesh(); bag.position.set(a.pos.x + 0.4, W.groundAt(a.pos.x, a.pos.z, a.pos.y + 0.5), a.pos.z - 0.3); scene.add(bag); G.props.push(bag); }
-      if (a === G.player) { G.endT = 2.5; G.place = d.pl || aliveCount() + 1; }
+      if (a === G.player) {
+        if (d.rs) { a.respawnT = RESPAWN_T; a.rsWait = RESPAWN_T + 12; a.revives = 0; bigText('VOCÊ CAIU! VAI RENASCER'); } else { G.endT = 2.5; G.place = d.pl || aliveCount() + 1; }
+      } else if (d.rs) a.rsWait = RESPAWN_T + 12;
       break;
     }
+    case 'rsp': { const a = G.actors[d.i]; if (a && a !== G.player) { a.alive = true; a.respawnT = 0; a.rsWait = 0; a.hp = a.maxHp; a.armor = 0; a.helmet = 0; } break; }
     case 'win': { const w = G.actors[d.i]; if (w === G.player && G.player.alive) { G.endT = 2.0; G.place = 1; } break; }
     case 'la': if (!G.loot.find(x => x.id === d.id)) spawnLoot(d.ty, d.x, d.z, d.ex, d.id); break;
     case 'lr': { const it = G.loot.find(x => x.id === d.id); if (it) removeLoot(it); break; }

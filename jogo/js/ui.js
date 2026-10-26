@@ -1187,6 +1187,7 @@ function tick(dt) {
   updateFrustum();
   updateDrop(dt);
   updatePlayer(dt);
+  updateRespawn(dt);
   for (const a of G.actors) if (a.human && a.remote) updatePuppet(a, dt);
   for (const b of G.bots) updateBot(b, dt);
   updateWalls(dt);

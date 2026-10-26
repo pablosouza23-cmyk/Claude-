@@ -83,6 +83,13 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
 ## Novidades da v2.4
+- **Renascimento:** no Battle Royale, a primeira vez que você morre não acaba a partida. Aparece "RENASCENDO EM 5…" e você volta caindo de paraquedas num ponto dentro da zona, com 200 de vida e uma pistola. A segunda morte é eliminação. Os bots não renascem. No multiplayer cada amigo também tem um renascimento.
+- **Login corrigido:**
+  - a senha aceita espaço sobrando e a primeira letra maiúscula que o teclado do celular coloca sozinho;
+  - o botão de olho mostra a senha;
+  - **ESQUECI A SENHA** pede usuário e apelido;
+  - quando o usuário não existe, o erro mostra as contas salvas no aparelho;
+  - aparece um aviso quando o navegador não está salvando dados.
 - **ID do jogador:** cada conta ganha um ID de 10 números, que aparece no lobby, embaixo do nome, e no Perfil. Tocar no ID copia.
 - **Selo de verificado** (o ✔ azul) ao lado do nome no lobby, no perfil e na lista da sala multiplayer. Quem dá o selo é o dono, pelo painel ou mandando pelo correio.
 - **Correio** (o envelope no topo do lobby):

@@ -309,7 +309,7 @@ ACC.mergeProfiles = function (a, b) {
 // Aberto pelo link do claude.ai, o jogo tem um banco de dados próprio: cada conta vira o documento
 // accounts/<usuário> (com a senha só como hash), e cada pessoa do claude.ai guarda qual conta usou por último.
 // Fora do claude.ai (arquivo, GitHub Pages, app) isto fica desligado e vale só o aparelho.
-const CLOUD = { db: null, uid: null, session: null, last: {}, dirty: false, busy: false, unsub: null, status: 'off' };
+const CLOUD = { bans: {}, db: null, uid: null, session: null, last: {}, dirty: false, busy: false, unsub: null, status: 'off' };
 CLOUD.on = () => !!CLOUD.db;
 const _cloudRec = (r) => ({ salt: r.salt || '', hash: r.hash || '', p: r.p, t: r.t || (r.p && r.p.created) || Date.now(), upd: r.upd || 0 });
 CLOUD.init = async function () {
@@ -340,8 +340,10 @@ CLOUD.init = async function () {
       const s = await wait(db.doc('data/users/' + CLOUD.uid + '/state').get(), 5000);
       if (s && s.exists) CLOUD.session = s.data().user || null;
     }
+    try { const bs = await wait(db.collection('bans').get(), 5000); if (bs) for (const d of bs.docs) CLOUD.bans[d.id] = d.data(); } catch (e) { /* sem lista */ }
     CLOUD.db = db;
     CLOUD.status = 'on';
+    if (typeof LOB !== 'undefined' && LOB.banGate) LOB.banGate();
     // contas criadas só neste aparelho sobem agora
     for (const u in mem.users) if (!remote[u] && u !== '__guest') CLOUD.dirty = true;
     CLOUD.push();
@@ -891,4 +893,48 @@ ACC.setVerified = function (id, on) {
   for (const u in db.users) { const p = u === ACC.user ? ACC.p : db.users[u].p; if (p.id === id) { p.verified = on; db.users[u].p = p; } }
   ACC.writeDb(db);
   ACC.emit();
+};
+
+// ---------- banimentos (painel do dono) ----------
+// vale por ID do jogador ou usuário da conta; o tempo pode ser de 1 minuto até para sempre.
+// O ban vai junto com a conta (sincroniza pelo banco on-line do link) e o dono também barra o jogador nas salas que cria.
+ACC.BANS_KEY = 'battleIsland.bans';
+ACC.FOREVER = 9e15;
+ACC.bans = function () { try { return JSON.parse(localStorage.getItem(ACC.BANS_KEY) || '{}'); } catch (e) { return {}; } };
+ACC.saveBans = function (b) { try { localStorage.setItem(ACC.BANS_KEY, JSON.stringify(b)); } catch (e) { /* ignora */ } };
+ACC.findPlayer = function (t) {
+  t = String(t || '').trim(); const db = ACC.load();
+  for (const u in db.users) { const p = db.users[u].p; if (p && (u.toLowerCase() === t.toLowerCase() || String(p.id) === t)) return { user: u, id: String(p.id), name: p.name }; }
+  return /^\d{5,}$/.test(t) ? { user: null, id: t, name: '' } : null;
+};
+ACC.setAccountBan = function (user, ban) {
+  const db = ACC.db(); const r = user && db.users[user]; if (!r || !r.p) return;
+  if (ban) r.p.ban = ban; else delete r.p.ban;
+  r.upd = Date.now(); ACC.writeDb(db);
+  if (CLOUD.db) CLOUD.push();
+};
+ACC.ban = function (target, ms, why) {
+  const f = ACC.findPlayer(target);
+  if (!f) return 'Não achei esse jogador. Use o ID (só números) ou o usuário da conta.';
+  if (ACC.p && String(ACC.p.id) === f.id) return 'Você não pode banir a sua própria conta.';
+  const ban = { until: ms > 0 ? Date.now() + ms : ACC.FOREVER, why: String(why || '').slice(0, 80), name: f.name || f.user || '', t: Date.now() };
+  const b = ACC.bans(); b[f.id] = ban; ACC.saveBans(b);
+  ACC.setAccountBan(f.user, ban);
+  if (CLOUD.db) { CLOUD.bans[f.id] = ban; CLOUD.db.doc('bans/' + f.id).set(Object.assign({ id: f.id }, ban)).catch(() => {}); }
+  return null;
+};
+ACC.unban = function (id) {
+  id = String(id); const b = ACC.bans(); delete b[id]; ACC.saveBans(b);
+  const f = ACC.findPlayer(id); if (f && f.user) ACC.setAccountBan(f.user, null);
+  if (CLOUD.db) { delete CLOUD.bans[id]; CLOUD.db.doc('bans/' + id).delete().catch(() => {}); }
+};
+// ban em vigor para um jogador (perfil ou só o ID)
+ACC.banOf = function (pOrId) {
+  const id = String(pOrId && pOrId.id !== undefined ? pOrId.id : pOrId), now = Date.now();
+  const list = [pOrId && pOrId.ban, ACC.bans()[id], CLOUD.bans[id]];
+  for (const b of list) if (b && b.until > now) return b;
+  return null;
+};
+ACC.banText = function (b) {
+  return (b.until >= ACC.FOREVER ? 'para sempre' : 'até ' + new Date(b.until).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })) + (b.why ? ' · motivo: ' + b.why : '');
 };

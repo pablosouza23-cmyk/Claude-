@@ -117,16 +117,17 @@ LOB.syncParty = function () {
     a.ch.skins = (p.lk && p.lk.g) || {};
     a.phase = 'ground'; a.ch.root.visible = true;
     giveWeapon(a, 'FUZIL');
-    LOB.party.push({ key: key(p), pid: p.pid, a: a, name: p.name, vf: tierKey(p.vf), host: p.pid === 0, t0: Math.random() * 6 });
+    LOB.party.push({ key: key(p), pid: p.pid, av: p.av, a: a, name: p.name, vf: tierKey(p.vf), host: p.pid === 0, t0: Math.random() * 6 });
   }
   LOB.party.sort((x, y) => x.pid - y.pid);
   const tags = $('partyTags');
   tags.innerHTML = LOB.party.map(m => '<div class="pTag">' + (m.host ? icon('crown') : '') + escapeHTML(m.name) + LOB.vf(m.vf) + '</div>').join('');
   LOB.party.forEach((m, i) => { m.el = tags.children[i]; });
+  LOB.renderSquad();
 };
 const _pv = new THREE.Vector3();
 LOB.updateParty = function (dt, t) {
-  const show = UI.screen === 'roomScr';
+  const show = UI.screen === 'roomScr' || UI.screen === 'menuScr';
   const tags = $('partyTags'); if (tags) tags.classList.toggle('on', show && LOB.party.length > 0);
   if (!LOB.party.length) return;
   const out = LOB.outYaw, fx = Math.sin(out), fz = Math.cos(out), rx = Math.cos(out), rz = -Math.sin(out);
@@ -289,6 +290,7 @@ LOB.enter = function (msg) {
   LOB.applyProfile();
   goMenu();
   if (msg) notify('ok', msg);
+  setTimeout(() => LOB.banGate(), 2600);
   if (!PAY.ready && !PAY.busy) { PAY.busy = true; PAY.init().then(() => { if (UI.screen === 'rechargeScr') LOB.renderRecharge(); }); }
   setTimeout(() => { LOB.makeThumbs(); if (UI.screen === 'menuScr') LOB.renderTop(); }, 400);
   FR.start();
@@ -693,6 +695,12 @@ LOB.redeem = function () {
 
 // ---------- resgatar verificado ----------
 // Passe Battle (estilo passe de temporada): por enquanto só a prévia das recompensas, com EM BREVE
+LOB.banGate = function () {
+  const b = ACC.p && ACC.banOf(ACC.p);
+  if (!b) return false;
+  LOB.dialog('CONTA BANIDA', 'Esta conta está banida <b>' + escapeHTML(ACC.banText(b)) + '</b>.<br>Enquanto isso, não dá para entrar em partidas nem em salas.', [['OK']]);
+  return true;
+};
 LOB.openPass = function () {
   showScreen('passScr');
   const R = [['🪙', '500 ouro'], ['😎', 'Emote'], ['🧊', 'Gel Gelo'], ['💎', '20 diamantes'], ['🔫', 'Skin de arma'], ['🪙', '1.000 ouro'], ['👕', 'Roupa'], ['💎', '40 diamantes'], ['🎒', 'Mochila'], ['👑', 'Personagem lendário']];
@@ -799,6 +807,22 @@ LOB.renderAdmin = function () {
   const tab = LOB.adTab;
   document.querySelectorAll('#adTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
   const body = $('adBody');
+  if (tab === 'banir') {
+    const T = [['1 minuto', 6e4], ['10 minutos', 6e5], ['1 hora', 36e5], ['2 horas', 72e5], ['1 dia', 864e5], ['2 dias', 1728e5], ['7 dias', 6048e5], ['30 dias', 2592e6], ['Para sempre (banir)', 0]];
+    const bans = ACC.bans(), now = Date.now();
+    const rows = Object.keys(bans).filter(id => bans[id].until > now).map(id => { const b = bans[id];
+      return '<tr><td class="mono">' + escapeHTML(id) + (b.name ? '<small>' + escapeHTML(b.name) + '</small>' : '') + '</td><td>' + escapeHTML(ACC.banText(b)) + '</td><td><button class="chip unban" data-id="' + escapeHTML(id) + '">DESBANIR</button></td></tr>'; });
+    body.innerHTML = '<div class="adForm"><label class="fld"><span>ID do jogador (números) ou usuário da conta</span><input id="bnWho" spellcheck="false" placeholder="ex.: 4072140438"></label>' +
+      '<label class="fld"><span>Tempo</span><select id="bnTime">' + T.map(t => '<option value="' + t[1] + '">' + t[0] + '</option>').join('') + '</select></label>' +
+      '<label class="fld"><span>Motivo (opcional)</span><input id="bnWhy" maxlength="80" placeholder="ex.: hack, ofensa no chat"></label>' +
+      '<button class="mBtn primary" id="bnGo">BANIR</button></div>' +
+      '<p class="hint">Blacklist com tempo: depois do prazo a pessoa volta a jogar sozinha. O jogador banido não entra nas suas salas nem em partidas pela conta que está no banco do jogo.</p>' +
+      '<h4 class="adH">BANIDOS AGORA</h4>' + (rows.length ? '<table class="adTable"><thead><tr><th>JOGADOR</th><th>ATÉ</th><th></th></tr></thead><tbody>' + rows.join('') + '</tbody></table>' : '<p class="hint">Ninguém banido.</p>');
+    body.querySelectorAll('input, select').forEach(el => el.addEventListener('keydown', e => e.stopPropagation()));
+    $('bnGo').addEventListener('click', () => { const e = ACC.ban($('bnWho').value, +$('bnTime').value, $('bnWhy').value); if (e) notify('info', e); else { notify('ok', 'Jogador banido'); LOB.renderAdmin(); } });
+    body.querySelectorAll('.unban').forEach(b => b.addEventListener('click', () => { ACC.unban(b.dataset.id); notify('ok', 'Ban retirado'); LOB.renderAdmin(); }));
+    return;
+  }
   if (tab === 'codigos') {
     if (!SRV.on) { body.innerHTML = '<p class="hint adNote">' + icon('warn') + 'Os códigos de resgate precisam do servidor das contas ligado.</p>'; return; }
     const opts = '<option value="badge:azul">Verificado azul (influenciador)</option>' + SKINS.map(s => '<option value="skin:' + s[0] + '">Skin ' + s[1] + '</option>').join('') + '<option value="gems">Gemas</option><option value="gold">Ouro</option>';
@@ -936,8 +960,11 @@ LOB.renderMode = function () {
 LOB.renderSquad = function () {
   const el = $('squadSlots'); if (!el || !ACC.p) return;
   const bt = TEAM.size(G.settings.brTeam || 1), n = Math.max(3, bt - 1);
+  // amigos que já estão no grupo aparecem com o personagem deles; o resto são vagas para convidar
+  const mates = LOB.party.slice(0, 5);
   el.innerHTML = '<span class="sqMe" style="background-image:url(' + (LOB.thumbs[ACC.p.skin] || '') + ')" title="Você"></span>' +
-    Array.from({ length: Math.min(5, n) }, () => '<button class="sqAdd" aria-label="Convidar amigo">+</button>').join('');
+    mates.map(m => '<span class="sqMe mate" style="background-image:url(' + (LOB.thumbs[m.av] || '') + ')" title="' + escapeHTML(m.name) + '"></span>').join('') +
+    Array.from({ length: Math.max(0, Math.min(5, n) - mates.length) }, () => '<button class="sqAdd" aria-label="Convidar amigo">+</button>').join('');
   el.querySelectorAll('.sqAdd').forEach(b => b.addEventListener('click', () => { SND.play('ui'); FR.openScr('amigos'); notify('info', 'Toque em CONVIDAR num amigo on-line para ele entrar no seu grupo'); }));
 };
 LOB.setMode = function (m) { G.settings.mode = m; G.saveSettings(); LOB.renderMode(); };

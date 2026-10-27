@@ -876,3 +876,9 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 .pTier.top { border-bottom-color: #ffc21a; background: linear-gradient(180deg, rgba(120,80,10,.9), rgba(30,18,4,.95)); }
 .pTier small { position: absolute; top: 4px; left: 6px; font-size: 9px; letter-spacing: 1px; color: #ffd23c; } .pTier i { font-style: normal; font-size: 30px; } .pTier span { font-size: 10px; text-align: center; padding: 0 4px; line-height: 1.15; }
 .pTier em { position: absolute; top: 4px; right: 5px; } .pTier em .ico { width: 13px; height: 13px; opacity: .7; }
+/* grupo (convidar amigos) logo acima do INICIAR, como no FF */
+#menuScr .lbSide .squadBar { position: static !important; transform: none !important; flex-direction: row; justify-content: flex-end; align-items: center; gap: 6px; top: auto !important; }
+#menuScr .lbSide .squadBar small { display: none; }
+#menuScr .lbSide #squadSlots { display: flex; gap: 6px; }
+#menuScr .sqMe.mate { border-color: #5ff07a; }
+#menuScr .sqAdd { border: 2px dashed rgba(255,210,60,.8); color: #ffd23c; font-weight: 700; }

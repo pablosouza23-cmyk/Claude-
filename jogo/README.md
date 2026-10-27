@@ -97,6 +97,12 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v4.2
+
+- Topo do lobby só com o PASSE (a recarga continua no + dos diamantes).
+- Painel do dono › BANIR: ban por ID ou usuário, com tempo (1 min, 10 min, 1 h, 2 h, 1 dia, 2 dias, 7 dias, 30 dias ou para sempre), motivo e botão DESBANIR. O banido não entra em partidas, nem nas salas do dono.
+- Grupo estilo FF no lobby principal: os amigos ficam em pé do seu lado com a skin deles, as vagas de convite (+) ficam em cima do INICIAR e o líder inicia a partida com todo mundo.
+
 ## Novidades da v4.1
 
 - Botões de copiar (código de transferência, ID, código da sala, Pix) funcionam no celular e dentro do link do jogo.

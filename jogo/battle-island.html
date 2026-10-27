@@ -884,6 +884,12 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 .pTier.top { border-bottom-color: #ffc21a; background: linear-gradient(180deg, rgba(120,80,10,.9), rgba(30,18,4,.95)); }
 .pTier small { position: absolute; top: 4px; left: 6px; font-size: 9px; letter-spacing: 1px; color: #ffd23c; } .pTier i { font-style: normal; font-size: 30px; } .pTier span { font-size: 10px; text-align: center; padding: 0 4px; line-height: 1.15; }
 .pTier em { position: absolute; top: 4px; right: 5px; } .pTier em .ico { width: 13px; height: 13px; opacity: .7; }
+/* grupo (convidar amigos) logo acima do INICIAR, como no FF */
+#menuScr .lbSide .squadBar { position: static !important; transform: none !important; flex-direction: row; justify-content: flex-end; align-items: center; gap: 6px; top: auto !important; }
+#menuScr .lbSide .squadBar small { display: none; }
+#menuScr .lbSide #squadSlots { display: flex; gap: 6px; }
+#menuScr .sqMe.mate { border-color: #5ff07a; }
+#menuScr .sqAdd { border: 2px dashed rgba(255,210,60,.8); color: #ffd23c; font-weight: 700; }
 
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
@@ -1034,16 +1040,15 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   </nav>
   <nav id="lbIcons" class="lbNav lbIcons">
     <button data-go="pass" class="passTile" data-icon="crown"><span>PASSE</span><em class="soon">EM BREVE</em></button>
-    <button data-go="recharge" class="hot" data-icon="gift"><span>RECARGA</span></button>
   </nav>
   <div class="lbSide">
     <button id="lbNews" class="news"></button>
     <button id="lbMap" class="mapCard"><canvas id="lbMapCv" width="96" height="96"></canvas><div><small id="lbMapLbl">MAPA</small><b id="lbMapName">ILHA</b><span>TROCAR ›</span></div></button>
+    <div id="squadBar" class="squadBar"><small>SEU GRUPO</small><div id="squadSlots"></div></div>
     <button id="mPlay" class="playBtn"><b>INICIAR</b><small>SOLO · DUPLA · TRIO · SQUAD</small></button>
   </div>
-  <div id="squadBar" class="squadBar"><small>SEU GRUPO</small><div id="squadSlots"></div></div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v4.1</div>
+  <div class="ver">v4.2</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1122,7 +1127,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 
 <div id="adminScr" class="screen dim hidden">
   <div class="panel adPanel">
-    <div class="panelHead"><b>PAINEL DO DONO</b><div id="adTabs" class="tabs"><button data-t="hoje">CRIADAS HOJE</button><button data-t="todas">TODAS</button><button data-t="enviar">ENVIAR CORREIO</button><button data-t="codigos">CÓDIGOS</button></div><button id="adClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <div class="panelHead"><b>PAINEL DO DONO</b><div id="adTabs" class="tabs"><button data-t="hoje">CRIADAS HOJE</button><button data-t="todas">TODAS</button><button data-t="enviar">ENVIAR CORREIO</button><button data-t="codigos">CÓDIGOS</button><button data-t="banir">BANIR</button></div><button id="adClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
     <div id="adBody" class="adBody"></div>
   </div>
 </div>
@@ -1315,7 +1320,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v4.1 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v4.2 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -8507,6 +8512,7 @@ NET.setStatus = function (s, err) {
 
 // ------------------------------------------------------------------ sala
 NET.createRoom = function () {
+  if (LOB.banGate()) return;
   if (!NET.available()) { NET.setStatus('Multiplayer indisponível: sem internet.', true); return; }
   NET.leave();
   NET.mode = 'host'; NET.pid = 0; NET.nextPid = 1;
@@ -8565,6 +8571,7 @@ NET.hostDrop = function (c) {
 };
 
 NET.joinRoom = function (code) {
+  if (LOB.banGate()) return;
   if (!NET.available()) { NET.setStatus('Multiplayer indisponível: sem internet.', true); return; }
   code = (code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (code.length !== 5) { NET.setStatus('O código tem 5 letras/números.', true); return; }
@@ -8577,7 +8584,7 @@ NET.joinRoom = function (code) {
     const c = peer.connect(NET.PREFIX + code, { reliable: true, serialization: 'json' });
     NET.conn = c;
     const to = setTimeout(() => { if (!c.open) NET.setStatus('A sala não respondeu. Confira o código e tente de novo.', true); }, 12000);
-    c.on('open', () => { clearTimeout(to); c.send({ t: 'hi', n: G.settings.name || 'Jogador', a: G.settings.avatar || 'heroi', v: NET.ver, vf: ACC.p ? ACC.tier(ACC.p) : '', lk: NET.myLook() }); NET.setStatus('Conectado. Aguardando o anfitrião…'); });
+    c.on('open', () => { clearTimeout(to); c.send({ t: 'hi', id: ACC.p ? String(ACC.p.id) : '', n: G.settings.name || 'Jogador', a: G.settings.avatar || 'heroi', v: NET.ver, vf: ACC.p ? ACC.tier(ACC.p) : '', lk: NET.myLook() }); NET.setStatus('Conectado. Aguardando o anfitrião…'); });
     c.on('data', d => { try { NET.clientRecv(d); } catch (e) { console.error(e); } });
     c.on('close', () => NET.lostHost());
     c.on('error', () => NET.lostHost());
@@ -8767,6 +8774,8 @@ NET.hostRecv = function (c, d) {
   const pl = NET.players.find(p => p.conn === c);
   if (d.t === 'hi') {
     if (pl) return;
+    const bn = d.id && ACC.banOf(d.id);
+    if (bn) { c.send({ t: 'banned', txt: ACC.banText(bn) }); setTimeout(() => c.close(), 300); return; }
     const p = { pid: NET.nextPid++, name: String(d.n || 'Amigo').slice(0, 14), av: CH.AV[d.a] ? d.a : 'heroi', vf: tierKey(d.vf), lk: NET.cleanLook(d.lk), conn: c };
     NET.players.push(p);
     c.send({ t: 'wel', pid: p.pid });
@@ -8864,6 +8873,7 @@ NET.onShot = function (a, o, ends, wid) {
 NET.clientRecv = function (d) {
   switch (d.t) {
     case 'wel': NET.pid = d.pid; break;
+    case 'banned': NET.setStatus('Você está banido ' + d.txt, true); break;
     case 'full': NET.setStatus(d.live ? 'A partida já começou. Espere acabar e tente de novo.' : 'A sala está cheia.', true); break;
     case 'room':
       NET.players = d.ps.map(p => ({ pid: p[0], name: p[1], av: p[2], vf: tierKey(p[3]), lk: NET.cleanLook(p[4]) }));
@@ -9415,7 +9425,7 @@ ACC.mergeProfiles = function (a, b) {
 // Aberto pelo link do claude.ai, o jogo tem um banco de dados próprio: cada conta vira o documento
 // accounts/<usuário> (com a senha só como hash), e cada pessoa do claude.ai guarda qual conta usou por último.
 // Fora do claude.ai (arquivo, GitHub Pages, app) isto fica desligado e vale só o aparelho.
-const CLOUD = { db: null, uid: null, session: null, last: {}, dirty: false, busy: false, unsub: null, status: 'off' };
+const CLOUD = { bans: {}, db: null, uid: null, session: null, last: {}, dirty: false, busy: false, unsub: null, status: 'off' };
 CLOUD.on = () => !!CLOUD.db;
 const _cloudRec = (r) => ({ salt: r.salt || '', hash: r.hash || '', p: r.p, t: r.t || (r.p && r.p.created) || Date.now(), upd: r.upd || 0 });
 CLOUD.init = async function () {
@@ -9446,8 +9456,10 @@ CLOUD.init = async function () {
       const s = await wait(db.doc('data/users/' + CLOUD.uid + '/state').get(), 5000);
       if (s && s.exists) CLOUD.session = s.data().user || null;
     }
+    try { const bs = await wait(db.collection('bans').get(), 5000); if (bs) for (const d of bs.docs) CLOUD.bans[d.id] = d.data(); } catch (e) { /* sem lista */ }
     CLOUD.db = db;
     CLOUD.status = 'on';
+    if (typeof LOB !== 'undefined' && LOB.banGate) LOB.banGate();
     // contas criadas só neste aparelho sobem agora
     for (const u in mem.users) if (!remote[u] && u !== '__guest') CLOUD.dirty = true;
     CLOUD.push();
@@ -9999,6 +10011,50 @@ ACC.setVerified = function (id, on) {
   ACC.emit();
 };
 
+// ---------- banimentos (painel do dono) ----------
+// vale por ID do jogador ou usuário da conta; o tempo pode ser de 1 minuto até para sempre.
+// O ban vai junto com a conta (sincroniza pelo banco on-line do link) e o dono também barra o jogador nas salas que cria.
+ACC.BANS_KEY = 'battleIsland.bans';
+ACC.FOREVER = 9e15;
+ACC.bans = function () { try { return JSON.parse(localStorage.getItem(ACC.BANS_KEY) || '{}'); } catch (e) { return {}; } };
+ACC.saveBans = function (b) { try { localStorage.setItem(ACC.BANS_KEY, JSON.stringify(b)); } catch (e) { /* ignora */ } };
+ACC.findPlayer = function (t) {
+  t = String(t || '').trim(); const db = ACC.load();
+  for (const u in db.users) { const p = db.users[u].p; if (p && (u.toLowerCase() === t.toLowerCase() || String(p.id) === t)) return { user: u, id: String(p.id), name: p.name }; }
+  return /^\d{5,}$/.test(t) ? { user: null, id: t, name: '' } : null;
+};
+ACC.setAccountBan = function (user, ban) {
+  const db = ACC.db(); const r = user && db.users[user]; if (!r || !r.p) return;
+  if (ban) r.p.ban = ban; else delete r.p.ban;
+  r.upd = Date.now(); ACC.writeDb(db);
+  if (CLOUD.db) CLOUD.push();
+};
+ACC.ban = function (target, ms, why) {
+  const f = ACC.findPlayer(target);
+  if (!f) return 'Não achei esse jogador. Use o ID (só números) ou o usuário da conta.';
+  if (ACC.p && String(ACC.p.id) === f.id) return 'Você não pode banir a sua própria conta.';
+  const ban = { until: ms > 0 ? Date.now() + ms : ACC.FOREVER, why: String(why || '').slice(0, 80), name: f.name || f.user || '', t: Date.now() };
+  const b = ACC.bans(); b[f.id] = ban; ACC.saveBans(b);
+  ACC.setAccountBan(f.user, ban);
+  if (CLOUD.db) { CLOUD.bans[f.id] = ban; CLOUD.db.doc('bans/' + f.id).set(Object.assign({ id: f.id }, ban)).catch(() => {}); }
+  return null;
+};
+ACC.unban = function (id) {
+  id = String(id); const b = ACC.bans(); delete b[id]; ACC.saveBans(b);
+  const f = ACC.findPlayer(id); if (f && f.user) ACC.setAccountBan(f.user, null);
+  if (CLOUD.db) { delete CLOUD.bans[id]; CLOUD.db.doc('bans/' + id).delete().catch(() => {}); }
+};
+// ban em vigor para um jogador (perfil ou só o ID)
+ACC.banOf = function (pOrId) {
+  const id = String(pOrId && pOrId.id !== undefined ? pOrId.id : pOrId), now = Date.now();
+  const list = [pOrId && pOrId.ban, ACC.bans()[id], CLOUD.bans[id]];
+  for (const b of list) if (b && b.until > now) return b;
+  return null;
+};
+ACC.banText = function (b) {
+  return (b.until >= ACC.FOREVER ? 'para sempre' : 'até ' + new Date(b.until).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })) + (b.why ? ' · motivo: ' + b.why : '');
+};
+
 </script>
 <script>
 'use strict';
@@ -10120,16 +10176,17 @@ LOB.syncParty = function () {
     a.ch.skins = (p.lk && p.lk.g) || {};
     a.phase = 'ground'; a.ch.root.visible = true;
     giveWeapon(a, 'FUZIL');
-    LOB.party.push({ key: key(p), pid: p.pid, a: a, name: p.name, vf: tierKey(p.vf), host: p.pid === 0, t0: Math.random() * 6 });
+    LOB.party.push({ key: key(p), pid: p.pid, av: p.av, a: a, name: p.name, vf: tierKey(p.vf), host: p.pid === 0, t0: Math.random() * 6 });
   }
   LOB.party.sort((x, y) => x.pid - y.pid);
   const tags = $('partyTags');
   tags.innerHTML = LOB.party.map(m => '<div class="pTag">' + (m.host ? icon('crown') : '') + escapeHTML(m.name) + LOB.vf(m.vf) + '</div>').join('');
   LOB.party.forEach((m, i) => { m.el = tags.children[i]; });
+  LOB.renderSquad();
 };
 const _pv = new THREE.Vector3();
 LOB.updateParty = function (dt, t) {
-  const show = UI.screen === 'roomScr';
+  const show = UI.screen === 'roomScr' || UI.screen === 'menuScr';
   const tags = $('partyTags'); if (tags) tags.classList.toggle('on', show && LOB.party.length > 0);
   if (!LOB.party.length) return;
   const out = LOB.outYaw, fx = Math.sin(out), fz = Math.cos(out), rx = Math.cos(out), rz = -Math.sin(out);
@@ -10292,6 +10349,7 @@ LOB.enter = function (msg) {
   LOB.applyProfile();
   goMenu();
   if (msg) notify('ok', msg);
+  setTimeout(() => LOB.banGate(), 2600);
   if (!PAY.ready && !PAY.busy) { PAY.busy = true; PAY.init().then(() => { if (UI.screen === 'rechargeScr') LOB.renderRecharge(); }); }
   setTimeout(() => { LOB.makeThumbs(); if (UI.screen === 'menuScr') LOB.renderTop(); }, 400);
   FR.start();
@@ -10696,6 +10754,12 @@ LOB.redeem = function () {
 
 // ---------- resgatar verificado ----------
 // Passe Battle (estilo passe de temporada): por enquanto só a prévia das recompensas, com EM BREVE
+LOB.banGate = function () {
+  const b = ACC.p && ACC.banOf(ACC.p);
+  if (!b) return false;
+  LOB.dialog('CONTA BANIDA', 'Esta conta está banida <b>' + escapeHTML(ACC.banText(b)) + '</b>.<br>Enquanto isso, não dá para entrar em partidas nem em salas.', [['OK']]);
+  return true;
+};
 LOB.openPass = function () {
   showScreen('passScr');
   const R = [['🪙', '500 ouro'], ['😎', 'Emote'], ['🧊', 'Gel Gelo'], ['💎', '20 diamantes'], ['🔫', 'Skin de arma'], ['🪙', '1.000 ouro'], ['👕', 'Roupa'], ['💎', '40 diamantes'], ['🎒', 'Mochila'], ['👑', 'Personagem lendário']];
@@ -10802,6 +10866,22 @@ LOB.renderAdmin = function () {
   const tab = LOB.adTab;
   document.querySelectorAll('#adTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
   const body = $('adBody');
+  if (tab === 'banir') {
+    const T = [['1 minuto', 6e4], ['10 minutos', 6e5], ['1 hora', 36e5], ['2 horas', 72e5], ['1 dia', 864e5], ['2 dias', 1728e5], ['7 dias', 6048e5], ['30 dias', 2592e6], ['Para sempre (banir)', 0]];
+    const bans = ACC.bans(), now = Date.now();
+    const rows = Object.keys(bans).filter(id => bans[id].until > now).map(id => { const b = bans[id];
+      return '<tr><td class="mono">' + escapeHTML(id) + (b.name ? '<small>' + escapeHTML(b.name) + '</small>' : '') + '</td><td>' + escapeHTML(ACC.banText(b)) + '</td><td><button class="chip unban" data-id="' + escapeHTML(id) + '">DESBANIR</button></td></tr>'; });
+    body.innerHTML = '<div class="adForm"><label class="fld"><span>ID do jogador (números) ou usuário da conta</span><input id="bnWho" spellcheck="false" placeholder="ex.: 4072140438"></label>' +
+      '<label class="fld"><span>Tempo</span><select id="bnTime">' + T.map(t => '<option value="' + t[1] + '">' + t[0] + '</option>').join('') + '</select></label>' +
+      '<label class="fld"><span>Motivo (opcional)</span><input id="bnWhy" maxlength="80" placeholder="ex.: hack, ofensa no chat"></label>' +
+      '<button class="mBtn primary" id="bnGo">BANIR</button></div>' +
+      '<p class="hint">Blacklist com tempo: depois do prazo a pessoa volta a jogar sozinha. O jogador banido não entra nas suas salas nem em partidas pela conta que está no banco do jogo.</p>' +
+      '<h4 class="adH">BANIDOS AGORA</h4>' + (rows.length ? '<table class="adTable"><thead><tr><th>JOGADOR</th><th>ATÉ</th><th></th></tr></thead><tbody>' + rows.join('') + '</tbody></table>' : '<p class="hint">Ninguém banido.</p>');
+    body.querySelectorAll('input, select').forEach(el => el.addEventListener('keydown', e => e.stopPropagation()));
+    $('bnGo').addEventListener('click', () => { const e = ACC.ban($('bnWho').value, +$('bnTime').value, $('bnWhy').value); if (e) notify('info', e); else { notify('ok', 'Jogador banido'); LOB.renderAdmin(); } });
+    body.querySelectorAll('.unban').forEach(b => b.addEventListener('click', () => { ACC.unban(b.dataset.id); notify('ok', 'Ban retirado'); LOB.renderAdmin(); }));
+    return;
+  }
   if (tab === 'codigos') {
     if (!SRV.on) { body.innerHTML = '<p class="hint adNote">' + icon('warn') + 'Os códigos de resgate precisam do servidor das contas ligado.</p>'; return; }
     const opts = '<option value="badge:azul">Verificado azul (influenciador)</option>' + SKINS.map(s => '<option value="skin:' + s[0] + '">Skin ' + s[1] + '</option>').join('') + '<option value="gems">Gemas</option><option value="gold">Ouro</option>';
@@ -10939,8 +11019,11 @@ LOB.renderMode = function () {
 LOB.renderSquad = function () {
   const el = $('squadSlots'); if (!el || !ACC.p) return;
   const bt = TEAM.size(G.settings.brTeam || 1), n = Math.max(3, bt - 1);
+  // amigos que já estão no grupo aparecem com o personagem deles; o resto são vagas para convidar
+  const mates = LOB.party.slice(0, 5);
   el.innerHTML = '<span class="sqMe" style="background-image:url(' + (LOB.thumbs[ACC.p.skin] || '') + ')" title="Você"></span>' +
-    Array.from({ length: Math.min(5, n) }, () => '<button class="sqAdd" aria-label="Convidar amigo">+</button>').join('');
+    mates.map(m => '<span class="sqMe mate" style="background-image:url(' + (LOB.thumbs[m.av] || '') + ')" title="' + escapeHTML(m.name) + '"></span>').join('') +
+    Array.from({ length: Math.max(0, Math.min(5, n) - mates.length) }, () => '<button class="sqAdd" aria-label="Convidar amigo">+</button>').join('');
   el.querySelectorAll('.sqAdd').forEach(b => b.addEventListener('click', () => { SND.play('ui'); FR.openScr('amigos'); notify('info', 'Toque em CONVIDAR num amigo on-line para ele entrar no seu grupo'); }));
 };
 LOB.setMode = function (m) { G.settings.mode = m; G.saveSettings(); LOB.renderMode(); };
@@ -12754,7 +12837,12 @@ function isTouchEvent(e) { return e.pointerType === 'touch' || (e.sourceCapabili
 
 function initScreens() {
   const click = (id, fn) => $(id).addEventListener('click', () => { SND.init(); SND.play('ui'); fn(); });
-  click('mPlay', () => { showScreen('modeScr'); LOB.renderMode(); });
+  click('mPlay', () => {
+    if (LOB.banGate()) return;
+    // em grupo (estilo FF): o líder inicia daqui mesmo, com todo mundo junto
+    if (NET.on()) { if (NET.isHost()) NET.hostStart(); else notify('info', 'Esperando o líder do grupo iniciar a partida'); return; }
+    showScreen('modeScr'); LOB.renderMode();
+  });
   click('mdSolo', () => goLobby());
   click('mdCreate', () => { NET.createRoom(); openRoom(); });
   click('mdJoin', () => { showScreen('joinScr'); NET.setStatus(''); setTimeout(() => $('joinCode').focus(), 50); });

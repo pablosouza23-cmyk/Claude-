@@ -1365,7 +1365,12 @@ function isTouchEvent(e) { return e.pointerType === 'touch' || (e.sourceCapabili
 
 function initScreens() {
   const click = (id, fn) => $(id).addEventListener('click', () => { SND.init(); SND.play('ui'); fn(); });
-  click('mPlay', () => { showScreen('modeScr'); LOB.renderMode(); });
+  click('mPlay', () => {
+    if (LOB.banGate()) return;
+    // em grupo (estilo FF): o líder inicia daqui mesmo, com todo mundo junto
+    if (NET.on()) { if (NET.isHost()) NET.hostStart(); else notify('info', 'Esperando o líder do grupo iniciar a partida'); return; }
+    showScreen('modeScr'); LOB.renderMode();
+  });
   click('mdSolo', () => goLobby());
   click('mdCreate', () => { NET.createRoom(); openRoom(); });
   click('mdJoin', () => { showScreen('joinScr'); NET.setStatus(''); setTimeout(() => $('joinCode').focus(), 50); });

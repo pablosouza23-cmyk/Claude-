@@ -142,6 +142,8 @@ ACC.validUser = (u) => /^[a-z0-9_.]{3,16}$/.test(u);
 ACC.ID_REMAP = { '3423471011': '0' };
 // completa perfis antigos com campos novos
 ACC.fix = function (p) {
+  // aviso da próxima atualização no correio (uma vez por conta)
+  if (p.mail && !p.news2) { const l = ACC.letter('Battle Island', 'EM BREVE: nova atualização', 'Vem aí: mapa de cidade, novas skins de armas e novos personagens. Fique ligado!'); l.img = 'assets/update_preview.jpg'; p.mail.unshift(l); p.news2 = true; }
   // conta do dono: sempre com tudo da loja, inclusive o que for lançado depois
   if (p.owner && p.owned && typeof SHOP !== 'undefined') for (const k of ['skins', 'emotes', 'guns', 'walls']) if (SHOP[k] && p.owned[k]) for (const id in SHOP[k]) if (p.owned[k].indexOf(id) < 0) p.owned[k].push(id);
   const d = ACC.newProfile(p.name);

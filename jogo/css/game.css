@@ -899,3 +899,5 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 .fpName { font-size: 18px; } .fpBox small { display: block; color: var(--muted); } .fpOn { color: #5ff07a; } .fpId { margin-top: 4px; font-size: 13px; } .fpId b { font-family: monospace; letter-spacing: 1px; }
 .fpStats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; } .fpStats div { background: rgba(255,255,255,.06); border-radius: 6px; padding: 5px 2px; text-align: center; }
 .fpStats b { display: block; font-size: 17px; color: #ffd23c; } .fpStats small { font-size: 8.5px; letter-spacing: .5px; color: var(--muted); }
+
+.mlImg { display: block; width: 100%; max-height: 46vh; object-fit: contain; margin: 6px 0; border-radius: 6px; }

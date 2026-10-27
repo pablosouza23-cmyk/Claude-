@@ -756,7 +756,7 @@ LOB.renderMail = function () {
     (m.items.length && !m.got ? '<em class="dotNew"></em>' : '') + '</button>').join('') : '<p class="hint mlEmpty">Nenhuma mensagem.</p>';
   $('mlList').querySelectorAll('.mlItem').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.mailSel = b.dataset.mid; LOB.renderMail(); }));
   const m = list.find(x => x.mid === LOB.mailSel);
-  $('mlBody').innerHTML = m ? '<b class="mlT">' + escapeHTML(m.title) + '</b><small class="mlF">De: ' + escapeHTML(m.from) + ' · ' + fmtDate(m.t) + '</small><p>' + escapeHTML(m.text).replace(/\n/g, '<br>') + '</p>' +
+  $('mlBody').innerHTML = m ? '<b class="mlT">' + escapeHTML(m.title) + '</b><small class="mlF">De: ' + escapeHTML(m.from) + ' · ' + fmtDate(m.t) + '</small>' + (m.img ? '<img class="mlImg" src="' + CH.url(m.img) + '" alt="">' : '') + '<p>' + escapeHTML(m.text).replace(/\n/g, '<br>') + '</p>' +
     (m.items.length ? '<div class="mlItems">' + m.items.map(it => '<div class="mlGift' + (m.got ? ' got' : '') + '">' + LOB.itemIcon(it) + '<span>' + ACC.itemText(it) + '</span></div>').join('') + '</div>' +
       (m.got ? '<button class="mBtn ok" disabled>' + icon('check') + 'COLETADO</button>' : '<button class="mBtn primary" id="mlClaim">' + icon('gift') + 'COLETAR</button>') : '') +
     '<button class="chip mlDel" id="mlDel">' + icon('trash') + 'APAGAR</button>' : '<p class="hint">Selecione uma mensagem.</p>';

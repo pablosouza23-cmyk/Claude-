@@ -262,7 +262,6 @@ function updateCamera(dt) {
   // qualidade baixa enxerga menos longe: desenha bem menos coisa
   const fogK = G.settings.quality === 'baixa' ? 0.6 : 1;
   scene.fog.near = U.lerp(90, 380, high) * fogK; scene.fog.far = U.lerp(520, 1400, high) * fogK;
-  const camFar = Math.max(320, scene.fog.far + 30); if (Math.abs(camera.far - camFar) > 25) { camera.far = camFar; camera.updateProjectionMatrix(); }
   const fc = p.phase === 'ground' ? p.pos : camera.position;
   sun.position.copy(fc).addScaledVector(G.sunDir, 70);
   sun.target.position.copy(fc);
@@ -1489,6 +1488,7 @@ function frame(now) {
   const dt = Math.min(raw, 0.05);
   const micB = H.mic || (H.mic = $('btnMic')), micV = G.state === 'play' && NET.on();
   if (micB.classList.contains('hidden') === micV) micB.classList.toggle('hidden', !micV);
+  const pcB = H.pchat || (H.pchat = $('pchat')); if (G.state === 'play' && !pcB.classList.contains('hidden')) pcB.classList.add('hidden');
   SND.musicOn((G.state === 'play' && G.player && G.player.emote === 'jamal') || (G.state === 'menu' && G.showEmote && G.showEmote.k === 'jamal' && G.showEmote.t > 0));
   WPN.timeU.value = (performance.now() / 1000) % 600;
   if (!G.built) return;

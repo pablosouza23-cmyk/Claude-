@@ -411,3 +411,43 @@ FX.reset = function () {
   if (FX.decals) { FX.decals.length = 0; FX.decalMesh.count = 0; }
   if (FX.glowP) { FX.glowP.clear(); FX.flashP.clear(); }
 };
+
+// ---------- música do Passinho do Jamal (funk original, sintetizado; 128 BPM) ----------
+// toca em loop enquanto o emote estiver rolando; agenda os sons um pouco à frente do relógio do áudio
+SND.funk = { on: false, next: 0, step: 0, timer: null, out: null };
+SND.musicOn = function (want) {
+  const F = SND.funk, c = SND.ctx;
+  if (!c || !SND.on) want = false;
+  if (want === F.on) return;
+  F.on = want;
+  if (want) {
+    if (c.state === 'suspended') c.resume();
+    F.out = c.createGain(); F.out.gain.value = 0.55 * (SND.vol === undefined ? 1 : SND.vol); F.out.connect(c.destination);
+    F.next = c.currentTime + 0.05; F.step = 0;
+    F.timer = setInterval(SND.funkTick, 40);
+  } else {
+    clearInterval(F.timer); F.timer = null;
+    if (F.out) { const o = F.out; o.gain.setTargetAtTime(0, c.currentTime, 0.05); setTimeout(() => o.disconnect(), 400); F.out = null; }
+  }
+};
+SND.funkTick = function () {
+  const F = SND.funk, c = SND.ctx, out = F.out;
+  if (!F.on || !out) return;
+  const st = 60 / 128 / 4;
+  const env = (g, t, v, d) => { g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0008, t + d); };
+  const tone = (t, f0, f1, d, v, type) => { const o = c.createOscillator(), g = c.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + d); env(g, t, v, d); o.connect(g); g.connect(out); o.start(t); o.stop(t + d + 0.02); };
+  const noise = (t, d, f, v, type) => { const s = c.createBufferSource(); s.buffer = SND.noise; const fl = c.createBiquadFilter(); fl.type = type || 'highpass'; fl.frequency.value = f; const g = c.createGain(); env(g, t, v, d); s.connect(fl); fl.connect(g); g.connect(out); s.start(t); s.stop(t + d + 0.02); };
+  // batida de funk (tamborzão): bumbo, caixa, atabaque e chimbal; baixo 808 e um riff de sintetizador
+  const KICK = [1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0], SNARE = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], TOM = [0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0];
+  const BASS = [55, 0, 0, 55, 0, 0, 65.4, 0, 0, 0, 49, 0, 49, 0, 0, 0], LEAD = [440, 0, 523, 0, 587, 0, 523, 440, 0, 0, 392, 0, 440, 0, 0, 0];
+  while (F.next < c.currentTime + 0.15) {
+    const t = F.next, i = F.step % 16, bar = Math.floor(F.step / 16) % 4;
+    if (KICK[i]) tone(t, 140, 45, 0.28, 0.9);
+    if (SNARE[i]) { noise(t, 0.16, 1500, 0.5, 'bandpass'); tone(t, 200, 150, 0.08, 0.25, 'triangle'); }
+    if (TOM[i]) tone(t, 260, 180, 0.12, 0.35, 'triangle');
+    if (i % 2 === 0) noise(t, 0.04, 7000, 0.12);
+    if (BASS[i]) tone(t, BASS[i] * 2, BASS[i], 0.32, 0.5, 'sine');
+    if (bar % 2 === 1 && LEAD[i]) { tone(t, LEAD[i], LEAD[i], st * 1.6, 0.07, 'square'); tone(t, LEAD[i] * 2, LEAD[i] * 2, st * 1.2, 0.03, 'sawtooth'); }
+    F.next += st; F.step++;
+  }
+};

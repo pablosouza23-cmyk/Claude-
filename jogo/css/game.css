@@ -836,3 +836,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   .shDetail { width: min(210px, 30vw); padding: 8px; gap: 4px; } .shDetail .dn { font-size: 19px; } .shDetail p { font-size: 11px; }
   .shDetail .mBtn { height: 36px; font-size: 15px; } .shDetail .mBtn svg { width: 16px; height: 16px; }
 }
+
+/* construção */
+#btnBuild { right: calc(max(16px, env(safe-area-inset-right)) + 312px * var(--btn)); bottom: calc(34px + 4px * var(--btn)); width: calc(62px * var(--btn)); height: calc(52px * var(--btn)); flex-direction: column; gap: 1px; border-color: rgba(255,190,110,.85); }
+#btnBuild b { font-size: 9px; letter-spacing: .5px; } #btnBuild small { font-size: 10px; } #btnBuild.on { background: rgba(255,150,40,.55); border-color: #ffd23c; }

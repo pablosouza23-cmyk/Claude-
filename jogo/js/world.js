@@ -236,6 +236,7 @@ W.groundAt = function (x, z, y) {
   const fl = W.floorAt(x, z);
   if (fl && g > fl.b - 0.15) g = fl.b - 0.15; // dentro de construção vale o piso, não o morro
   const list = W.nearby(x, z, _near);
+  for (const d of W.dynamic) if (d.walkable) list.push(d); // peças construídas
   for (const c of list) {
     if (c.type !== 'b' || c.dead || !c.walkable) continue;
     if (c.y1 > y + 0.45) continue;

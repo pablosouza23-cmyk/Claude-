@@ -845,6 +845,10 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   .shDetail .mBtn { height: 36px; font-size: 15px; } .shDetail .mBtn svg { width: 16px; height: 16px; }
 }
 
+/* construção */
+#btnBuild { right: calc(max(16px, env(safe-area-inset-right)) + 312px * var(--btn)); bottom: calc(34px + 4px * var(--btn)); width: calc(62px * var(--btn)); height: calc(52px * var(--btn)); flex-direction: column; gap: 1px; border-color: rgba(255,190,110,.85); }
+#btnBuild b { font-size: 9px; letter-spacing: .5px; } #btnBuild small { font-size: 10px; } #btnBuild.on { background: rgba(255,150,40,.55); border-color: #ffd23c; }
+
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
   <linearGradient id="gmG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9f6ff"/><stop offset=".5" stop-color="#4fc3ff"/><stop offset="1" stop-color="#7a3cff"/></linearGradient>
@@ -917,7 +921,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   <div id="gelHint" class="hidden">Arraste para girar e afastar · solte para colocar o gel</div>
   <button id="vaultBtn" class="hidden"><span data-icon="jump"></span>PULAR JANELA</button>
   <button id="useBtn" class="hidden"></button>
-  <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha · R recarrega · E pegar · Q granada · G gel (segure, mire e solte) · I inspeciona a arma · Shift corre · Espaço perto da janela pula a janela · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · roda do mouse troca a arma · Esc pausa</div>
+  <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha · R recarrega · E pegar · Q granada · G gel (segure, mire e solte) · B construir (parede, rampa, piso) · I inspeciona a arma · Shift corre · Espaço perto da janela pula a janela · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · roda do mouse troca a arma · Esc pausa</div>
   <div id="fps" class="hidden"></div>
 </div>
 <!-- luneta: fica embaixo dos botões de toque (que continuam visíveis e clicáveis) -->
@@ -953,6 +957,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   <button class="tbtn g" id="btnInv" data-icon="bag" aria-label="Inventário rápido"></button>
   <button class="tbtn g" id="btnEmote" data-icon="smile" aria-label="Emotes"></button>
   <button class="tbtn g" id="btnRun" data-icon="run" aria-label="Correr"></button>
+  <button class="tbtn g" id="btnBuild" aria-label="Construir: parede, rampa e piso"><b>CONSTRUIR</b></button>
   <button class="tbtn g" id="btnGel" aria-label="Gel: segure, arraste para escolher o lugar e solte"></button>
   <button class="tbtn pill big p" id="btnSaltar">SALTAR</button>
   <button class="tbtn pill big f" id="btnChute" data-icon="chute">PARAQUEDAS</button>
@@ -1005,7 +1010,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   </div>
   <div id="squadBar" class="squadBar"><small>SEU GRUPO</small><div id="squadSlots"></div></div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v3.8</div>
+  <div class="ver">v3.9</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1269,7 +1274,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v3.8 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v3.9 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -2263,6 +2268,7 @@ W.groundAt = function (x, z, y) {
   const fl = W.floorAt(x, z);
   if (fl && g > fl.b - 0.15) g = fl.b - 0.15; // dentro de construção vale o piso, não o morro
   const list = W.nearby(x, z, _near);
+  for (const d of W.dynamic) if (d.walkable) list.push(d); // peças construídas
   for (const c of list) {
     if (c.type !== 'b' || c.dead || !c.walkable) continue;
     if (c.y1 > y + 0.45) continue;
@@ -4400,6 +4406,7 @@ WPN.STYLES = {
   ice: { pat: 'skinIce', scale: 0.8, base: 0x9fdcff, acc: 0xffffff, wood: 0x5fb7ef, wacc: 0xe8fbff, brightC: 0xdff6ff, metal: 0.15, rough: 0.06, racc: 0.3, wmetal: 0.1, wrough: 0.1, coat: 1, emis: 0x2b9cff, emisK: 0.55, glowBase: 0.08 },
   dragon: { pat: 'skinScales', scale: 1.1, base: 0x1c0f0b, acc: 0xff4a12, wood: 0x2a0806, wacc: 0xff7a1a, brightC: 0xffb066, metal: 0.65, rough: 0.38, racc: 0.3, wmetal: 0.4, wrough: 0.35, coat: 0.5, emis: 0xff3a0a, emisK: 2.2, pulse: 1 },
   neon: { pat: 'skinCircuit', scale: 0.9, base: 0x0b0e18, acc: 0x26f4ff, wood: 0x150a22, wacc: 0xff3cf0, brightC: 0xb8f7ff, metal: 0.55, rough: 0.3, racc: 0.2, wmetal: 0.4, wrough: 0.3, coat: 0.7, emis: 0x26f4ff, emisK: 2.4, wemis: 0xff3cf0, pulse: 1 },
+  glacial: { pat: 'skinScales', scale: 1.3, base: 0xe4f6ff, acc: 0x27b4ff, wood: 0x0b2350, wacc: 0x58d8ff, brightC: 0xffffff, metal: 0.72, rough: 0.16, racc: 0.22, wmetal: 0.5, wrough: 0.2, coat: 1, emis: 0x2ab8ff, emisK: 3.6, wemis: 0x7fe6ff, glowBase: 0.22, pulse: 1 },
   camo: { col: 'skinCamo', scale: 0.7, metal: 0.1, rough: 0.78, coat: 0, keepMetal: true },
   carbon: { col: 'skinCarbon', scale: 2.2, metal: 0.25, rough: 0.28, coat: 1, keepMetal: true },
 };
@@ -4408,6 +4415,7 @@ WPN.SKINS = {
   ak_ouro: { gun: 'FUZIL', name: 'AK-47 Dourada', style: 'gold' },
   ak_gelo: { gun: 'FUZIL', name: 'AK-47 Gelo Ártico', style: 'ice' },
   ak_dragao: { gun: 'FUZIL', name: 'AK-47 Dragão de Fogo', style: 'dragon' },
+  ak_glacial: { gun: 'FUZIL', name: 'AK-47 Fúria Glacial', style: 'glacial', fx: 0x46c8ff },
   m4_neon: { gun: 'CARABINA', name: 'Carabina Neon', style: 'neon' },
   awm_camo: { gun: 'PRECISAO', name: 'Precisão Camuflada', style: 'camo' },
   esc_carbono: { gun: 'ESCOPETA', name: 'Escopeta Carbono', style: 'carbon' },
@@ -4589,6 +4597,8 @@ CH.buildClips = function (buf) {
     clip.userData = { speed: c.speed / 100 }; // m/s
     CH.clips[c.name] = clip;
   }
+  // Passinho do Jamal: pernas e balanço da dança base; os braços são montados por IK (CH.jamal)
+  if (CH.clips.dance3) { const j = CH.clips.dance3.clone(); j.name = 'jamal'; CH.clips.jamal = j; }
 };
 
 CH.load = async function (onStep) {
@@ -5429,6 +5439,7 @@ CH.animate = function (ch, dt, s) {
       arm('R', _tgt, _pole);
     }
   }
+  if (s.emote === 'jamal' && ch.acts.jamal) CH.jamal(ch, ch.acts.jamal.time, arm, B);
   // cabeça acompanha a mira
   if (full) rotAxis(B.Bip01_Head, _bodyR, -pitch * 0.25);
   // arma guardada nas costas, na diagonal
@@ -5440,6 +5451,37 @@ CH.animate = function (ch, dt, s) {
   }
 };
 const SIDES = [[1, 'R'], [-1, 'L']];
+
+// ---------- Passinho do Jamal ----------
+// 8 tempos: braços cruzados (2), mãos na nuca (2), soco pra baixo dir./esq., varrida dir./esq.
+// cada pose: [direita, esquerda] em (lado, altura, frente) a partir do pescoço
+const JAMAL = [
+  [[-0.14, -0.13, 0.22], [0.14, -0.09, 0.25]],
+  [[-0.14, -0.13, 0.22], [0.14, -0.09, 0.25]],
+  [[0.13, 0.17, -0.05], [-0.13, 0.17, -0.05]],
+  [[0.13, 0.17, -0.05], [-0.13, 0.17, -0.05]],
+  [[0.06, -0.58, 0.32], [-0.14, -0.24, 0.24]],
+  [[0.14, -0.24, 0.24], [-0.06, -0.58, 0.32]],
+  [[-0.42, 0.14, 0.34], [-0.18, -0.3, 0.2]],
+  [[0.18, -0.3, 0.2], [0.42, 0.14, 0.34]],
+];
+CH.JAMAL_BEAT = 60 / 128;
+const _jn = new THREE.Vector3(), _jt = new THREE.Vector3(), _jp = new THREE.Vector3(), _ja = new THREE.Vector3(), _jb = new THREE.Vector3();
+CH.jamal = function (ch, t, arm, B) {
+  const nk = B.Bip01_Neck || B.Bip01_Head;
+  if (!nk) return;
+  wpos(nk, _jn);
+  const bt = t / CH.JAMAL_BEAT, i = Math.floor(bt) % 8, ph = bt - Math.floor(bt);
+  const k = U.smooth(0, 0.35, ph), P0 = JAMAL[(i + 7) % 8], P1 = JAMAL[i];
+  const head = i === 2 || i === 3;
+  for (let sd = 0; sd < 2; sd++) {
+    const a = P0[sd], b = P1[sd], sg = sd ? -1 : 1;
+    const r = a[0] + (b[0] - a[0]) * k, u = a[1] + (b[1] - a[1]) * k, f = a[2] + (b[2] - a[2]) * k;
+    _jt.copy(_jn).addScaledVector(_bodyR, r).addScaledVector(UP, u).addScaledVector(_bodyF, f);
+    _jp.copy(_bodyR).multiplyScalar(sg).addScaledVector(UP, head ? 0.4 : -1).addScaledVector(_bodyF, head ? 0.2 : 0);
+    arm(sd ? 'L' : 'R', _jt, _jp);
+  }
+};
 
 </script>
 <script>
@@ -5857,6 +5899,46 @@ FX.reset = function () {
   if (FX.glowP) { FX.glowP.clear(); FX.flashP.clear(); }
 };
 
+// ---------- música do Passinho do Jamal (funk original, sintetizado; 128 BPM) ----------
+// toca em loop enquanto o emote estiver rolando; agenda os sons um pouco à frente do relógio do áudio
+SND.funk = { on: false, next: 0, step: 0, timer: null, out: null };
+SND.musicOn = function (want) {
+  const F = SND.funk, c = SND.ctx;
+  if (!c || !SND.on) want = false;
+  if (want === F.on) return;
+  F.on = want;
+  if (want) {
+    if (c.state === 'suspended') c.resume();
+    F.out = c.createGain(); F.out.gain.value = 0.55 * (SND.vol === undefined ? 1 : SND.vol); F.out.connect(c.destination);
+    F.next = c.currentTime + 0.05; F.step = 0;
+    F.timer = setInterval(SND.funkTick, 40);
+  } else {
+    clearInterval(F.timer); F.timer = null;
+    if (F.out) { const o = F.out; o.gain.setTargetAtTime(0, c.currentTime, 0.05); setTimeout(() => o.disconnect(), 400); F.out = null; }
+  }
+};
+SND.funkTick = function () {
+  const F = SND.funk, c = SND.ctx, out = F.out;
+  if (!F.on || !out) return;
+  const st = 60 / 128 / 4;
+  const env = (g, t, v, d) => { g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0008, t + d); };
+  const tone = (t, f0, f1, d, v, type) => { const o = c.createOscillator(), g = c.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + d); env(g, t, v, d); o.connect(g); g.connect(out); o.start(t); o.stop(t + d + 0.02); };
+  const noise = (t, d, f, v, type) => { const s = c.createBufferSource(); s.buffer = SND.noise; const fl = c.createBiquadFilter(); fl.type = type || 'highpass'; fl.frequency.value = f; const g = c.createGain(); env(g, t, v, d); s.connect(fl); fl.connect(g); g.connect(out); s.start(t); s.stop(t + d + 0.02); };
+  // batida de funk (tamborzão): bumbo, caixa, atabaque e chimbal; baixo 808 e um riff de sintetizador
+  const KICK = [1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0], SNARE = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], TOM = [0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0];
+  const BASS = [55, 0, 0, 55, 0, 0, 65.4, 0, 0, 0, 49, 0, 49, 0, 0, 0], LEAD = [440, 0, 523, 0, 587, 0, 523, 440, 0, 0, 392, 0, 440, 0, 0, 0];
+  while (F.next < c.currentTime + 0.15) {
+    const t = F.next, i = F.step % 16, bar = Math.floor(F.step / 16) % 4;
+    if (KICK[i]) tone(t, 140, 45, 0.28, 0.9);
+    if (SNARE[i]) { noise(t, 0.16, 1500, 0.5, 'bandpass'); tone(t, 200, 150, 0.08, 0.25, 'triangle'); }
+    if (TOM[i]) tone(t, 260, 180, 0.12, 0.35, 'triangle');
+    if (i % 2 === 0) noise(t, 0.04, 7000, 0.12);
+    if (BASS[i]) tone(t, BASS[i] * 2, BASS[i], 0.32, 0.5, 'sine');
+    if (bar % 2 === 1 && LEAD[i]) { tone(t, LEAD[i], LEAD[i], st * 1.6, 0.07, 'square'); tone(t, LEAD[i] * 2, LEAD[i] * 2, st * 1.2, 0.03, 'sawtooth'); }
+    F.next += st; F.step++;
+  }
+};
+
 </script>
 <script>
 'use strict';
@@ -6022,7 +6104,7 @@ function makeActor(name, pal, isPlayer) {
     hp: 200, maxHp: 200, armor: 0, helmet: 0, alive: true,
     slots: [null, null, null], cur: 3, nadeHand: false,
     reloadT: 0, fireCd: 0, lastFire: -9,
-    gel: isPlayer ? 2 : 1, wallCd: 0, kits: 0, nades: 0, healT: 0, crouch: false,
+    gel: isPlayer ? 2 : 1, mats: 300, wallCd: 0, kits: 0, nades: 0, healT: 0, crouch: false,
     kills: 0, dmgDealt: 0, aim: 0, speed: 0, lastHurt: -9, lastAttacker: null, landT: 0,
     revives: isPlayer ? 1 : 0, respawnT: 0, rsWait: 0,
   };
@@ -6099,10 +6181,11 @@ function hitDamage(target, w, head) {
 }
 
 // dispara a arma atual de 'a' a partir de o na direção d (já com mira)
+const _aura = new V3(), _auraV = new V3(0, 0.6, 0);
 const _sd = new V3(), _mz = new V3(), _nrm = new V3(), _ej = new V3();
 const SHOT_SND = { rifle: 'shot', smg: 'smg', sniper: 'sniper', shotgun: 'shotgun', pistol: 'pistol', lmg: 'shot', blaster: 'laser' };
 function fireGun(a, o, d, spread) {
-  const s = curSlot(a), w = WEAPONS[s.id];
+  const s = curSlot(a), w = WEAPONS[s.id], skFx = a.ch.skins && WPN.SKINS[a.ch.skins[s.id]] && WPN.SKINS[a.ch.skins[s.id]].fx;
   s.mag--; a.fireCd = w.cd * (a.isPlayer ? 1 : 1.15); a.lastFire = G.time;
   a.ch.recoil = Math.min(1.4, a.ch.recoil + (w.type === 'shotgun' || w.type === 'sniper' || w.type === 'blaster' ? 1.4 : 0.6));
   const n = w.pellets || 1;
@@ -6118,7 +6201,7 @@ function fireGun(a, o, d, spread) {
     const res = traceShot(o, _sd, w.range, a);
     if (!first) first = res;
     ends.push(res.point);
-    if (a.isPlayer || pd < 140) FX.tracer(_mz, res.point);
+    if (a.isPlayer || pd < 140) { FX.tracer(_mz, res.point); if (skFx && i === 0) FX.glow(res.point, skFx, 0.9, 0.16, null, 0); }
     if (res.actor) {
       const dmg = hitDamage(res.actor, w, res.head) * (a.isPlayer ? 1 : G.botDmgScale);
       const prev = sum.get(res.actor) || { dmg: 0, head: false, point: res.point };
@@ -6156,7 +6239,7 @@ function fireGun(a, o, d, spread) {
     }
   }
   if (near) {
-    FX.muzzle(_mz, w.type === 'shotgun' || w.type === 'sniper' || w.type === 'lmg', w.glow || 0xffffff);
+    FX.muzzle(_mz, w.type === 'shotgun' || w.type === 'sniper' || w.type === 'lmg', skFx || w.glow || 0xffffff);
     if (w.type !== 'blaster' && w.type !== 'shotgun' || Math.random() < 0.5) {
       a.ch.eject.getWorldPosition(_ej);
       FX.casing(_ej, _nrm.set(-Math.cos(a.face), 0, Math.sin(a.face)));
@@ -6211,7 +6294,7 @@ function killActor(a, killer, weapon) {
   a.hp = 0; a.alive = false;
   a.vel.set(0, 0, 0);
   if (killer && killer !== a && !killer.isPlayer && !killer.human && Math.random() < 0.45) { killer.emote = Math.random() < 0.5 ? 'cheer2' : 'laugh'; killer.emoteT = 2.2; }
-  if (killer && killer !== a) { killer.kills++; killFeed(killer, a, weapon); if (killer.isPlayer) killBanner(killer.kills, a); }
+  if (killer && killer !== a) { killer.kills++; killer.mats = (killer.mats || 0) + 50; killFeed(killer, a, weapon); if (killer.isPlayer) killBanner(killer.kills, a); }
   if (killer && killer === G.player && killer !== a) countWeaponKill(weapon);
   else killFeed(a, null, 'Zona');
   // mochila caída com o que a pessoa carregava (como no vídeo)
@@ -6297,7 +6380,7 @@ function respawnActor(a) {
   }
   a.alive = true; a.respawnT = 0; a.rsWait = 0; a.hp = a.maxHp; a.armor = 0; a.helmet = 0;
   a.slots = [null, null, null]; a.cur = 3; a.nadeHand = false; a.reloadT = 0; a.healT = 0;
-  a.kits = 1; a.gel = 2; a.nades = 0; a.emote = null; a.aimOn = false; a.crouch = false;
+  a.kits = 1; a.gel = 2; a.mats = 300; a.nades = 0; a.emote = null; a.aimOn = false; a.crouch = false;
   giveWeapon(a, 'PISTOLA', 12, 36);
   a.pos.set(x, W.height(x, zz) + 70, zz); a.vel.set(0, 0, 0); a.vy = 0;
   a.phase = 'fall'; a.board = false; a.hs = 10; a.vdown = 14; a.onGround = false;
@@ -6511,6 +6594,7 @@ function deployWall(owner, towardYaw, fromNet, dist) {
 }
 
 function damageWall(wall, dmg, point, dir) {
+  if (wall.bp) return BLD.damage(wall, dmg, point, dir);
   if (wall.dead) return;
   wall.hp -= dmg;
   const lx = point.x - wall.cx, lz = point.z - wall.cz;
@@ -6650,6 +6734,7 @@ function explode(n) {
     damageActor(a, dmg * k, n.owner, false, 'Granada');
   }
   for (const w of G.walls.slice()) if (Math.hypot(w.cx - p.x, w.cz - p.z) < R + WALL_R) damageWall(w, 260, p, null);
+  BLD.blast(p, R);
 }
 
 // pontos da trajetória (granada na mão)
@@ -7226,14 +7311,14 @@ function updateWaiting(dt) {
     if (ac.remote && ac.human) continue;
     if (NET.isClient() && !ac.human) continue;
     ac.slots = [null, null, null]; ac.cur = 3; ac.nadeHand = false; ac.reloadT = 0; ac.healT = 0;
-    ac.hp = ac.maxHp; ac.armor = 0; ac.helmet = 0; ac.nades = 0; ac.kits = 0; ac.gel = ac.isPlayer ? 2 : 1; ac.emote = null;
+    ac.hp = ac.maxHp; ac.armor = 0; ac.helmet = 0; ac.nades = 0; ac.kits = 0; ac.gel = ac.isPlayer ? 2 : 1; ac.mats = 300; ac.emote = null;
     ac.kills = 0; ac.dmgDealt = 0; ac.aimOn = false; ac.crouch = false;
     ac.phase = 'plane'; ac.ch.root.visible = false;
     refreshGuns(ac);
     if (ac.ai) { ac.ai.target = null; ac.ai.wp = null; }
   }
   for (const wl of G.walls.slice()) { wl.dead = true; scene.remove(wl.grp); }
-  G.walls.length = 0; W.dynamic.length = 0;
+  G.walls.length = 0; BLD.clear(); W.dynamic.length = 0;
   for (const n of G.nades) scene.remove(n.m);
   G.nades.length = 0;
   startDrop(G.dropArgs[0], G.dropArgs[1]);
@@ -7592,6 +7677,9 @@ function updatePlayer(dt) {
   if (input.slot >= 0) { const i = input.slot; input.slot = -1; selectSlot(p, i === p.cur ? 3 : i); }
   updateHeal(p, dt);
   updateReload(p, dt);
+  // skin com energia: faíscas azuis em volta da arma
+  const skS = curSlot(p), skA = skS && p.ch.skins && WPN.SKINS[p.ch.skins[skS.id]];
+  if (skA && skA.fx && !p.emote && Math.random() < 0.35) { p.ch.muzzle.getWorldPosition(_aura); _aura.x += (Math.random() - 0.5) * 0.5; _aura.y += (Math.random() - 0.5) * 0.25; _aura.z += (Math.random() - 0.5) * 0.5; FX.glow(_aura, skA.fx, 0.12 + Math.random() * 0.1, 0.45, _auraV, 0); }
 
   // tiro / soco / granada
   p.fireCd -= dt;
@@ -7599,7 +7687,9 @@ function updatePlayer(dt) {
   const firing = input.fire || G.mouseFire || tap;
   const pressed = (firing && !G.prevFire) || tap;
   G.prevFire = input.fire || G.mouseFire;
-  if (p.nadeHand) {
+  if (BLD.on()) {
+    if (firing) BLD.place(p);
+  } else if (p.nadeHand) {
     if (pressed && p.fireCd <= 0) throwNade(p, nadeVelocity(G.yaw, G.pitch, _nv));
   } else if (firing && p.fireCd <= 0 && p.reloadT <= 0 && p.healT <= 0) {
     const s = curSlot(p);
@@ -7914,6 +8004,106 @@ function botShoot(b, t, dist) {
 }
 
 
+// ------------------------------------------------------------------ construção (paredes, rampas e pisos no grid de 4 m)
+// botão CONSTRUIR (ou B) troca: parede → rampa → piso → desligado; o tiro coloca a peça mostrada no fantasma
+const BLD = { kind: null, KINDS: ['parede', 'rampa', 'piso'], CELL: 4, H: 3, HP: 160, COST: 10, cd: 0, list: [], ghost: null };
+BLD.on = () => !!BLD.kind && G.state === 'play' && G.player && G.player.phase === 'ground' && G.player.alive;
+BLD.cycle = function () {
+  const i = BLD.KINDS.indexOf(BLD.kind);
+  BLD.kind = i < 0 ? BLD.KINDS[0] : i + 1 < BLD.KINDS.length ? BLD.KINDS[i + 1] : null;
+  SND.play('ui');
+};
+BLD.tex = function () {
+  return BLD._tx || (BLD._tx = U.canvasTex(256, 256, (g) => {
+    g.fillStyle = '#b07a45'; g.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#a06c3a' : '#bb8550'; g.fillRect(0, i * 64 + 2, 256, 60); g.fillStyle = 'rgba(60,35,15,.55)'; g.fillRect(0, i * 64, 256, 3); }
+    g.strokeStyle = 'rgba(70,40,18,.35)'; g.lineWidth = 2; for (let k = 0; k < 40; k++) { const y = Math.random() * 256; g.beginPath(); g.moveTo(Math.random() * 256, y); g.lineTo(Math.random() * 256, y + (Math.random() - 0.5) * 4); g.stroke(); }
+    g.strokeStyle = '#5a3418'; g.lineWidth = 10; g.strokeRect(5, 5, 246, 246); g.beginPath(); g.moveTo(10, 10); g.lineTo(246, 246); g.stroke();
+  }));
+};
+BLD.mat = () => BLD._m || (BLD._m = U.toon({ map: BLD.tex() }));
+BLD.gmat = () => BLD._g || (BLD._g = new THREE.MeshBasicMaterial({ color: 0x5cc8ff, transparent: true, opacity: 0.35, depthWrite: false }));
+// onde a peça cai: célula à frente do jogador, virada para o lado mais próximo (0/90/180/270 graus)
+BLD.spot = function (p, kind) {
+  const C = BLD.CELL, yaw = G.yaw, fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+  const rot = Math.round(yaw / (Math.PI / 2)) * (Math.PI / 2), dx = -Math.sin(rot), dz = -Math.cos(rot);
+  const d = kind === 'parede' ? 1.2 : 2.6;
+  const cx = (Math.floor((p.pos.x + fx * d) / C) + 0.5) * C, cz = (Math.floor((p.pos.z + fz * d) / C) + 0.5) * C;
+  let base = p.pos.y - 0.05;
+  if (kind === 'piso' && G.pitch > 0.15) base += BLD.H;
+  if (kind === 'parede') return { kind: kind, x: cx + dx * C / 2, z: cz + dz * C / 2, y: base, rot: rot };
+  return { kind: kind, x: cx, z: cz, y: base, rot: rot };
+};
+BLD.geo = function (kind) {
+  BLD._geo = BLD._geo || {};
+  if (BLD._geo[kind]) return BLD._geo[kind];
+  const C = BLD.CELL, H = BLD.H;
+  let g;
+  if (kind === 'parede') g = new THREE.BoxGeometry(C, H, 0.22).translate(0, H / 2, 0);
+  else if (kind === 'piso') g = new THREE.BoxGeometry(C, 0.22, C).translate(0, -0.11, 0);
+  else { const L = Math.hypot(C, H); g = new THREE.BoxGeometry(C, 0.22, L).rotateX(Math.atan2(H, C)).translate(0, H / 2, 0); }
+  return (BLD._geo[kind] = g);
+};
+// colisões: parede é uma caixa; piso é uma laje onde dá para pisar; rampa vira degraus baixos (sobe andando)
+BLD.cols = function (pc) {
+  const C = BLD.CELL, H = BLD.H, cs = Math.cos(pc.rot), sn = Math.sin(pc.rot), out = [];
+  const box = (x, z, hx, hz, y0, y1) => { const c = { type: 'b', x: x, z: z, hx: hx, hz: hz, rot: pc.rot, cs: cs, sn: sn, br: Math.hypot(hx, hz), y0: y0, y1: y1, walkable: true, wall: pc }; out.push(c); return c; };
+  if (pc.kind === 'parede') box(pc.x, pc.z, C / 2, 0.11, pc.y - 0.3, pc.y + H);
+  else if (pc.kind === 'piso') box(pc.x, pc.z, C / 2, C / 2, pc.y - 0.22, pc.y);
+  else {
+    const n = 8, dx = -Math.sin(pc.rot), dz = -Math.cos(pc.rot);
+    for (let k = 0; k < n; k++) { const t = -C / 2 + (k + 0.5) * C / n; const top = pc.y + (k + 1) * H / n; box(pc.x + dx * t, pc.z + dz * t, C / 2, C / n / 2, top - 0.3, top); }
+  }
+  return out;
+};
+BLD.place = function (p) {
+  if (BLD.cd > 0) return;
+  BLD.cd = 0.18;
+  if ((p.mats || 0) < BLD.COST) { notify('info', 'Sem madeira! Abata inimigos para ganhar mais.'); BLD.cd = 0.8; return; }
+  const s = BLD.spot(p, BLD.kind);
+  for (const o of BLD.list) if (o.kind === s.kind && Math.abs(o.x - s.x) < 0.5 && Math.abs(o.z - s.z) < 0.5 && Math.abs(o.y - s.y) < 1 && Math.abs(U.angDiff(o.rot, s.rot)) < 0.3) return;
+  p.mats -= BLD.COST;
+  const m = new THREE.Mesh(BLD.geo(s.kind), BLD.mat());
+  m.position.set(s.x, s.y, s.z); m.rotation.y = s.rot; m.castShadow = m.receiveShadow = true; m.scale.y = 0.1;
+  scene.add(m);
+  const pc = Object.assign(s, { bp: true, mesh: m, hp: BLD.HP, grow: 0, dead: false, cx: s.x, cz: s.z });
+  pc.cols = BLD.cols(pc);
+  for (const c of pc.cols) W.dynamic.push(c);
+  BLD.list.push(pc);
+  SND.play('wall', 0.8);
+};
+BLD.damage = function (pc, dmg, point, dir) {
+  if (pc.dead) return;
+  pc.hp -= dmg;
+  if (point && dir) for (let i = 0; i < 3; i++) FX.shard(point.clone().addScaledVector(dir, -0.1), new V3(-dir.x * 2 + (Math.random() - 0.5) * 3, 1 + Math.random() * 2, -dir.z * 2 + (Math.random() - 0.5) * 3), 0.06 + Math.random() * 0.06, 0.8);
+  pc.mesh.material = pc.hp < BLD.HP * 0.4 ? (BLD._mh || (BLD._mh = U.toon({ map: BLD.tex(), color: 0x8a5a3a }))) : BLD.mat();
+  if (pc.hp <= 0) BLD.remove(pc, true);
+};
+BLD.remove = function (pc, fx) {
+  pc.dead = true;
+  for (const c of pc.cols) { c.dead = true; const i = W.dynamic.indexOf(c); if (i >= 0) W.dynamic.splice(i, 1); }
+  scene.remove(pc.mesh);
+  const i = BLD.list.indexOf(pc); if (i >= 0) BLD.list.splice(i, 1);
+  if (fx) {
+    for (let k = 0; k < 16; k++) FX.shard(new V3(pc.x + (Math.random() - 0.5) * 3, pc.y + Math.random() * 2.5, pc.z + (Math.random() - 0.5) * 3), new V3((Math.random() - 0.5) * 4, 2 + Math.random() * 3, (Math.random() - 0.5) * 4), 0.15 + Math.random() * 0.2, 1.6);
+    if (Math.hypot(pc.x - G.player.pos.x, pc.z - G.player.pos.z) < 45) SND.play('break', 0.6);
+  }
+};
+BLD.blast = function (p, R) { for (const pc of BLD.list.slice()) if (Math.hypot(pc.x - p.x, pc.z - p.z) < R + 2) BLD.damage(pc, 200, p, null); };
+BLD.clear = function () { for (const pc of BLD.list.slice()) BLD.remove(pc, false); BLD.kind = null; };
+BLD.update = function (dt) {
+  BLD.cd -= dt;
+  for (const pc of BLD.list) if (pc.grow < 1) { pc.grow = Math.min(1, pc.grow + dt / 0.15); pc.mesh.scale.y = 0.1 + 0.9 * pc.grow; }
+  const on = BLD.on();
+  if (on) {
+    const s = BLD.spot(G.player, BLD.kind);
+    if (!BLD.ghost) { BLD.ghost = new THREE.Mesh(BLD.geo(s.kind), BLD.gmat()); scene.add(BLD.ghost); }
+    BLD.ghost.geometry = BLD.geo(s.kind); BLD.ghost.position.set(s.x, s.y, s.z); BLD.ghost.rotation.y = s.rot; BLD.ghost.visible = true;
+  } else if (BLD.ghost) BLD.ghost.visible = false;
+  const b = H.btnBuild;
+  if (b) { const lbl = on ? BLD.kind.toUpperCase() : 'CONSTRUIR'; const t = lbl + '|' + (G.player ? G.player.mats || 0 : 0); if (b._t !== t) { b._t = t; b.innerHTML = '<b>' + lbl + '</b><small>🪵 ' + (G.player ? G.player.mats || 0 : 0) + '</small>'; b.classList.toggle('on', on); } }
+};
+
 </script>
 <script>
 'use strict';
@@ -7985,7 +8175,7 @@ CS.newRound = function () {
   const cs = G.cs;
   cs.round++; cs.phase = 'buy'; cs.t = CS.BUY;
   for (const w of G.walls.slice()) { w.dead = true; scene.remove(w.grp); }
-  G.walls.length = 0; W.dynamic.length = 0;
+  G.walls.length = 0; BLD.clear(); W.dynamic.length = 0;
   for (const nd of G.nades) scene.remove(nd.m);
   G.nades.length = 0;
   for (const p of G.props) scene.remove(p);
@@ -8002,7 +8192,7 @@ CS.resetActor = function (a) {
   const [x, z, face] = CS.spawnPos(a.team, a.slot);
   a.alive = true; a.hp = a.maxHp; a.armor = 2; a.helmet = 2; a.respawnT = 0; a.rsWait = 0;
   a.slots = [null, null, null]; a.cur = 3; a.nadeHand = false; a.reloadT = 0; a.healT = 0; a.emote = null; a.aimOn = false; a.crouch = false;
-  a.kits = 1; a.gel = 2; a.nades = 1; a.wallCd = 0;
+  a.kits = 1; a.gel = 2; a.mats = 300; a.nades = 1; a.wallCd = 0;
   a.pos.set(x, W.groundAt(x, z, 50), z); a.vel.set(0, 0, 0); a.vy = 0; a.onGround = true; a.phase = 'ground';
   a.face = face; a.ch.body.rotation.y = face; a.ch.root.position.copy(a.pos); a.ch.root.visible = true;
   a.lastAttacker = null;
@@ -8989,7 +9179,7 @@ const SHOP = {
   },
   emotes: {
     wave: { price: null, rare: 'comum' }, clap: { price: null, rare: 'comum' }, shrug: { price: null, rare: 'comum' }, dance: { price: null, rare: 'comum' },
-    laugh: { price: ['gold', 300], rare: 'raro' }, cheer2: { price: ['gold', 400], rare: 'raro' }, dance3: { price: ['gold', 700], rare: 'epico' },
+    laugh: { price: ['gold', 300], rare: 'raro' }, cheer2: { price: ['gold', 400], rare: 'raro' }, dance3: { price: ['gold', 700], rare: 'epico' }, jamal: { price: ['gems', 90], alt: ['gold', 4500], rare: 'lendario', desc: 'O passinho que tomou conta: braço cruzado, mão na cabeça, soco pra baixo e varrida. Toca o funk junto!' },
     dance4: { price: ['gems', 30], rare: 'epico' }, dance2: { price: ['gems', 50], rare: 'lendario' }, cheer3: { price: ['gems', 80], rare: 'lendario' },
   },
   // pacotes de recarga: o id é o mesmo produto cadastrado no Google Play Console
@@ -9006,6 +9196,7 @@ const SHOP = {
   guns: {
     ak_ouro: { price: ['gems', 150], alt: ['gold', 8000], rare: 'lendario', desc: 'AK-47 banhada a ouro com arabescos gravados à mão e coronha de laca preta com veios dourados.' },
     ak_dragao: { price: ['gems', 180], alt: ['gold', 9500], rare: 'lendario', desc: 'Escamas de dragão que brilham como brasa e pulsam enquanto você joga.' },
+    ak_glacial: { price: ['gems', 260], alt: ['gold', 14000], rare: 'diamante', desc: 'Cristais de gelo vivos com energia azul pulsando, clarão e impactos azuis e brilho em volta da arma.' },
     ak_gelo: { price: ['gems', 130], alt: ['gold', 7000], rare: 'lendario', desc: 'Cristal de gelo translúcido com rachaduras que brilham em azul.' },
     m4_neon: { price: ['gems', 90], alt: ['gold', 5000], rare: 'epico', desc: 'Circuitos neon ciano e rosa correndo pela carabina.' },
     smg_gelo: { price: ['gems', 80], alt: ['gold', 4500], rare: 'epico', desc: 'A SMG congelada: gelo ártico com brilho azul.' },
@@ -11255,7 +11446,7 @@ const ICON = {
 const SKINS = [['heroi', 'Cacheado'], ['swat', 'SWAT'], ['soldado', 'Soldado'], ['soldado2', 'Sargento'], ['bone', 'Boné'], ['camisa', 'Camiseta'], ['jeans', 'Jeans'], ['soldada', 'Soldada'], ['carrasco', 'Carrasco'], ['craque', 'Craque 10']];
 const skinName = k => (SKINS.find(x => x[0] === k) || SKINS[0])[1];
 // emotes (animações de captura de movimento): [clipe, nome, ícone, duração máx.]
-const EMOTES = [['dance', 'Dança', '🕺', 8], ['dance2', 'Dança louca', '🤪', 8], ['dance3', 'Passinho', '🔥', 8], ['dance4', 'Balanço', '🎶', 8],
+const EMOTES = [['dance', 'Dança', '🕺', 8], ['dance2', 'Dança louca', '🤪', 8], ['dance3', 'Passinho', '🔥', 8], ['jamal', 'Passinho do Jamal', '🇧🇷', 8.6], ['dance4', 'Balanço', '🎶', 8],
   ['wave', 'Acenar', '👋', 2.8], ['clap', 'Aplaudir', '👏', 4], ['cheer2', 'Comemorar', '🙌', 4.2], ['laugh', 'Rir', '😂', 4], ['shrug', 'E aí?', '🤷', 1.8], ['cheer3', 'Vitória', '🏆', 4.5]];
 const EMOTE_KEYS = EMOTES.map(e => e[0]);
 function emoteLen(k) { const e = EMOTES.find(x => x[0] === k); return e ? e[3] : 3; }
@@ -11593,7 +11784,7 @@ function initHUD() {
   document.querySelectorAll('[data-icon]').forEach(el => { el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)); });
   ['hud', 'touch', 'hpFill', 'hpNum', 'vestBadge', 'helmBadge', 'aliveNum', 'killNum', 'compassStrip', 'compassNum', 'notifs', 'areaBanner', 'areaName',
     'killBanner', 'kbCount', 'kbName', 'minimap', 'zoneTime', 'zoneText', 'topStatus', 'prep', 'prepNum', 'bigText', 'jumpHint', 'diveStats', 'diveHint', 'altMark',
-    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'btnGel', 'wbInsp', 'inspTag', 'vaultBtn', 'mkPin',
+    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'btnGel', 'btnBuild', 'wbInsp', 'inspTag', 'vaultBtn', 'mkPin',
     'healRing', 'reloadBar'].forEach(id => { H[id] = $(id); });
   H.scopeWrap = H.scope.querySelector('.sWrap');
   H.mm = H.minimap.getContext('2d');
@@ -12314,7 +12505,7 @@ function renderSettings() {
   }
 }
 // ---------- editor de HUD: arrastar e redimensionar os botões; salva em G.settings.hud ----------
-const HUD_EDIT = ['btnFire', 'btnFireL', 'btnAim', 'btnJump', 'btnCrouch', 'btnReload', 'btnInv', 'btnEmote', 'btnRun', 'btnGel', 'ffCount', 'joyBase', 'weaponBar', 'hudTR', 'hudTL'];
+const HUD_EDIT = ['btnFire', 'btnFireL', 'btnAim', 'btnJump', 'btnCrouch', 'btnReload', 'btnInv', 'btnEmote', 'btnRun', 'btnGel', 'btnBuild', 'ffCount', 'joyBase', 'weaponBar', 'hudTR', 'hudTL'];
 let heWork = null, heSel = null, heFrom = null;
 function applyHudLayout() {
   const L = G.settings.hud || {};
@@ -12430,6 +12621,7 @@ function initInput() {
     if (e.code === 'KeyB' && G.state === 'play') openEmoteWheel();
     if (e.code === 'KeyI' && G.state === 'play') input.inspect = true;
     if (e.code === 'KeyG' && G.state === 'play' && !e.repeat) startGelAim(0, 0);
+    if (e.code === 'KeyB' && G.state === 'play' && !e.repeat) BLD.cycle();
     if (e.code === 'Backquote' && document.exitPointerLock) document.exitPointerLock();
     if (G.state === 'play' && (e.code === 'Space' || e.code.indexOf('Arrow') === 0)) e.preventDefault();
   });
@@ -12543,6 +12735,7 @@ function initInput() {
   holdBtn($('btnMap'), () => { openMap(); });
   holdBtn($('mmWrap'), () => { openMap(); });
   // gel: segurar, arrastar para escolher o lugar e soltar
+  $('btnBuild').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (!document.body.classList.contains('hud-editing')) BLD.cycle(); });
   const gb = $('btnGel');
   gb.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); try { gb.setPointerCapture(e.pointerId); } catch (er) { /* ok */ } startGelAim(e.clientX, e.clientY); });
   gb.addEventListener('pointermove', (e) => { if (G.gelAim) { e.preventDefault(); moveGelAim(e.clientX, e.clientY); } });
@@ -12612,7 +12805,7 @@ function clearMatch() {
   CS.tags = [];
   for (const a of G.actors) scene.remove(a.ch.root);
   for (const w of G.walls.slice()) { w.dead = true; scene.remove(w.grp); }
-  G.walls.length = 0; W.dynamic.length = 0;
+  G.walls.length = 0; BLD.clear(); W.dynamic.length = 0;
   G.loot.length = 0;
   renderLoot(0, 0);
   for (const n of G.nades) scene.remove(n.m);
@@ -12639,6 +12832,7 @@ function tick(dt) {
   for (const a of G.actors) if (a.human && a.remote) updatePuppet(a, dt);
   for (const b of G.bots) updateBot(b, dt);
   updateWalls(dt);
+  BLD.update(dt);
   updateNades(dt);
   updateLoot(dt);
   if (G.mode === 'cs') CS.update(dt);
@@ -12676,6 +12870,7 @@ function frame(now) {
   PERF.last = now || 0;
   const raw = clock.getDelta();
   const dt = Math.min(raw, 0.05);
+  SND.musicOn((G.state === 'play' && G.player && G.player.emote === 'jamal') || (G.state === 'menu' && G.showEmote && G.showEmote.k === 'jamal' && G.showEmote.t > 0));
   WPN.timeU.value = (performance.now() / 1000) % 600;
   if (!G.built) return;
   adaptQuality(raw);

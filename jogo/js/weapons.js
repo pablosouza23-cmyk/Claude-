@@ -452,6 +452,7 @@ WPN.STYLES = {
   ice: { pat: 'skinIce', scale: 0.8, base: 0x9fdcff, acc: 0xffffff, wood: 0x5fb7ef, wacc: 0xe8fbff, brightC: 0xdff6ff, metal: 0.15, rough: 0.06, racc: 0.3, wmetal: 0.1, wrough: 0.1, coat: 1, emis: 0x2b9cff, emisK: 0.55, glowBase: 0.08 },
   dragon: { pat: 'skinScales', scale: 1.1, base: 0x1c0f0b, acc: 0xff4a12, wood: 0x2a0806, wacc: 0xff7a1a, brightC: 0xffb066, metal: 0.65, rough: 0.38, racc: 0.3, wmetal: 0.4, wrough: 0.35, coat: 0.5, emis: 0xff3a0a, emisK: 2.2, pulse: 1 },
   neon: { pat: 'skinCircuit', scale: 0.9, base: 0x0b0e18, acc: 0x26f4ff, wood: 0x150a22, wacc: 0xff3cf0, brightC: 0xb8f7ff, metal: 0.55, rough: 0.3, racc: 0.2, wmetal: 0.4, wrough: 0.3, coat: 0.7, emis: 0x26f4ff, emisK: 2.4, wemis: 0xff3cf0, pulse: 1 },
+  glacial: { pat: 'skinScales', scale: 1.3, base: 0xe4f6ff, acc: 0x27b4ff, wood: 0x0b2350, wacc: 0x58d8ff, brightC: 0xffffff, metal: 0.72, rough: 0.16, racc: 0.22, wmetal: 0.5, wrough: 0.2, coat: 1, emis: 0x2ab8ff, emisK: 3.6, wemis: 0x7fe6ff, glowBase: 0.22, pulse: 1 },
   camo: { col: 'skinCamo', scale: 0.7, metal: 0.1, rough: 0.78, coat: 0, keepMetal: true },
   carbon: { col: 'skinCarbon', scale: 2.2, metal: 0.25, rough: 0.28, coat: 1, keepMetal: true },
 };
@@ -460,6 +461,7 @@ WPN.SKINS = {
   ak_ouro: { gun: 'FUZIL', name: 'AK-47 Dourada', style: 'gold' },
   ak_gelo: { gun: 'FUZIL', name: 'AK-47 Gelo Ártico', style: 'ice' },
   ak_dragao: { gun: 'FUZIL', name: 'AK-47 Dragão de Fogo', style: 'dragon' },
+  ak_glacial: { gun: 'FUZIL', name: 'AK-47 Fúria Glacial', style: 'glacial', fx: 0x46c8ff },
   m4_neon: { gun: 'CARABINA', name: 'Carabina Neon', style: 'neon' },
   awm_camo: { gun: 'PRECISAO', name: 'Precisão Camuflada', style: 'camo' },
   esc_carbono: { gun: 'ESCOPETA', name: 'Escopeta Carbono', style: 'carbon' },

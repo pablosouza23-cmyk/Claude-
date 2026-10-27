@@ -58,7 +58,7 @@ const SHOP = {
   },
   emotes: {
     wave: { price: null, rare: 'comum' }, clap: { price: null, rare: 'comum' }, shrug: { price: null, rare: 'comum' }, dance: { price: null, rare: 'comum' },
-    laugh: { price: ['gold', 300], rare: 'raro' }, cheer2: { price: ['gold', 400], rare: 'raro' }, dance3: { price: ['gold', 700], rare: 'epico' },
+    laugh: { price: ['gold', 300], rare: 'raro' }, cheer2: { price: ['gold', 400], rare: 'raro' }, dance3: { price: ['gold', 700], rare: 'epico' }, jamal: { price: ['gems', 90], alt: ['gold', 4500], rare: 'lendario', desc: 'O passinho que tomou conta: braço cruzado, mão na cabeça, soco pra baixo e varrida. Toca o funk junto!' },
     dance4: { price: ['gems', 30], rare: 'epico' }, dance2: { price: ['gems', 50], rare: 'lendario' }, cheer3: { price: ['gems', 80], rare: 'lendario' },
   },
   // pacotes de recarga: o id é o mesmo produto cadastrado no Google Play Console
@@ -75,6 +75,7 @@ const SHOP = {
   guns: {
     ak_ouro: { price: ['gems', 150], alt: ['gold', 8000], rare: 'lendario', desc: 'AK-47 banhada a ouro com arabescos gravados à mão e coronha de laca preta com veios dourados.' },
     ak_dragao: { price: ['gems', 180], alt: ['gold', 9500], rare: 'lendario', desc: 'Escamas de dragão que brilham como brasa e pulsam enquanto você joga.' },
+    ak_glacial: { price: ['gems', 260], alt: ['gold', 14000], rare: 'diamante', desc: 'Cristais de gelo vivos com energia azul pulsando, clarão e impactos azuis e brilho em volta da arma.' },
     ak_gelo: { price: ['gems', 130], alt: ['gold', 7000], rare: 'lendario', desc: 'Cristal de gelo translúcido com rachaduras que brilham em azul.' },
     m4_neon: { price: ['gems', 90], alt: ['gold', 5000], rare: 'epico', desc: 'Circuitos neon ciano e rosa correndo pela carabina.' },
     smg_gelo: { price: ['gems', 80], alt: ['gold', 4500], rare: 'epico', desc: 'A SMG congelada: gelo ártico com brilho azul.' },

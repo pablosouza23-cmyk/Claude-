@@ -53,7 +53,7 @@ const ICON = {
 const SKINS = [['heroi', 'Cacheado'], ['swat', 'SWAT'], ['soldado', 'Soldado'], ['soldado2', 'Sargento'], ['bone', 'Boné'], ['camisa', 'Camiseta'], ['jeans', 'Jeans'], ['soldada', 'Soldada'], ['carrasco', 'Carrasco'], ['craque', 'Craque 10']];
 const skinName = k => (SKINS.find(x => x[0] === k) || SKINS[0])[1];
 // emotes (animações de captura de movimento): [clipe, nome, ícone, duração máx.]
-const EMOTES = [['dance', 'Dança', '🕺', 8], ['dance2', 'Dança louca', '🤪', 8], ['dance3', 'Passinho', '🔥', 8], ['dance4', 'Balanço', '🎶', 8],
+const EMOTES = [['dance', 'Dança', '🕺', 8], ['dance2', 'Dança louca', '🤪', 8], ['dance3', 'Passinho', '🔥', 8], ['jamal', 'Passinho do Jamal', '🇧🇷', 8.6], ['dance4', 'Balanço', '🎶', 8],
   ['wave', 'Acenar', '👋', 2.8], ['clap', 'Aplaudir', '👏', 4], ['cheer2', 'Comemorar', '🙌', 4.2], ['laugh', 'Rir', '😂', 4], ['shrug', 'E aí?', '🤷', 1.8], ['cheer3', 'Vitória', '🏆', 4.5]];
 const EMOTE_KEYS = EMOTES.map(e => e[0]);
 function emoteLen(k) { const e = EMOTES.find(x => x[0] === k); return e ? e[3] : 3; }
@@ -391,7 +391,7 @@ function initHUD() {
   document.querySelectorAll('[data-icon]').forEach(el => { el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)); });
   ['hud', 'touch', 'hpFill', 'hpNum', 'vestBadge', 'helmBadge', 'aliveNum', 'killNum', 'compassStrip', 'compassNum', 'notifs', 'areaBanner', 'areaName',
     'killBanner', 'kbCount', 'kbName', 'minimap', 'zoneTime', 'zoneText', 'topStatus', 'prep', 'prepNum', 'bigText', 'jumpHint', 'diveStats', 'diveHint', 'altMark',
-    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'btnGel', 'wbInsp', 'inspTag', 'vaultBtn', 'mkPin',
+    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'btnGel', 'btnBuild', 'wbInsp', 'inspTag', 'vaultBtn', 'mkPin',
     'healRing', 'reloadBar'].forEach(id => { H[id] = $(id); });
   H.scopeWrap = H.scope.querySelector('.sWrap');
   H.mm = H.minimap.getContext('2d');
@@ -1112,7 +1112,7 @@ function renderSettings() {
   }
 }
 // ---------- editor de HUD: arrastar e redimensionar os botões; salva em G.settings.hud ----------
-const HUD_EDIT = ['btnFire', 'btnFireL', 'btnAim', 'btnJump', 'btnCrouch', 'btnReload', 'btnInv', 'btnEmote', 'btnRun', 'btnGel', 'ffCount', 'joyBase', 'weaponBar', 'hudTR', 'hudTL'];
+const HUD_EDIT = ['btnFire', 'btnFireL', 'btnAim', 'btnJump', 'btnCrouch', 'btnReload', 'btnInv', 'btnEmote', 'btnRun', 'btnGel', 'btnBuild', 'ffCount', 'joyBase', 'weaponBar', 'hudTR', 'hudTL'];
 let heWork = null, heSel = null, heFrom = null;
 function applyHudLayout() {
   const L = G.settings.hud || {};
@@ -1228,6 +1228,7 @@ function initInput() {
     if (e.code === 'KeyB' && G.state === 'play') openEmoteWheel();
     if (e.code === 'KeyI' && G.state === 'play') input.inspect = true;
     if (e.code === 'KeyG' && G.state === 'play' && !e.repeat) startGelAim(0, 0);
+    if (e.code === 'KeyB' && G.state === 'play' && !e.repeat) BLD.cycle();
     if (e.code === 'Backquote' && document.exitPointerLock) document.exitPointerLock();
     if (G.state === 'play' && (e.code === 'Space' || e.code.indexOf('Arrow') === 0)) e.preventDefault();
   });
@@ -1341,6 +1342,7 @@ function initInput() {
   holdBtn($('btnMap'), () => { openMap(); });
   holdBtn($('mmWrap'), () => { openMap(); });
   // gel: segurar, arrastar para escolher o lugar e soltar
+  $('btnBuild').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (!document.body.classList.contains('hud-editing')) BLD.cycle(); });
   const gb = $('btnGel');
   gb.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); try { gb.setPointerCapture(e.pointerId); } catch (er) { /* ok */ } startGelAim(e.clientX, e.clientY); });
   gb.addEventListener('pointermove', (e) => { if (G.gelAim) { e.preventDefault(); moveGelAim(e.clientX, e.clientY); } });
@@ -1410,7 +1412,7 @@ function clearMatch() {
   CS.tags = [];
   for (const a of G.actors) scene.remove(a.ch.root);
   for (const w of G.walls.slice()) { w.dead = true; scene.remove(w.grp); }
-  G.walls.length = 0; W.dynamic.length = 0;
+  G.walls.length = 0; BLD.clear(); W.dynamic.length = 0;
   G.loot.length = 0;
   renderLoot(0, 0);
   for (const n of G.nades) scene.remove(n.m);
@@ -1437,6 +1439,7 @@ function tick(dt) {
   for (const a of G.actors) if (a.human && a.remote) updatePuppet(a, dt);
   for (const b of G.bots) updateBot(b, dt);
   updateWalls(dt);
+  BLD.update(dt);
   updateNades(dt);
   updateLoot(dt);
   if (G.mode === 'cs') CS.update(dt);
@@ -1474,6 +1477,7 @@ function frame(now) {
   PERF.last = now || 0;
   const raw = clock.getDelta();
   const dt = Math.min(raw, 0.05);
+  SND.musicOn((G.state === 'play' && G.player && G.player.emote === 'jamal') || (G.state === 'menu' && G.showEmote && G.showEmote.k === 'jamal' && G.showEmote.t > 0));
   WPN.timeU.value = (performance.now() / 1000) % 600;
   if (!G.built) return;
   adaptQuality(raw);

@@ -102,6 +102,8 @@ CH.buildClips = function (buf) {
     clip.userData = { speed: c.speed / 100 }; // m/s
     CH.clips[c.name] = clip;
   }
+  // Passinho do Jamal: pernas e balanço da dança base; os braços são montados por IK (CH.jamal)
+  if (CH.clips.dance3) { const j = CH.clips.dance3.clone(); j.name = 'jamal'; CH.clips.jamal = j; }
 };
 
 CH.load = async function (onStep) {
@@ -942,6 +944,7 @@ CH.animate = function (ch, dt, s) {
       arm('R', _tgt, _pole);
     }
   }
+  if (s.emote === 'jamal' && ch.acts.jamal) CH.jamal(ch, ch.acts.jamal.time, arm, B);
   // cabeça acompanha a mira
   if (full) rotAxis(B.Bip01_Head, _bodyR, -pitch * 0.25);
   // arma guardada nas costas, na diagonal
@@ -953,3 +956,34 @@ CH.animate = function (ch, dt, s) {
   }
 };
 const SIDES = [[1, 'R'], [-1, 'L']];
+
+// ---------- Passinho do Jamal ----------
+// 8 tempos: braços cruzados (2), mãos na nuca (2), soco pra baixo dir./esq., varrida dir./esq.
+// cada pose: [direita, esquerda] em (lado, altura, frente) a partir do pescoço
+const JAMAL = [
+  [[-0.14, -0.13, 0.22], [0.14, -0.09, 0.25]],
+  [[-0.14, -0.13, 0.22], [0.14, -0.09, 0.25]],
+  [[0.13, 0.17, -0.05], [-0.13, 0.17, -0.05]],
+  [[0.13, 0.17, -0.05], [-0.13, 0.17, -0.05]],
+  [[0.06, -0.58, 0.32], [-0.14, -0.24, 0.24]],
+  [[0.14, -0.24, 0.24], [-0.06, -0.58, 0.32]],
+  [[-0.42, 0.14, 0.34], [-0.18, -0.3, 0.2]],
+  [[0.18, -0.3, 0.2], [0.42, 0.14, 0.34]],
+];
+CH.JAMAL_BEAT = 60 / 128;
+const _jn = new THREE.Vector3(), _jt = new THREE.Vector3(), _jp = new THREE.Vector3(), _ja = new THREE.Vector3(), _jb = new THREE.Vector3();
+CH.jamal = function (ch, t, arm, B) {
+  const nk = B.Bip01_Neck || B.Bip01_Head;
+  if (!nk) return;
+  wpos(nk, _jn);
+  const bt = t / CH.JAMAL_BEAT, i = Math.floor(bt) % 8, ph = bt - Math.floor(bt);
+  const k = U.smooth(0, 0.35, ph), P0 = JAMAL[(i + 7) % 8], P1 = JAMAL[i];
+  const head = i === 2 || i === 3;
+  for (let sd = 0; sd < 2; sd++) {
+    const a = P0[sd], b = P1[sd], sg = sd ? -1 : 1;
+    const r = a[0] + (b[0] - a[0]) * k, u = a[1] + (b[1] - a[1]) * k, f = a[2] + (b[2] - a[2]) * k;
+    _jt.copy(_jn).addScaledVector(_bodyR, r).addScaledVector(UP, u).addScaledVector(_bodyF, f);
+    _jp.copy(_bodyR).multiplyScalar(sg).addScaledVector(UP, head ? 0.4 : -1).addScaledVector(_bodyF, head ? 0.2 : 0);
+    arm(sd ? 'L' : 'R', _jt, _jp);
+  }
+};

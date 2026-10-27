@@ -67,7 +67,7 @@ CS.newRound = function () {
   const cs = G.cs;
   cs.round++; cs.phase = 'buy'; cs.t = CS.BUY;
   for (const w of G.walls.slice()) { w.dead = true; scene.remove(w.grp); }
-  G.walls.length = 0; W.dynamic.length = 0;
+  G.walls.length = 0; BLD.clear(); W.dynamic.length = 0;
   for (const nd of G.nades) scene.remove(nd.m);
   G.nades.length = 0;
   for (const p of G.props) scene.remove(p);
@@ -84,7 +84,7 @@ CS.resetActor = function (a) {
   const [x, z, face] = CS.spawnPos(a.team, a.slot);
   a.alive = true; a.hp = a.maxHp; a.armor = 2; a.helmet = 2; a.respawnT = 0; a.rsWait = 0;
   a.slots = [null, null, null]; a.cur = 3; a.nadeHand = false; a.reloadT = 0; a.healT = 0; a.emote = null; a.aimOn = false; a.crouch = false;
-  a.kits = 1; a.gel = 2; a.nades = 1; a.wallCd = 0;
+  a.kits = 1; a.gel = 2; a.mats = 300; a.nades = 1; a.wallCd = 0;
   a.pos.set(x, W.groundAt(x, z, 50), z); a.vel.set(0, 0, 0); a.vy = 0; a.onGround = true; a.phase = 'ground';
   a.face = face; a.ch.body.rotation.y = face; a.ch.root.position.copy(a.pos); a.ch.root.visible = true;
   a.lastAttacker = null;

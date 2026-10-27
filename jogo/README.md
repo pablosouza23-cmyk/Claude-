@@ -97,6 +97,12 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v3.9
+
+- Emote **Passinho do Jamal** (loja de emotes) com funk tocando junto enquanto dança. Batida original, feita no próprio jogo.
+- **AK-47 Fúria Glacial** (diamante): cristais azuis com energia pulsando, clarão e impactos azuis e faíscas em volta da arma.
+- **Construção**: botão CONSTRUIR (ou tecla B) troca parede → rampa → piso; o tiro coloca a peça. Começa com 300 de madeira, cada peça custa 10 e cada abate dá +50. As peças levam tiro e explodem com granada.
+
 ## Novidades da v3.8
 
 - Imagens dos selos trocadas: a coroa com louros agora é o SUPREMO e as asas viraram o DOURADO.

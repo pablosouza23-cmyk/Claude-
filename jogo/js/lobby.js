@@ -322,7 +322,7 @@ LOB.closeShop = function () {
 LOB.items = function (kind) {
   if (kind === 'guns') return Object.keys(SHOP.guns).map(id => ({ id: id, name: WPN.SKINS[id].name, gun: WPN.SKINS[id].gun, it: SHOP.guns[id] }));
   if (kind === 'walls') return Object.keys(SHOP.walls).map(id => ({ id: id, name: WALL_SKINS[id].name, it: SHOP.walls[id] }));
-  return kind === 'skins' ? SKINS.map(s => ({ id: s[0], name: s[1], it: SHOP.skins[s[0]] })) : EMOTES.map(e => ({ id: e[0], name: e[1], icon: e[2], it: SHOP.emotes[e[0]] }));
+  return kind === 'skins' ? SKINS.filter(s => s[0] !== 'soldado2' || (ACC.p && ACC.owns('skins', 'soldado2'))).map(s => ({ id: s[0], name: s[1], it: SHOP.skins[s[0]] })) : EMOTES.map(e => ({ id: e[0], name: e[1], icon: e[2], it: SHOP.emotes[e[0]] }));
 };
 LOB.priceHTML = (pr) => pr ? cur(pr[0]) + '<b>' + fmtN(pr[1]) + '</b>' : '<b>GRÁTIS</b>';
 LOB.renderShop = function () {
@@ -579,7 +579,7 @@ LOB.pixBuy = async function (pk) {
   LOB.dialog('PAGAR COM PIX', '<div class="pixBox">' + (j.img ? '<img class="pixQr" alt="QR Code do Pix" src="data:image/png;base64,' + j.img + '">' : '') +
     '<b>' + PAY.priceText(pk) + ' · ' + GEM_SVG + fmtN(total) + ' gemas</b><small>Abra o app do seu banco, escolha Pix › Ler QR Code ou Pix copia e cola.</small>' +
     '<textarea class="codeBox pixCode" readonly>' + escapeHTML(j.code) + '</textarea><p id="pixSt" class="pixSt">' + icon('info') + 'Aguardando o pagamento…</p></div>',
-    [['COPIAR CÓDIGO', () => { try { navigator.clipboard.writeText(j.code).then(() => notify('ok', 'Código Pix copiado'), () => notify('info', 'Selecione e copie o código')); } catch (e) { notify('info', 'Selecione e copie o código'); } return false; }, true], ['FECHAR']]);
+    [['COPIAR CÓDIGO', () => { U.copy(j.code, 'Código Pix copiado'); return false; }, true], ['FECHAR']]);
   // confere a cada 4 segundos por até 15 minutos (se fechar, as gemas entram quando o jogo conferir de novo)
   const t0 = Date.now();
   clearInterval(LOB.pixIv);
@@ -631,7 +631,7 @@ LOB.renderProfile = function () {
     '<div class="pfStats">' + [['PARTIDAS', st.matches], ['VITÓRIAS', st.wins], ['TOP 5', st.top5], ['ABATES', st.kills], ['K/D', kd], ['MAIS ABATES', st.best], ['DANO TOTAL', fmtN(st.dmg)], ['PERSONAGENS', p.owned.skins.length + '/' + SKINS.length]]
       .map(s => '<div><small>' + s[0] + '</small><b>' + s[1] + '</b></div>').join('') + '</div>' +
     '<div class="pfBtns">' + (p.owner ? '<button class="chip hot" id="pfAdmin">' + icon('shield') + 'PAINEL DO DONO</button>' : '') + (guest ? '<button class="chip hot" id="pfNew">' + icon('user') + 'CRIAR CONTA</button>' : '') +
-    '<button class="chip" id="pfVf">' + icon('check') + 'RESGATAR VERIFICADO</button><button class="chip" id="pfCode">' + icon('copy') + 'CÓDIGO DE TRANSFERÊNCIA</button><button class="chip" id="pfOut">' + icon('exit') + (guest ? 'ENTRAR EM OUTRA CONTA' : 'SAIR DA CONTA') + '</button>' +
+    '<button class="chip" id="pfVf">' + icon('check') + 'RESGATAR VERIFICADO</button><button class="chip" id="pfRedeem">' + icon('gift') + 'RESGATAR CÓDIGO</button><button class="chip" id="pfCode">' + icon('copy') + 'CÓDIGO DE TRANSFERÊNCIA</button><button class="chip" id="pfOut">' + icon('exit') + (guest ? 'ENTRAR EM OUTRA CONTA' : 'SAIR DA CONTA') + '</button>' +
     (guest ? '' : '<button class="chip danger" id="pfDel">APAGAR CONTA</button>') + '</div>' +
     (!guest && SRV.on && SRV.gid && SRV.user === ACC.user ? (p.google ? '<p class="pfG">' + icon('check') + 'Conta Google ligada: <b>' + escapeHTML(p.google) + '</b></p>' :
       '<div class="pfG"><small>Ligue sua conta Google para entrar sem senha em qualquer aparelho:</small><div id="pfGBtn"></div></div>') : '');
@@ -645,17 +645,18 @@ LOB.renderProfile = function () {
   on('pfNew', () => LOB.showAuth('new'));
   on('pfAdmin', () => LOB.openAdmin('hoje'));
   on('pfVf', () => LOB.openVerify());
+  on('pfRedeem', () => LOB.redeem());
   // copiar o ID; tocar 5 vezes seguidas abre o código do dono
   on('pfIdBtn', () => {
     LOB.idTaps = (Date.now() - (LOB.idTapT || 0) < 1500 ? (LOB.idTaps || 0) : 0) + 1; LOB.idTapT = Date.now();
     if (LOB.idTaps >= 5 && !p.owner) { LOB.idTaps = 0; LOB.ownerPrompt(); return; }
-    try { navigator.clipboard.writeText(p.id).then(() => notify('ok', 'ID copiado: ' + p.id), () => notify('info', 'ID: ' + p.id)); } catch (e) { notify('info', 'ID: ' + p.id); }
+    U.copy(p.id, 'ID copiado: ' + p.id);
   });
   on('pfOut', () => { FR.stop(); ACC.logout(); LOB.showAuth('login'); });
   on('pfCode', () => {
     const code = ACC.exportCode();
     LOB.dialog('CÓDIGO DE TRANSFERÊNCIA', 'Copie este código e cole no outro aparelho em <b>ENTRAR › CÓDIGO</b>. Ele leva sua conta inteira; não mande para ninguém.<textarea class="codeBox" readonly>' + code + '</textarea>',
-      [['COPIAR', () => { try { navigator.clipboard.writeText(code).then(() => notify('ok', 'Código copiado'), () => notify('info', 'Selecione e copie o código')); } catch (e) { notify('info', 'Selecione e copie o código'); } }, true], ['FECHAR']]);
+      [['COPIAR', () => { U.copy(code, 'Código de transferência copiado!'); return false; }, true], ['FECHAR']]);
   });
   on('pfDel', () => LOB.dialog('APAGAR CONTA', 'Isso apaga a conta <b>' + escapeHTML(ACC.user) + '</b> deste aparelho, com todo o progresso e itens. Não dá para desfazer.', [['APAGAR', () => { FR.stop(); ACC.deleteAccount(); LOB.showAuth('new'); }, 'danger'], ['CANCELAR']]));
 };

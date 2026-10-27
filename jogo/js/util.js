@@ -323,3 +323,15 @@ U.fmtTime = function (s) {
   const m = Math.floor(s / 60), r = s % 60;
   return (m < 10 ? '0' : '') + m + ':' + (r < 10 ? '0' : '') + r;
 };
+
+// copiar texto: primeiro o jeito antigo (funciona dentro de iframe e no celular), depois a API nova
+U.copy = function (text, okMsg) {
+  text = String(text); let done = false;
+  try {
+    const t = document.createElement('textarea'); t.value = text; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;';
+    document.body.appendChild(t); t.focus(); t.select(); t.setSelectionRange(0, text.length); done = document.execCommand('copy'); t.remove();
+  } catch (e) { done = false; }
+  if (done) return notify('ok', okMsg || 'Copiado!');
+  const fail = () => notify('info', 'Não deu para copiar sozinho: segure no código e escolha Copiar.');
+  try { navigator.clipboard.writeText(text).then(() => notify('ok', okMsg || 'Copiado!'), fail); } catch (e) { fail(); }
+};

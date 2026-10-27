@@ -220,8 +220,8 @@ FR.render = function () {
       $('frMsg').textContent = err || 'Pedido enviado! Quando aceitar, aparece na sua lista.';
       if (!err) $('frIn').value = '';
     });
-    $('frCopy').addEventListener('click', () => { try { navigator.clipboard.writeText(p.id).then(() => notify('ok', 'ID copiado'), () => notify('info', 'Seu ID: ' + p.id)); } catch (e) { notify('info', 'Seu ID: ' + p.id); } });
-    $('frShare').addEventListener('click', () => { const t = 'Me adiciona no Battle Island! Meu ID: ' + p.id; if (navigator.share) navigator.share({ title: 'Battle Island', text: t }).catch(() => {}); else { try { navigator.clipboard.writeText(t); notify('ok', 'Mensagem copiada'); } catch (e) { notify('info', t); } } });
+    $('frCopy').addEventListener('click', () => { U.copy(p.id, 'ID copiado'); });
+    $('frShare').addEventListener('click', () => { const t = 'Me adiciona no Battle Island! Meu ID: ' + p.id; if (navigator.share) navigator.share({ title: 'Battle Island', text: t }).catch(() => {}); else { U.copy(t, 'Convite copiado'); } });
     return;
   }
   const on = (sel, fn) => body.querySelectorAll(sel).forEach(b => b.addEventListener('click', () => { SND.play('ui'); fn(b); }));

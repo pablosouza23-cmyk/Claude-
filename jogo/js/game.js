@@ -64,7 +64,7 @@ function autoQuality() {
 
 function qualityDPR(q) {
   const dpr = window.devicePixelRatio || 1;
-  return q === 'baixa' ? Math.min(dpr, 1) * 0.75 : q === 'media' ? Math.min(dpr, isTouch ? 1.1 : 1.3) : Math.min(dpr, isTouch ? 1.5 : 2);
+  return q === 'baixa' ? Math.min(dpr, 1) * 0.9 : q === 'media' ? Math.min(dpr, isTouch ? 1.1 : 1.3) : Math.min(dpr, isTouch ? 1.5 : 2);
 }
 // troca a qualidade sem sair do jogo: resolução e sombras mudam na hora; texturas e grama na próxima abertura
 function applyQuality() {
@@ -2039,7 +2039,11 @@ function updateBot(b, dt) {
   b.face = U.dampAngle(b.face, faceT, 10, dt);
   b.ch.body.rotation.y = b.face;
   b.ch.root.position.copy(b.pos);
-  if (near < 120) CH.animate(b.ch, dt, { mode: 'ground', speed: b.speed, vx: b.vel.x, vz: b.vel.z, aim: t && armed ? 1 : 0, air: !b.onGround, pitch: 0, armed: !!curSlot(b) && !b.emote, reload: reloadK(b), emote: b.emote });
+  // bots longe animam menos vezes por segundo (o celular gasta muito com personagem animado)
+  const far = G.settings.quality === 'baixa' ? 80 : 120;
+  b.animAcc = (b.animAcc || 0) + dt;
+  if (near < far && b.animAcc >= (near < 30 ? 0 : near < 60 ? 0.05 : 0.1)) CH.animate(b.ch, Math.min(b.animAcc, 0.15), { mode: 'ground', speed: b.speed, vx: b.vel.x, vz: b.vel.z, aim: t && armed ? 1 : 0, air: !b.onGround, pitch: 0, armed: !!curSlot(b) && !b.emote, reload: reloadK(b), emote: b.emote });
+  if (b.animAcc >= (near < 30 ? 0 : near < 60 ? 0.05 : 0.1)) b.animAcc = 0;
 }
 
 function botShoot(b, t, dist) {

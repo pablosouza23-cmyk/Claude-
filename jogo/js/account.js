@@ -142,6 +142,8 @@ ACC.validUser = (u) => /^[a-z0-9_.]{3,16}$/.test(u);
 ACC.ID_REMAP = { '3423471011': '0' };
 // completa perfis antigos com campos novos
 ACC.fix = function (p) {
+  // conta do dono: sempre com tudo da loja, inclusive o que for lançado depois
+  if (p.owner && p.owned && typeof SHOP !== 'undefined') for (const k of ['skins', 'emotes', 'guns', 'walls']) if (SHOP[k] && p.owned[k]) for (const id in SHOP[k]) if (p.owned[k].indexOf(id) < 0) p.owned[k].push(id);
   const d = ACC.newProfile(p.name);
   for (const k in d) if (p[k] === undefined) p[k] = d[k];
   if (ACC.ID_REMAP[p.id] !== undefined) { p.idOrig = p.id; p.id = ACC.ID_REMAP[p.id]; }

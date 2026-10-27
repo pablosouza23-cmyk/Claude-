@@ -259,7 +259,10 @@ function updateCamera(dt) {
   }
   if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = U.damp(camera.fov, fov, ads ? 22 : 14, dt); camera.updateProjectionMatrix(); }
   const high = U.clamp((camera.position.y - 30) / 150, 0, 1);
-  scene.fog.near = U.lerp(90, 380, high); scene.fog.far = U.lerp(520, 1400, high);
+  // qualidade baixa enxerga menos longe: desenha bem menos coisa
+  const fogK = G.settings.quality === 'baixa' ? 0.6 : 1;
+  scene.fog.near = U.lerp(90, 380, high) * fogK; scene.fog.far = U.lerp(520, 1400, high) * fogK;
+  const camFar = Math.max(320, scene.fog.far + 30); if (Math.abs(camera.far - camFar) > 25) { camera.far = camFar; camera.updateProjectionMatrix(); }
   const fc = p.phase === 'ground' ? p.pos : camera.position;
   sun.position.copy(fc).addScaledVector(G.sunDir, 70);
   sun.target.position.copy(fc);
@@ -371,7 +374,7 @@ function menuCamera(dt) {
   if (Math.abs(LOB.shiftCur) > 0.002 && !portrait) camera.setViewOffset(w, h, -LOB.shiftCur * w, 0, w, h);
   else if (camera.view && camera.view.enabled) camera.clearViewOffset();
   sun.position.copy(s.pos).addScaledVector(G.sunDir, 70); sun.target.position.copy(s.pos);
-  scene.fog.near = 200; scene.fog.far = 1100;
+  scene.fog.near = 200; scene.fog.far = 1100; if (camera.far !== 1500) { camera.far = 1500; camera.updateProjectionMatrix(); }
   // avião sobrevoando a ilha
   const t = G.menuT * 0.12, R = 230;
   planeObj.visible = true;
@@ -1378,12 +1381,12 @@ function initScreens() {
   $('roomBots').addEventListener('change', () => NET.setBots($('roomBots').checked));
   click('roomCopy', () => {
     const t = NET.code;
-    try { navigator.clipboard.writeText(t).then(() => notify('ok', 'Código copiado: ' + t), () => notify('info', 'Código: ' + t)); } catch (e) { notify('info', 'Código: ' + t); }
+    U.copy(t, 'Código copiado: ' + t);
   });
   click('roomShareBtn', () => {
     const data = { title: 'Battle Island', text: 'Bora jogar Battle Island! Código da sala: ' + NET.code, url: roomLink() };
     if (navigator.share) navigator.share(data).catch(() => {});
-    else { try { navigator.clipboard.writeText(data.text + ' ' + data.url); notify('ok', 'Convite copiado'); } catch (e) { notify('info', data.text); } }
+    else { U.copy(data.text + ' ' + data.url, 'Convite copiado'); }
   });
   click('exitBack', () => goMenu());
   click('roomMap', () => LOB.openMaps());
@@ -1457,12 +1460,12 @@ function adaptQuality(raw) {
   if (G.state !== 'play') return;
   let s = G.dprScale || 1;
   if (!G.settings.dynRes) s = 1.25; // força voltar ao normal abaixo
-  if (PERF.fps < 40 && s > 0.55) s = Math.max(0.55, s - 0.12);
+  if (PERF.fps < 40 && s > 0.75) s = Math.max(0.75, s - 0.08);
   else if (PERF.fps > 56 && s < 1) s = Math.min(1, s + 0.06);
   if (s > 1) s = 1;
   if (s !== G.dprScale) { G.dprScale = s; renderer.setPixelRatio(G.baseDPR * s); renderer.setSize(window.innerWidth, window.innerHeight, false); }
   // mesmo na menor resolução continua travando: na próxima vez o jogo abre em qualidade baixa
-  PERF.slow = s <= 0.55 && PERF.fps < 28 ? PERF.slow + 1 : 0;
+  PERF.slow = s <= 0.75 && PERF.fps < 28 ? PERF.slow + 1 : 0;
   if (PERF.slow >= 4 && G.settings.quality !== 'baixa' && G.settings.dynRes) {
     G.settings.quality = 'baixa'; G.saveSettings(); PERF.slow = 0; applyQuality();
     notify('info', 'O celular estava travando: a qualidade foi para BAIXA');

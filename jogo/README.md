@@ -97,6 +97,13 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v4.1
+
+- Botões de copiar (código de transferência, ID, código da sala, Pix) funcionam no celular e dentro do link do jogo.
+- Conta do dono recebe automaticamente tudo o que entra na loja (ex.: AK-47 Fúria Glacial).
+- Qualidade baixa mais nítida e mais leve: enxerga menos longe, bots longe animam menos vezes, menos grama e a resolução dinâmica não desce tanto.
+- Lobby mais limpo: à esquerda só LOJA, ARSENAL, RANKING e AMIGOS; no topo PASSE e RECARGA. Resgatar código e verificado ficam no PERFIL. O Sargento (igual ao Soldado) saiu da vitrine.
+
 ## Novidades da v4.0
 
 - Lobby novo no estilo FF: menu da esquerda em blocos com ícone, atalhos no topo direito (PASSE, RECARGA, CÓDIGO, SELOS) e botão INICIAR amarelo. Menos poluído.

@@ -837,6 +837,42 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   .shDetail .mBtn { height: 36px; font-size: 15px; } .shDetail .mBtn svg { width: 16px; height: 16px; }
 }
 
-/* construção */
-#btnBuild { right: calc(max(16px, env(safe-area-inset-right)) + 312px * var(--btn)); bottom: calc(34px + 4px * var(--btn)); width: calc(62px * var(--btn)); height: calc(52px * var(--btn)); flex-direction: column; gap: 1px; border-color: rgba(255,190,110,.85); }
-#btnBuild b { font-size: 9px; letter-spacing: .5px; } #btnBuild small { font-size: 10px; } #btnBuild.on { background: rgba(255,150,40,.55); border-color: #ffd23c; }
+
+/* ===== lobby estilo FF: faixas escuras, ícones em blocos, INICIAR amarelo ===== */
+#menuScr::before, #menuScr::after { content: ""; position: absolute; left: 0; right: 0; pointer-events: none; }
+#menuScr::before { top: 0; height: 92px; background: linear-gradient(rgba(4,8,18,.78), rgba(4,8,18,0)); }
+#menuScr::after { bottom: 0; height: 110px; background: linear-gradient(rgba(4,8,18,0), rgba(4,8,18,.7)); }
+#menuScr > * { z-index: 1; }
+#menuScr .lbNav { top: 70px; transform: none; gap: 6px; max-height: none; overflow: visible; }
+#menuScr .lbNav button { width: 72px; height: 54px; padding: 0; flex-direction: column; justify-content: center; gap: 3px; font-size: 9.5px; letter-spacing: .6px; font-weight: 600;
+  border-radius: 8px; border: 1px solid rgba(255,255,255,.14); border-bottom: 2px solid rgba(255,194,26,.55); background: linear-gradient(180deg, rgba(28,40,64,.88), rgba(8,13,24,.92)); box-shadow: 0 3px 8px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08); }
+#menuScr .lbNav button .ico { width: 24px; height: 24px; color: #ffd23c; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+#menuScr .lbNav button:hover { border-color: rgba(255,210,60,.8); } #menuScr .lbNav button:active { transform: scale(.95); }
+#menuScr .lbNav .badgeN { top: 3px; right: 3px; transform: none; }
+.lbIcons { left: auto !important; right: max(12px, env(safe-area-inset-right)); top: 58px !important; flex-direction: row !important; }
+.lbIcons button.hot { background: linear-gradient(180deg, #7a3cff, #3b178f) !important; border-bottom-color: #c9a6ff !important; } .lbIcons button.hot .ico { color: #fff !important; }
+.lbIcons .passTile { position: relative; overflow: hidden; background: linear-gradient(160deg, #ffe07a, #f0a000 55%, #8a4a00) !important; border-color: #ffe9a8 !important; color: #2a1600; }
+.lbIcons .passTile .ico { color: #3a2000 !important; filter: none !important; } .lbIcons .passTile span { color: #2a1600; }
+.soon { position: absolute; top: 5px; right: -18px; transform: rotate(35deg); background: #e8213a; color: #fff; font-style: normal; font-size: 6.5px; font-weight: 700; letter-spacing: .4px; padding: 1px 16px; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+#menuScr .lbSide { width: min(250px, 34vw); gap: 6px; }
+#menuScr .news { min-height: 70px; padding: 6px 12px 16px; border-radius: 8px; } #menuScr .news b { font-size: 17px; }
+#menuScr .mapCard { border-radius: 8px; padding: 5px; } #menuScr .mapCard canvas { width: 46px; height: 46px; }
+#menuScr .playBtn { height: 60px; border-radius: 8px; background: linear-gradient(180deg, #ffe45a, #ffb300 60%, #f08c00); color: #2a1600; border: 1px solid #fff2a8; box-shadow: 0 4px 0 #9a5800, 0 6px 18px rgba(255,170,0,.35); }
+#menuScr .playBtn b { font-size: 32px; color: #2a1600; text-shadow: 0 1px 0 rgba(255,255,255,.5); } #menuScr .playBtn small { color: #4a2a00; font-weight: 600; }
+#menuScr .dragHint { display: none; }
+@media (max-height: 420px) {
+  #menuScr .lbNav { top: 60px; gap: 4px; } #menuScr .lbNav button { width: 66px; height: 44px; font-size: 8px; } #menuScr .lbNav button .ico { width: 20px; height: 20px; }
+  .lbIcons { top: 50px !important; } #menuScr .news { display: none; } #menuScr .playBtn { height: 52px; } #menuScr .playBtn b { font-size: 27px; }
+}
+/* Passe */
+.passPanel { width: min(760px, 96vw); }
+.passHero { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; margin: 4px 0 10px; border-radius: 8px; overflow: hidden;
+  background: linear-gradient(110deg, #3b178f, #7a3cff 45%, #f0a000); }
+.passHero small { font-size: 10px; letter-spacing: 2px; opacity: .85; } .passHero b { display: block; font-family: var(--logo); font-weight: 400; font-size: 30px; letter-spacing: 1px; text-shadow: 0 2px 0 rgba(0,0,0,.35); } .passHero span { font-size: 12px; opacity: .9; }
+.passSoon { flex: none; font-style: normal; font-family: var(--logo); font-size: 22px; letter-spacing: 2px; color: #fff; background: #e8213a; padding: 6px 16px; border-radius: 4px; transform: rotate(-6deg); box-shadow: 0 3px 0 #8a0f1f; }
+.passTrack { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; }
+.pTier { position: relative; flex: none; width: 86px; height: 112px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 8px;
+  background: linear-gradient(180deg, rgba(40,52,80,.9), rgba(12,18,32,.95)); border: 1px solid rgba(255,255,255,.14); border-bottom: 3px solid #7a3cff; filter: saturate(.7); }
+.pTier.top { border-bottom-color: #ffc21a; background: linear-gradient(180deg, rgba(120,80,10,.9), rgba(30,18,4,.95)); }
+.pTier small { position: absolute; top: 4px; left: 6px; font-size: 9px; letter-spacing: 1px; color: #ffd23c; } .pTier i { font-style: normal; font-size: 30px; } .pTier span { font-size: 10px; text-align: center; padding: 0 4px; line-height: 1.15; }
+.pTier em { position: absolute; top: 4px; right: 5px; } .pTier em .ico { width: 13px; height: 13px; opacity: .7; }

@@ -691,6 +691,12 @@ LOB.redeem = function () {
 };
 
 // ---------- resgatar verificado ----------
+// Passe Battle (estilo passe de temporada): por enquanto só a prévia das recompensas, com EM BREVE
+LOB.openPass = function () {
+  showScreen('passScr');
+  const R = [['🪙', '500 ouro'], ['😎', 'Emote'], ['🧊', 'Gel Gelo'], ['💎', '20 diamantes'], ['🔫', 'Skin de arma'], ['🪙', '1.000 ouro'], ['👕', 'Roupa'], ['💎', '40 diamantes'], ['🎒', 'Mochila'], ['👑', 'Personagem lendário']];
+  $('passTrack').innerHTML = R.map((r, i) => '<div class="pTier' + (i === 9 ? ' top' : '') + '"><small>NV ' + (i + 1) + '</small><i>' + r[0] + '</i><span>' + r[1] + '</span><em>' + icon('lock') + '</em></div>').join('');
+};
 LOB.openVerify = function () {
   LOB.vfFrom = UI.screen;
   showScreen('vfScr');
@@ -1095,7 +1101,7 @@ LOB.init = function () {
   click('mlAll', () => LOB.claimAll());
   click('adClose', () => LOB.openProfile());
   document.querySelectorAll('#adTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.adTab = b.dataset.t; LOB.renderAdmin(); }));
-  document.querySelectorAll('#lbNav button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#lbNav button, #lbIcons button').forEach(b => b.addEventListener('click', () => {
     SND.init(); SND.play('ui');
     const k = b.dataset.go;
     if (k === 'shop') LOB.openShop('skins', 'LOJA');
@@ -1108,7 +1114,9 @@ LOB.init = function () {
     else if (k === 'rank') LOB.openRank();
     else if (k === 'code') LOB.redeem();
     else if (k === 'verify') LOB.openVerify();
+    else if (k === 'pass') LOB.openPass();
   }));
+  click('passClose', () => goMenu());
   click('shBack', () => LOB.closeShop());
   click('vfClose', () => { if (LOB.vfFrom === 'profileScr') LOB.openProfile(); else goMenu(); });
   click('vfGo', () => LOB.vfRedeem());

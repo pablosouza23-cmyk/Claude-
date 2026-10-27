@@ -845,9 +845,45 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   .shDetail .mBtn { height: 36px; font-size: 15px; } .shDetail .mBtn svg { width: 16px; height: 16px; }
 }
 
-/* construção */
-#btnBuild { right: calc(max(16px, env(safe-area-inset-right)) + 312px * var(--btn)); bottom: calc(34px + 4px * var(--btn)); width: calc(62px * var(--btn)); height: calc(52px * var(--btn)); flex-direction: column; gap: 1px; border-color: rgba(255,190,110,.85); }
-#btnBuild b { font-size: 9px; letter-spacing: .5px; } #btnBuild small { font-size: 10px; } #btnBuild.on { background: rgba(255,150,40,.55); border-color: #ffd23c; }
+
+/* ===== lobby estilo FF: faixas escuras, ícones em blocos, INICIAR amarelo ===== */
+#menuScr::before, #menuScr::after { content: ""; position: absolute; left: 0; right: 0; pointer-events: none; }
+#menuScr::before { top: 0; height: 92px; background: linear-gradient(rgba(4,8,18,.78), rgba(4,8,18,0)); }
+#menuScr::after { bottom: 0; height: 110px; background: linear-gradient(rgba(4,8,18,0), rgba(4,8,18,.7)); }
+#menuScr > * { z-index: 1; }
+#menuScr .lbNav { top: 70px; transform: none; gap: 6px; max-height: none; overflow: visible; }
+#menuScr .lbNav button { width: 72px; height: 54px; padding: 0; flex-direction: column; justify-content: center; gap: 3px; font-size: 9.5px; letter-spacing: .6px; font-weight: 600;
+  border-radius: 8px; border: 1px solid rgba(255,255,255,.14); border-bottom: 2px solid rgba(255,194,26,.55); background: linear-gradient(180deg, rgba(28,40,64,.88), rgba(8,13,24,.92)); box-shadow: 0 3px 8px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08); }
+#menuScr .lbNav button .ico { width: 24px; height: 24px; color: #ffd23c; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+#menuScr .lbNav button:hover { border-color: rgba(255,210,60,.8); } #menuScr .lbNav button:active { transform: scale(.95); }
+#menuScr .lbNav .badgeN { top: 3px; right: 3px; transform: none; }
+.lbIcons { left: auto !important; right: max(12px, env(safe-area-inset-right)); top: 58px !important; flex-direction: row !important; }
+.lbIcons button.hot { background: linear-gradient(180deg, #7a3cff, #3b178f) !important; border-bottom-color: #c9a6ff !important; } .lbIcons button.hot .ico { color: #fff !important; }
+.lbIcons .passTile { position: relative; overflow: hidden; background: linear-gradient(160deg, #ffe07a, #f0a000 55%, #8a4a00) !important; border-color: #ffe9a8 !important; color: #2a1600; }
+.lbIcons .passTile .ico { color: #3a2000 !important; filter: none !important; } .lbIcons .passTile span { color: #2a1600; }
+.soon { position: absolute; top: 5px; right: -18px; transform: rotate(35deg); background: #e8213a; color: #fff; font-style: normal; font-size: 6.5px; font-weight: 700; letter-spacing: .4px; padding: 1px 16px; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+#menuScr .lbSide { width: min(250px, 34vw); gap: 6px; }
+#menuScr .news { min-height: 70px; padding: 6px 12px 16px; border-radius: 8px; } #menuScr .news b { font-size: 17px; }
+#menuScr .mapCard { border-radius: 8px; padding: 5px; } #menuScr .mapCard canvas { width: 46px; height: 46px; }
+#menuScr .playBtn { height: 60px; border-radius: 8px; background: linear-gradient(180deg, #ffe45a, #ffb300 60%, #f08c00); color: #2a1600; border: 1px solid #fff2a8; box-shadow: 0 4px 0 #9a5800, 0 6px 18px rgba(255,170,0,.35); }
+#menuScr .playBtn b { font-size: 32px; color: #2a1600; text-shadow: 0 1px 0 rgba(255,255,255,.5); } #menuScr .playBtn small { color: #4a2a00; font-weight: 600; }
+#menuScr .dragHint { display: none; }
+@media (max-height: 420px) {
+  #menuScr .lbNav { top: 60px; gap: 4px; } #menuScr .lbNav button { width: 66px; height: 44px; font-size: 8px; } #menuScr .lbNav button .ico { width: 20px; height: 20px; }
+  .lbIcons { top: 50px !important; } #menuScr .news { display: none; } #menuScr .playBtn { height: 52px; } #menuScr .playBtn b { font-size: 27px; }
+}
+/* Passe */
+.passPanel { width: min(760px, 96vw); }
+.passHero { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; margin: 4px 0 10px; border-radius: 8px; overflow: hidden;
+  background: linear-gradient(110deg, #3b178f, #7a3cff 45%, #f0a000); }
+.passHero small { font-size: 10px; letter-spacing: 2px; opacity: .85; } .passHero b { display: block; font-family: var(--logo); font-weight: 400; font-size: 30px; letter-spacing: 1px; text-shadow: 0 2px 0 rgba(0,0,0,.35); } .passHero span { font-size: 12px; opacity: .9; }
+.passSoon { flex: none; font-style: normal; font-family: var(--logo); font-size: 22px; letter-spacing: 2px; color: #fff; background: #e8213a; padding: 6px 16px; border-radius: 4px; transform: rotate(-6deg); box-shadow: 0 3px 0 #8a0f1f; }
+.passTrack { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; }
+.pTier { position: relative; flex: none; width: 86px; height: 112px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 8px;
+  background: linear-gradient(180deg, rgba(40,52,80,.9), rgba(12,18,32,.95)); border: 1px solid rgba(255,255,255,.14); border-bottom: 3px solid #7a3cff; filter: saturate(.7); }
+.pTier.top { border-bottom-color: #ffc21a; background: linear-gradient(180deg, rgba(120,80,10,.9), rgba(30,18,4,.95)); }
+.pTier small { position: absolute; top: 4px; left: 6px; font-size: 9px; letter-spacing: 1px; color: #ffd23c; } .pTier i { font-style: normal; font-size: 30px; } .pTier span { font-size: 10px; text-align: center; padding: 0 4px; line-height: 1.15; }
+.pTier em { position: absolute; top: 4px; right: 5px; } .pTier em .ico { width: 13px; height: 13px; opacity: .7; }
 
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
@@ -921,7 +957,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   <div id="gelHint" class="hidden">Arraste para girar e afastar · solte para colocar o gel</div>
   <button id="vaultBtn" class="hidden"><span data-icon="jump"></span>PULAR JANELA</button>
   <button id="useBtn" class="hidden"></button>
-  <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha · R recarrega · E pegar · Q granada · G gel (segure, mire e solte) · B construir (parede, rampa, piso) · I inspeciona a arma · Shift corre · Espaço perto da janela pula a janela · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · roda do mouse troca a arma · Esc pausa</div>
+  <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha · R recarrega · E pegar · Q granada · G gel (segure, mire e solte) · I inspeciona a arma · Shift corre · Espaço perto da janela pula a janela · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · roda do mouse troca a arma · Esc pausa</div>
   <div id="fps" class="hidden"></div>
 </div>
 <!-- luneta: fica embaixo dos botões de toque (que continuam visíveis e clicáveis) -->
@@ -957,7 +993,6 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   <button class="tbtn g" id="btnInv" data-icon="bag" aria-label="Inventário rápido"></button>
   <button class="tbtn g" id="btnEmote" data-icon="smile" aria-label="Emotes"></button>
   <button class="tbtn g" id="btnRun" data-icon="run" aria-label="Correr"></button>
-  <button class="tbtn g" id="btnBuild" aria-label="Construir: parede, rampa e piso"><b>CONSTRUIR</b></button>
   <button class="tbtn g" id="btnGel" aria-label="Gel: segure, arraste para escolher o lugar e solte"></button>
   <button class="tbtn pill big p" id="btnSaltar">SALTAR</button>
   <button class="tbtn pill big f" id="btnChute" data-icon="chute">PARAQUEDAS</button>
@@ -995,22 +1030,24 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <button data-go="shop" data-icon="bag"><span>LOJA</span></button>
     <button data-go="chars" data-icon="person"><span>PERSONAGEM</span></button>
     <button data-go="emotes" data-icon="smile"><span>EMOTES</span></button>
-    <button data-go="recharge" class="hot" data-icon="crown"><span>RECARGA</span></button>
     <button data-go="arsenal" data-icon="bullet"><span>ARSENAL</span></button>
     <button data-go="rank" data-icon="crown"><span>RANKING</span></button>
     <button data-go="friends" data-icon="users"><span>AMIGOS</span><em id="lbFrN" class="badgeN hidden">0</em></button>
-    <button data-go="profile" data-icon="user"><span>PERFIL</span></button>
-    <button data-go="code" data-icon="gift"><span>CÓDIGO</span></button>
-    <button data-go="verify" data-icon="check"><span>VERIFICADO</span></button>
+  </nav>
+  <nav id="lbIcons" class="lbNav lbIcons">
+    <button data-go="pass" class="passTile" data-icon="crown"><span>PASSE</span><em class="soon">EM BREVE</em></button>
+    <button data-go="recharge" class="hot" data-icon="gift"><span>RECARGA</span></button>
+    <button data-go="code" data-icon="mail"><span>CÓDIGO</span></button>
+    <button data-go="verify" data-icon="check"><span>SELOS</span></button>
   </nav>
   <div class="lbSide">
     <button id="lbNews" class="news"></button>
     <button id="lbMap" class="mapCard"><canvas id="lbMapCv" width="96" height="96"></canvas><div><small id="lbMapLbl">MAPA</small><b id="lbMapName">ILHA</b><span>TROCAR ›</span></div></button>
-    <button id="mPlay" class="playBtn"><b>JOGAR</b><small>SOLO · DUPLA · TRIO · SQUAD</small></button>
+    <button id="mPlay" class="playBtn"><b>INICIAR</b><small>SOLO · DUPLA · TRIO · SQUAD</small></button>
   </div>
   <div id="squadBar" class="squadBar"><small>SEU GRUPO</small><div id="squadSlots"></div></div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v3.9</div>
+  <div class="ver">v4.0</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1036,6 +1073,14 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   <div class="panel pfPanel">
     <div class="panelHead"><b>PERFIL</b><button id="pfClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
     <div id="pfBody" class="pfBody"></div>
+  </div>
+</div>
+
+<div id="passScr" class="screen dim hidden">
+  <div class="panel passPanel">
+    <div class="panelHead"><b>PASSE BATTLE · TEMPORADA 1</b><button id="passClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <div class="passHero"><div><small>RECOMPENSAS A CADA NÍVEL</small><b>PASSE BATTLE</b><span>Suba de nível jogando e libere skins, emotes, gel e ouro.</span></div><em class="passSoon">EM BREVE</em></div>
+    <div id="passTrack" class="passTrack"></div>
   </div>
 </div>
 
@@ -1274,7 +1319,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v3.9 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v4.0 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -6135,7 +6180,7 @@ function makeActor(name, pal, isPlayer) {
     hp: 200, maxHp: 200, armor: 0, helmet: 0, alive: true,
     slots: [null, null, null], cur: 3, nadeHand: false,
     reloadT: 0, fireCd: 0, lastFire: -9,
-    gel: isPlayer ? 2 : 1, mats: 300, wallCd: 0, kits: 0, nades: 0, healT: 0, crouch: false,
+    gel: isPlayer ? 2 : 1, wallCd: 0, kits: 0, nades: 0, healT: 0, crouch: false,
     kills: 0, dmgDealt: 0, aim: 0, speed: 0, lastHurt: -9, lastAttacker: null, landT: 0,
     revives: isPlayer ? 1 : 0, respawnT: 0, rsWait: 0,
   };
@@ -6325,7 +6370,7 @@ function killActor(a, killer, weapon) {
   a.hp = 0; a.alive = false;
   a.vel.set(0, 0, 0);
   if (killer && killer !== a && !killer.isPlayer && !killer.human && Math.random() < 0.45) { killer.emote = Math.random() < 0.5 ? 'cheer2' : 'laugh'; killer.emoteT = 2.2; }
-  if (killer && killer !== a) { killer.kills++; killer.mats = (killer.mats || 0) + 50; killFeed(killer, a, weapon); if (killer.isPlayer) killBanner(killer.kills, a); }
+  if (killer && killer !== a) { killer.kills++; killFeed(killer, a, weapon); if (killer.isPlayer) killBanner(killer.kills, a); }
   if (killer && killer === G.player && killer !== a) countWeaponKill(weapon);
   else killFeed(a, null, 'Zona');
   // mochila caída com o que a pessoa carregava (como no vídeo)
@@ -6411,7 +6456,7 @@ function respawnActor(a) {
   }
   a.alive = true; a.respawnT = 0; a.rsWait = 0; a.hp = a.maxHp; a.armor = 0; a.helmet = 0;
   a.slots = [null, null, null]; a.cur = 3; a.nadeHand = false; a.reloadT = 0; a.healT = 0;
-  a.kits = 1; a.gel = 2; a.mats = 300; a.nades = 0; a.emote = null; a.aimOn = false; a.crouch = false;
+  a.kits = 1; a.gel = 2; a.nades = 0; a.emote = null; a.aimOn = false; a.crouch = false;
   giveWeapon(a, 'PISTOLA', 12, 36);
   a.pos.set(x, W.height(x, zz) + 70, zz); a.vel.set(0, 0, 0); a.vy = 0;
   a.phase = 'fall'; a.board = false; a.hs = 10; a.vdown = 14; a.onGround = false;
@@ -6625,7 +6670,6 @@ function deployWall(owner, towardYaw, fromNet, dist) {
 }
 
 function damageWall(wall, dmg, point, dir) {
-  if (wall.bp) return BLD.damage(wall, dmg, point, dir);
   if (wall.dead) return;
   wall.hp -= dmg;
   const lx = point.x - wall.cx, lz = point.z - wall.cz;
@@ -6765,7 +6809,6 @@ function explode(n) {
     damageActor(a, dmg * k, n.owner, false, 'Granada');
   }
   for (const w of G.walls.slice()) if (Math.hypot(w.cx - p.x, w.cz - p.z) < R + WALL_R) damageWall(w, 260, p, null);
-  BLD.blast(p, R);
 }
 
 // pontos da trajetória (granada na mão)
@@ -7342,14 +7385,14 @@ function updateWaiting(dt) {
     if (ac.remote && ac.human) continue;
     if (NET.isClient() && !ac.human) continue;
     ac.slots = [null, null, null]; ac.cur = 3; ac.nadeHand = false; ac.reloadT = 0; ac.healT = 0;
-    ac.hp = ac.maxHp; ac.armor = 0; ac.helmet = 0; ac.nades = 0; ac.kits = 0; ac.gel = ac.isPlayer ? 2 : 1; ac.mats = 300; ac.emote = null;
+    ac.hp = ac.maxHp; ac.armor = 0; ac.helmet = 0; ac.nades = 0; ac.kits = 0; ac.gel = ac.isPlayer ? 2 : 1; ac.emote = null;
     ac.kills = 0; ac.dmgDealt = 0; ac.aimOn = false; ac.crouch = false;
     ac.phase = 'plane'; ac.ch.root.visible = false;
     refreshGuns(ac);
     if (ac.ai) { ac.ai.target = null; ac.ai.wp = null; }
   }
   for (const wl of G.walls.slice()) { wl.dead = true; scene.remove(wl.grp); }
-  G.walls.length = 0; BLD.clear(); W.dynamic.length = 0;
+  G.walls.length = 0; W.dynamic.length = 0;
   for (const n of G.nades) scene.remove(n.m);
   G.nades.length = 0;
   startDrop(G.dropArgs[0], G.dropArgs[1]);
@@ -7718,9 +7761,7 @@ function updatePlayer(dt) {
   const firing = input.fire || G.mouseFire || tap;
   const pressed = (firing && !G.prevFire) || tap;
   G.prevFire = input.fire || G.mouseFire;
-  if (BLD.on()) {
-    if (firing) BLD.place(p);
-  } else if (p.nadeHand) {
+  if (p.nadeHand) {
     if (pressed && p.fireCd <= 0) throwNade(p, nadeVelocity(G.yaw, G.pitch, _nv));
   } else if (firing && p.fireCd <= 0 && p.reloadT <= 0 && p.healT <= 0) {
     const s = curSlot(p);
@@ -8035,105 +8076,6 @@ function botShoot(b, t, dist) {
 }
 
 
-// ------------------------------------------------------------------ construção (paredes, rampas e pisos no grid de 4 m)
-// botão CONSTRUIR (ou B) troca: parede → rampa → piso → desligado; o tiro coloca a peça mostrada no fantasma
-const BLD = { kind: null, KINDS: ['parede', 'rampa', 'piso'], CELL: 4, H: 3, HP: 160, COST: 10, cd: 0, list: [], ghost: null };
-BLD.on = () => !!BLD.kind && G.state === 'play' && G.player && G.player.phase === 'ground' && G.player.alive;
-BLD.cycle = function () {
-  const i = BLD.KINDS.indexOf(BLD.kind);
-  BLD.kind = i < 0 ? BLD.KINDS[0] : i + 1 < BLD.KINDS.length ? BLD.KINDS[i + 1] : null;
-  SND.play('ui');
-};
-BLD.tex = function () {
-  return BLD._tx || (BLD._tx = U.canvasTex(256, 256, (g) => {
-    g.fillStyle = '#b07a45'; g.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#a06c3a' : '#bb8550'; g.fillRect(0, i * 64 + 2, 256, 60); g.fillStyle = 'rgba(60,35,15,.55)'; g.fillRect(0, i * 64, 256, 3); }
-    g.strokeStyle = 'rgba(70,40,18,.35)'; g.lineWidth = 2; for (let k = 0; k < 40; k++) { const y = Math.random() * 256; g.beginPath(); g.moveTo(Math.random() * 256, y); g.lineTo(Math.random() * 256, y + (Math.random() - 0.5) * 4); g.stroke(); }
-    g.strokeStyle = '#5a3418'; g.lineWidth = 10; g.strokeRect(5, 5, 246, 246); g.beginPath(); g.moveTo(10, 10); g.lineTo(246, 246); g.stroke();
-  }));
-};
-BLD.mat = () => BLD._m || (BLD._m = U.toon({ map: BLD.tex() }));
-BLD.gmat = () => BLD._g || (BLD._g = new THREE.MeshBasicMaterial({ color: 0x5cc8ff, transparent: true, opacity: 0.35, depthWrite: false }));
-// onde a peça cai: célula à frente do jogador, virada para o lado mais próximo (0/90/180/270 graus)
-BLD.spot = function (p, kind) {
-  const C = BLD.CELL, yaw = G.yaw, fx = -Math.sin(yaw), fz = -Math.cos(yaw);
-  const rot = Math.round(yaw / (Math.PI / 2)) * (Math.PI / 2), dx = -Math.sin(rot), dz = -Math.cos(rot);
-  const d = kind === 'parede' ? 1.2 : 2.6;
-  const cx = (Math.floor((p.pos.x + fx * d) / C) + 0.5) * C, cz = (Math.floor((p.pos.z + fz * d) / C) + 0.5) * C;
-  let base = p.pos.y - 0.05;
-  if (kind === 'piso' && G.pitch > 0.15) base += BLD.H;
-  if (kind === 'parede') return { kind: kind, x: cx + dx * C / 2, z: cz + dz * C / 2, y: base, rot: rot };
-  return { kind: kind, x: cx, z: cz, y: base, rot: rot };
-};
-BLD.geo = function (kind) {
-  BLD._geo = BLD._geo || {};
-  if (BLD._geo[kind]) return BLD._geo[kind];
-  const C = BLD.CELL, H = BLD.H;
-  let g;
-  if (kind === 'parede') g = new THREE.BoxGeometry(C, H, 0.22).translate(0, H / 2, 0);
-  else if (kind === 'piso') g = new THREE.BoxGeometry(C, 0.22, C).translate(0, -0.11, 0);
-  else { const L = Math.hypot(C, H); g = new THREE.BoxGeometry(C, 0.22, L).rotateX(Math.atan2(H, C)).translate(0, H / 2, 0); }
-  return (BLD._geo[kind] = g);
-};
-// colisões: parede é uma caixa; piso é uma laje onde dá para pisar; rampa vira degraus baixos (sobe andando)
-BLD.cols = function (pc) {
-  const C = BLD.CELL, H = BLD.H, cs = Math.cos(pc.rot), sn = Math.sin(pc.rot), out = [];
-  const box = (x, z, hx, hz, y0, y1) => { const c = { type: 'b', x: x, z: z, hx: hx, hz: hz, rot: pc.rot, cs: cs, sn: sn, br: Math.hypot(hx, hz), y0: y0, y1: y1, walkable: true, wall: pc }; out.push(c); return c; };
-  if (pc.kind === 'parede') box(pc.x, pc.z, C / 2, 0.11, pc.y - 0.3, pc.y + H);
-  else if (pc.kind === 'piso') box(pc.x, pc.z, C / 2, C / 2, pc.y - 0.22, pc.y);
-  else {
-    const n = 8, dx = -Math.sin(pc.rot), dz = -Math.cos(pc.rot);
-    for (let k = 0; k < n; k++) { const t = -C / 2 + (k + 0.5) * C / n; const top = pc.y + (k + 1) * H / n; box(pc.x + dx * t, pc.z + dz * t, C / 2, C / n / 2, top - 0.3, top); }
-  }
-  return out;
-};
-BLD.place = function (p) {
-  if (BLD.cd > 0) return;
-  BLD.cd = 0.18;
-  if ((p.mats || 0) < BLD.COST) { notify('info', 'Sem madeira! Abata inimigos para ganhar mais.'); BLD.cd = 0.8; return; }
-  const s = BLD.spot(p, BLD.kind);
-  for (const o of BLD.list) if (o.kind === s.kind && Math.abs(o.x - s.x) < 0.5 && Math.abs(o.z - s.z) < 0.5 && Math.abs(o.y - s.y) < 1 && Math.abs(U.angDiff(o.rot, s.rot)) < 0.3) return;
-  p.mats -= BLD.COST;
-  const m = new THREE.Mesh(BLD.geo(s.kind), BLD.mat());
-  m.position.set(s.x, s.y, s.z); m.rotation.y = s.rot; m.castShadow = m.receiveShadow = true; m.scale.y = 0.1;
-  scene.add(m);
-  const pc = Object.assign(s, { bp: true, mesh: m, hp: BLD.HP, grow: 0, dead: false, cx: s.x, cz: s.z });
-  pc.cols = BLD.cols(pc);
-  for (const c of pc.cols) W.dynamic.push(c);
-  BLD.list.push(pc);
-  SND.play('wall', 0.8);
-};
-BLD.damage = function (pc, dmg, point, dir) {
-  if (pc.dead) return;
-  pc.hp -= dmg;
-  if (point && dir) for (let i = 0; i < 3; i++) FX.shard(point.clone().addScaledVector(dir, -0.1), new V3(-dir.x * 2 + (Math.random() - 0.5) * 3, 1 + Math.random() * 2, -dir.z * 2 + (Math.random() - 0.5) * 3), 0.06 + Math.random() * 0.06, 0.8);
-  pc.mesh.material = pc.hp < BLD.HP * 0.4 ? (BLD._mh || (BLD._mh = U.toon({ map: BLD.tex(), color: 0x8a5a3a }))) : BLD.mat();
-  if (pc.hp <= 0) BLD.remove(pc, true);
-};
-BLD.remove = function (pc, fx) {
-  pc.dead = true;
-  for (const c of pc.cols) { c.dead = true; const i = W.dynamic.indexOf(c); if (i >= 0) W.dynamic.splice(i, 1); }
-  scene.remove(pc.mesh);
-  const i = BLD.list.indexOf(pc); if (i >= 0) BLD.list.splice(i, 1);
-  if (fx) {
-    for (let k = 0; k < 16; k++) FX.shard(new V3(pc.x + (Math.random() - 0.5) * 3, pc.y + Math.random() * 2.5, pc.z + (Math.random() - 0.5) * 3), new V3((Math.random() - 0.5) * 4, 2 + Math.random() * 3, (Math.random() - 0.5) * 4), 0.15 + Math.random() * 0.2, 1.6);
-    if (Math.hypot(pc.x - G.player.pos.x, pc.z - G.player.pos.z) < 45) SND.play('break', 0.6);
-  }
-};
-BLD.blast = function (p, R) { for (const pc of BLD.list.slice()) if (Math.hypot(pc.x - p.x, pc.z - p.z) < R + 2) BLD.damage(pc, 200, p, null); };
-BLD.clear = function () { for (const pc of BLD.list.slice()) BLD.remove(pc, false); BLD.kind = null; };
-BLD.update = function (dt) {
-  BLD.cd -= dt;
-  for (const pc of BLD.list) if (pc.grow < 1) { pc.grow = Math.min(1, pc.grow + dt / 0.15); pc.mesh.scale.y = 0.1 + 0.9 * pc.grow; }
-  const on = BLD.on();
-  if (on) {
-    const s = BLD.spot(G.player, BLD.kind);
-    if (!BLD.ghost) { BLD.ghost = new THREE.Mesh(BLD.geo(s.kind), BLD.gmat()); scene.add(BLD.ghost); }
-    BLD.ghost.geometry = BLD.geo(s.kind); BLD.ghost.position.set(s.x, s.y, s.z); BLD.ghost.rotation.y = s.rot; BLD.ghost.visible = true;
-  } else if (BLD.ghost) BLD.ghost.visible = false;
-  const b = H.btnBuild;
-  if (b) { const lbl = on ? BLD.kind.toUpperCase() : 'CONSTRUIR'; const t = lbl + '|' + (G.player ? G.player.mats || 0 : 0); if (b._t !== t) { b._t = t; b.innerHTML = '<b>' + lbl + '</b><small>🪵 ' + (G.player ? G.player.mats || 0 : 0) + '</small>'; b.classList.toggle('on', on); } }
-};
 
 </script>
 <script>
@@ -8206,7 +8148,7 @@ CS.newRound = function () {
   const cs = G.cs;
   cs.round++; cs.phase = 'buy'; cs.t = CS.BUY;
   for (const w of G.walls.slice()) { w.dead = true; scene.remove(w.grp); }
-  G.walls.length = 0; BLD.clear(); W.dynamic.length = 0;
+  G.walls.length = 0; W.dynamic.length = 0;
   for (const nd of G.nades) scene.remove(nd.m);
   G.nades.length = 0;
   for (const p of G.props) scene.remove(p);
@@ -8223,7 +8165,7 @@ CS.resetActor = function (a) {
   const [x, z, face] = CS.spawnPos(a.team, a.slot);
   a.alive = true; a.hp = a.maxHp; a.armor = 2; a.helmet = 2; a.respawnT = 0; a.rsWait = 0;
   a.slots = [null, null, null]; a.cur = 3; a.nadeHand = false; a.reloadT = 0; a.healT = 0; a.emote = null; a.aimOn = false; a.crouch = false;
-  a.kits = 1; a.gel = 2; a.mats = 300; a.nades = 1; a.wallCd = 0;
+  a.kits = 1; a.gel = 2; a.nades = 1; a.wallCd = 0;
   a.pos.set(x, W.groundAt(x, z, 50), z); a.vel.set(0, 0, 0); a.vy = 0; a.onGround = true; a.phase = 'ground';
   a.face = face; a.ch.body.rotation.y = face; a.ch.root.position.copy(a.pos); a.ch.root.visible = true;
   a.lastAttacker = null;
@@ -10738,6 +10680,12 @@ LOB.redeem = function () {
 };
 
 // ---------- resgatar verificado ----------
+// Passe Battle (estilo passe de temporada): por enquanto só a prévia das recompensas, com EM BREVE
+LOB.openPass = function () {
+  showScreen('passScr');
+  const R = [['🪙', '500 ouro'], ['😎', 'Emote'], ['🧊', 'Gel Gelo'], ['💎', '20 diamantes'], ['🔫', 'Skin de arma'], ['🪙', '1.000 ouro'], ['👕', 'Roupa'], ['💎', '40 diamantes'], ['🎒', 'Mochila'], ['👑', 'Personagem lendário']];
+  $('passTrack').innerHTML = R.map((r, i) => '<div class="pTier' + (i === 9 ? ' top' : '') + '"><small>NV ' + (i + 1) + '</small><i>' + r[0] + '</i><span>' + r[1] + '</span><em>' + icon('lock') + '</em></div>').join('');
+};
 LOB.openVerify = function () {
   LOB.vfFrom = UI.screen;
   showScreen('vfScr');
@@ -11142,7 +11090,7 @@ LOB.init = function () {
   click('mlAll', () => LOB.claimAll());
   click('adClose', () => LOB.openProfile());
   document.querySelectorAll('#adTabs button').forEach(b => b.addEventListener('click', () => { SND.play('ui'); LOB.adTab = b.dataset.t; LOB.renderAdmin(); }));
-  document.querySelectorAll('#lbNav button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#lbNav button, #lbIcons button').forEach(b => b.addEventListener('click', () => {
     SND.init(); SND.play('ui');
     const k = b.dataset.go;
     if (k === 'shop') LOB.openShop('skins', 'LOJA');
@@ -11155,7 +11103,9 @@ LOB.init = function () {
     else if (k === 'rank') LOB.openRank();
     else if (k === 'code') LOB.redeem();
     else if (k === 'verify') LOB.openVerify();
+    else if (k === 'pass') LOB.openPass();
   }));
+  click('passClose', () => goMenu());
   click('shBack', () => LOB.closeShop());
   click('vfClose', () => { if (LOB.vfFrom === 'profileScr') LOB.openProfile(); else goMenu(); });
   click('vfGo', () => LOB.vfRedeem());
@@ -11815,7 +11765,7 @@ function initHUD() {
   document.querySelectorAll('[data-icon]').forEach(el => { el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)); });
   ['hud', 'touch', 'hpFill', 'hpNum', 'vestBadge', 'helmBadge', 'aliveNum', 'killNum', 'compassStrip', 'compassNum', 'notifs', 'areaBanner', 'areaName',
     'killBanner', 'kbCount', 'kbName', 'minimap', 'zoneTime', 'zoneText', 'topStatus', 'prep', 'prepNum', 'bigText', 'jumpHint', 'diveStats', 'diveHint', 'altMark',
-    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'btnGel', 'btnBuild', 'wbInsp', 'inspTag', 'vaultBtn', 'mkPin',
+    'crosshair', 'reticle', 'scope', 'hitmark', 'hurtArrow', 'handHint', 'killfeed', 'vignette', 'lowHp', 'useBtn', 'keysHint', 'fps', 'wb0', 'wb1', 'wb2', 'wbNade', 'wbKit', 'btnGel', 'wbInsp', 'inspTag', 'vaultBtn', 'mkPin',
     'healRing', 'reloadBar'].forEach(id => { H[id] = $(id); });
   H.scopeWrap = H.scope.querySelector('.sWrap');
   H.mm = H.minimap.getContext('2d');
@@ -12537,7 +12487,7 @@ function renderSettings() {
   }
 }
 // ---------- editor de HUD: arrastar e redimensionar os botões; salva em G.settings.hud ----------
-const HUD_EDIT = ['btnFire', 'btnFireL', 'btnAim', 'btnJump', 'btnCrouch', 'btnReload', 'btnInv', 'btnEmote', 'btnRun', 'btnGel', 'btnBuild', 'ffCount', 'joyBase', 'weaponBar', 'hudTR', 'hudTL'];
+const HUD_EDIT = ['btnFire', 'btnFireL', 'btnAim', 'btnJump', 'btnCrouch', 'btnReload', 'btnInv', 'btnEmote', 'btnRun', 'btnGel', 'ffCount', 'joyBase', 'weaponBar', 'hudTR', 'hudTL'];
 let heWork = null, heSel = null, heFrom = null;
 function applyHudLayout() {
   const L = G.settings.hud || {};
@@ -12653,7 +12603,6 @@ function initInput() {
     if (e.code === 'KeyB' && G.state === 'play') openEmoteWheel();
     if (e.code === 'KeyI' && G.state === 'play') input.inspect = true;
     if (e.code === 'KeyG' && G.state === 'play' && !e.repeat) startGelAim(0, 0);
-    if (e.code === 'KeyB' && G.state === 'play' && !e.repeat) BLD.cycle();
     if (e.code === 'Backquote' && document.exitPointerLock) document.exitPointerLock();
     if (G.state === 'play' && (e.code === 'Space' || e.code.indexOf('Arrow') === 0)) e.preventDefault();
   });
@@ -12767,7 +12716,6 @@ function initInput() {
   holdBtn($('btnMap'), () => { openMap(); });
   holdBtn($('mmWrap'), () => { openMap(); });
   // gel: segurar, arrastar para escolher o lugar e soltar
-  $('btnBuild').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (!document.body.classList.contains('hud-editing')) BLD.cycle(); });
   const gb = $('btnGel');
   gb.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); try { gb.setPointerCapture(e.pointerId); } catch (er) { /* ok */ } startGelAim(e.clientX, e.clientY); });
   gb.addEventListener('pointermove', (e) => { if (G.gelAim) { e.preventDefault(); moveGelAim(e.clientX, e.clientY); } });
@@ -12837,7 +12785,7 @@ function clearMatch() {
   CS.tags = [];
   for (const a of G.actors) scene.remove(a.ch.root);
   for (const w of G.walls.slice()) { w.dead = true; scene.remove(w.grp); }
-  G.walls.length = 0; BLD.clear(); W.dynamic.length = 0;
+  G.walls.length = 0; W.dynamic.length = 0;
   G.loot.length = 0;
   renderLoot(0, 0);
   for (const n of G.nades) scene.remove(n.m);
@@ -12864,7 +12812,6 @@ function tick(dt) {
   for (const a of G.actors) if (a.human && a.remote) updatePuppet(a, dt);
   for (const b of G.bots) updateBot(b, dt);
   updateWalls(dt);
-  BLD.update(dt);
   updateNades(dt);
   updateLoot(dt);
   if (G.mode === 'cs') CS.update(dt);

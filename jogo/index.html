@@ -87,7 +87,7 @@
   <div id="gelHint" class="hidden">Arraste para girar e afastar · solte para colocar o gel</div>
   <button id="vaultBtn" class="hidden"><span data-icon="jump"></span>PULAR JANELA</button>
   <button id="useBtn" class="hidden"></button>
-  <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha · R recarrega · E pegar · Q granada · G gel (segure, mire e solte) · B construir (parede, rampa, piso) · I inspeciona a arma · Shift corre · Espaço perto da janela pula a janela · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · roda do mouse troca a arma · Esc pausa</div>
+  <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha · R recarrega · E pegar · Q granada · G gel (segure, mire e solte) · I inspeciona a arma · Shift corre · Espaço perto da janela pula a janela · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · roda do mouse troca a arma · Esc pausa</div>
   <div id="fps" class="hidden"></div>
 </div>
 <!-- luneta: fica embaixo dos botões de toque (que continuam visíveis e clicáveis) -->
@@ -123,7 +123,6 @@
   <button class="tbtn g" id="btnInv" data-icon="bag" aria-label="Inventário rápido"></button>
   <button class="tbtn g" id="btnEmote" data-icon="smile" aria-label="Emotes"></button>
   <button class="tbtn g" id="btnRun" data-icon="run" aria-label="Correr"></button>
-  <button class="tbtn g" id="btnBuild" aria-label="Construir: parede, rampa e piso"><b>CONSTRUIR</b></button>
   <button class="tbtn g" id="btnGel" aria-label="Gel: segure, arraste para escolher o lugar e solte"></button>
   <button class="tbtn pill big p" id="btnSaltar">SALTAR</button>
   <button class="tbtn pill big f" id="btnChute" data-icon="chute">PARAQUEDAS</button>
@@ -161,22 +160,24 @@
     <button data-go="shop" data-icon="bag"><span>LOJA</span></button>
     <button data-go="chars" data-icon="person"><span>PERSONAGEM</span></button>
     <button data-go="emotes" data-icon="smile"><span>EMOTES</span></button>
-    <button data-go="recharge" class="hot" data-icon="crown"><span>RECARGA</span></button>
     <button data-go="arsenal" data-icon="bullet"><span>ARSENAL</span></button>
     <button data-go="rank" data-icon="crown"><span>RANKING</span></button>
     <button data-go="friends" data-icon="users"><span>AMIGOS</span><em id="lbFrN" class="badgeN hidden">0</em></button>
-    <button data-go="profile" data-icon="user"><span>PERFIL</span></button>
-    <button data-go="code" data-icon="gift"><span>CÓDIGO</span></button>
-    <button data-go="verify" data-icon="check"><span>VERIFICADO</span></button>
+  </nav>
+  <nav id="lbIcons" class="lbNav lbIcons">
+    <button data-go="pass" class="passTile" data-icon="crown"><span>PASSE</span><em class="soon">EM BREVE</em></button>
+    <button data-go="recharge" class="hot" data-icon="gift"><span>RECARGA</span></button>
+    <button data-go="code" data-icon="mail"><span>CÓDIGO</span></button>
+    <button data-go="verify" data-icon="check"><span>SELOS</span></button>
   </nav>
   <div class="lbSide">
     <button id="lbNews" class="news"></button>
     <button id="lbMap" class="mapCard"><canvas id="lbMapCv" width="96" height="96"></canvas><div><small id="lbMapLbl">MAPA</small><b id="lbMapName">ILHA</b><span>TROCAR ›</span></div></button>
-    <button id="mPlay" class="playBtn"><b>JOGAR</b><small>SOLO · DUPLA · TRIO · SQUAD</small></button>
+    <button id="mPlay" class="playBtn"><b>INICIAR</b><small>SOLO · DUPLA · TRIO · SQUAD</small></button>
   </div>
   <div id="squadBar" class="squadBar"><small>SEU GRUPO</small><div id="squadSlots"></div></div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v3.9</div>
+  <div class="ver">v4.0</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -202,6 +203,14 @@
   <div class="panel pfPanel">
     <div class="panelHead"><b>PERFIL</b><button id="pfClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
     <div id="pfBody" class="pfBody"></div>
+  </div>
+</div>
+
+<div id="passScr" class="screen dim hidden">
+  <div class="panel passPanel">
+    <div class="panelHead"><b>PASSE BATTLE · TEMPORADA 1</b><button id="passClose" class="xBtn" data-icon="close" aria-label="Fechar"></button></div>
+    <div class="passHero"><div><small>RECOMPENSAS A CADA NÍVEL</small><b>PASSE BATTLE</b><span>Suba de nível jogando e libere skins, emotes, gel e ouro.</span></div><em class="passSoon">EM BREVE</em></div>
+    <div id="passTrack" class="passTrack"></div>
   </div>
 </div>
 
@@ -440,7 +449,7 @@
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v3.9 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v4.0 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>

@@ -161,7 +161,7 @@ function makeActor(name, pal, isPlayer) {
     hp: 200, maxHp: 200, armor: 0, helmet: 0, alive: true,
     slots: [null, null, null], cur: 3, nadeHand: false,
     reloadT: 0, fireCd: 0, lastFire: -9,
-    gel: isPlayer ? 2 : 1, mats: 300, wallCd: 0, kits: 0, nades: 0, healT: 0, crouch: false,
+    gel: isPlayer ? 2 : 1, wallCd: 0, kits: 0, nades: 0, healT: 0, crouch: false,
     kills: 0, dmgDealt: 0, aim: 0, speed: 0, lastHurt: -9, lastAttacker: null, landT: 0,
     revives: isPlayer ? 1 : 0, respawnT: 0, rsWait: 0,
   };
@@ -351,7 +351,7 @@ function killActor(a, killer, weapon) {
   a.hp = 0; a.alive = false;
   a.vel.set(0, 0, 0);
   if (killer && killer !== a && !killer.isPlayer && !killer.human && Math.random() < 0.45) { killer.emote = Math.random() < 0.5 ? 'cheer2' : 'laugh'; killer.emoteT = 2.2; }
-  if (killer && killer !== a) { killer.kills++; killer.mats = (killer.mats || 0) + 50; killFeed(killer, a, weapon); if (killer.isPlayer) killBanner(killer.kills, a); }
+  if (killer && killer !== a) { killer.kills++; killFeed(killer, a, weapon); if (killer.isPlayer) killBanner(killer.kills, a); }
   if (killer && killer === G.player && killer !== a) countWeaponKill(weapon);
   else killFeed(a, null, 'Zona');
   // mochila caída com o que a pessoa carregava (como no vídeo)
@@ -437,7 +437,7 @@ function respawnActor(a) {
   }
   a.alive = true; a.respawnT = 0; a.rsWait = 0; a.hp = a.maxHp; a.armor = 0; a.helmet = 0;
   a.slots = [null, null, null]; a.cur = 3; a.nadeHand = false; a.reloadT = 0; a.healT = 0;
-  a.kits = 1; a.gel = 2; a.mats = 300; a.nades = 0; a.emote = null; a.aimOn = false; a.crouch = false;
+  a.kits = 1; a.gel = 2; a.nades = 0; a.emote = null; a.aimOn = false; a.crouch = false;
   giveWeapon(a, 'PISTOLA', 12, 36);
   a.pos.set(x, W.height(x, zz) + 70, zz); a.vel.set(0, 0, 0); a.vy = 0;
   a.phase = 'fall'; a.board = false; a.hs = 10; a.vdown = 14; a.onGround = false;
@@ -651,7 +651,6 @@ function deployWall(owner, towardYaw, fromNet, dist) {
 }
 
 function damageWall(wall, dmg, point, dir) {
-  if (wall.bp) return BLD.damage(wall, dmg, point, dir);
   if (wall.dead) return;
   wall.hp -= dmg;
   const lx = point.x - wall.cx, lz = point.z - wall.cz;
@@ -791,7 +790,6 @@ function explode(n) {
     damageActor(a, dmg * k, n.owner, false, 'Granada');
   }
   for (const w of G.walls.slice()) if (Math.hypot(w.cx - p.x, w.cz - p.z) < R + WALL_R) damageWall(w, 260, p, null);
-  BLD.blast(p, R);
 }
 
 // pontos da trajetória (granada na mão)
@@ -1368,14 +1366,14 @@ function updateWaiting(dt) {
     if (ac.remote && ac.human) continue;
     if (NET.isClient() && !ac.human) continue;
     ac.slots = [null, null, null]; ac.cur = 3; ac.nadeHand = false; ac.reloadT = 0; ac.healT = 0;
-    ac.hp = ac.maxHp; ac.armor = 0; ac.helmet = 0; ac.nades = 0; ac.kits = 0; ac.gel = ac.isPlayer ? 2 : 1; ac.mats = 300; ac.emote = null;
+    ac.hp = ac.maxHp; ac.armor = 0; ac.helmet = 0; ac.nades = 0; ac.kits = 0; ac.gel = ac.isPlayer ? 2 : 1; ac.emote = null;
     ac.kills = 0; ac.dmgDealt = 0; ac.aimOn = false; ac.crouch = false;
     ac.phase = 'plane'; ac.ch.root.visible = false;
     refreshGuns(ac);
     if (ac.ai) { ac.ai.target = null; ac.ai.wp = null; }
   }
   for (const wl of G.walls.slice()) { wl.dead = true; scene.remove(wl.grp); }
-  G.walls.length = 0; BLD.clear(); W.dynamic.length = 0;
+  G.walls.length = 0; W.dynamic.length = 0;
   for (const n of G.nades) scene.remove(n.m);
   G.nades.length = 0;
   startDrop(G.dropArgs[0], G.dropArgs[1]);
@@ -1744,9 +1742,7 @@ function updatePlayer(dt) {
   const firing = input.fire || G.mouseFire || tap;
   const pressed = (firing && !G.prevFire) || tap;
   G.prevFire = input.fire || G.mouseFire;
-  if (BLD.on()) {
-    if (firing) BLD.place(p);
-  } else if (p.nadeHand) {
+  if (p.nadeHand) {
     if (pressed && p.fireCd <= 0) throwNade(p, nadeVelocity(G.yaw, G.pitch, _nv));
   } else if (firing && p.fireCd <= 0 && p.reloadT <= 0 && p.healT <= 0) {
     const s = curSlot(p);
@@ -2061,102 +2057,3 @@ function botShoot(b, t, dist) {
 }
 
 
-// ------------------------------------------------------------------ construção (paredes, rampas e pisos no grid de 4 m)
-// botão CONSTRUIR (ou B) troca: parede → rampa → piso → desligado; o tiro coloca a peça mostrada no fantasma
-const BLD = { kind: null, KINDS: ['parede', 'rampa', 'piso'], CELL: 4, H: 3, HP: 160, COST: 10, cd: 0, list: [], ghost: null };
-BLD.on = () => !!BLD.kind && G.state === 'play' && G.player && G.player.phase === 'ground' && G.player.alive;
-BLD.cycle = function () {
-  const i = BLD.KINDS.indexOf(BLD.kind);
-  BLD.kind = i < 0 ? BLD.KINDS[0] : i + 1 < BLD.KINDS.length ? BLD.KINDS[i + 1] : null;
-  SND.play('ui');
-};
-BLD.tex = function () {
-  return BLD._tx || (BLD._tx = U.canvasTex(256, 256, (g) => {
-    g.fillStyle = '#b07a45'; g.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#a06c3a' : '#bb8550'; g.fillRect(0, i * 64 + 2, 256, 60); g.fillStyle = 'rgba(60,35,15,.55)'; g.fillRect(0, i * 64, 256, 3); }
-    g.strokeStyle = 'rgba(70,40,18,.35)'; g.lineWidth = 2; for (let k = 0; k < 40; k++) { const y = Math.random() * 256; g.beginPath(); g.moveTo(Math.random() * 256, y); g.lineTo(Math.random() * 256, y + (Math.random() - 0.5) * 4); g.stroke(); }
-    g.strokeStyle = '#5a3418'; g.lineWidth = 10; g.strokeRect(5, 5, 246, 246); g.beginPath(); g.moveTo(10, 10); g.lineTo(246, 246); g.stroke();
-  }));
-};
-BLD.mat = () => BLD._m || (BLD._m = U.toon({ map: BLD.tex() }));
-BLD.gmat = () => BLD._g || (BLD._g = new THREE.MeshBasicMaterial({ color: 0x5cc8ff, transparent: true, opacity: 0.35, depthWrite: false }));
-// onde a peça cai: célula à frente do jogador, virada para o lado mais próximo (0/90/180/270 graus)
-BLD.spot = function (p, kind) {
-  const C = BLD.CELL, yaw = G.yaw, fx = -Math.sin(yaw), fz = -Math.cos(yaw);
-  const rot = Math.round(yaw / (Math.PI / 2)) * (Math.PI / 2), dx = -Math.sin(rot), dz = -Math.cos(rot);
-  const d = kind === 'parede' ? 1.2 : 2.6;
-  const cx = (Math.floor((p.pos.x + fx * d) / C) + 0.5) * C, cz = (Math.floor((p.pos.z + fz * d) / C) + 0.5) * C;
-  let base = p.pos.y - 0.05;
-  if (kind === 'piso' && G.pitch > 0.15) base += BLD.H;
-  if (kind === 'parede') return { kind: kind, x: cx + dx * C / 2, z: cz + dz * C / 2, y: base, rot: rot };
-  return { kind: kind, x: cx, z: cz, y: base, rot: rot };
-};
-BLD.geo = function (kind) {
-  BLD._geo = BLD._geo || {};
-  if (BLD._geo[kind]) return BLD._geo[kind];
-  const C = BLD.CELL, H = BLD.H;
-  let g;
-  if (kind === 'parede') g = new THREE.BoxGeometry(C, H, 0.22).translate(0, H / 2, 0);
-  else if (kind === 'piso') g = new THREE.BoxGeometry(C, 0.22, C).translate(0, -0.11, 0);
-  else { const L = Math.hypot(C, H); g = new THREE.BoxGeometry(C, 0.22, L).rotateX(Math.atan2(H, C)).translate(0, H / 2, 0); }
-  return (BLD._geo[kind] = g);
-};
-// colisões: parede é uma caixa; piso é uma laje onde dá para pisar; rampa vira degraus baixos (sobe andando)
-BLD.cols = function (pc) {
-  const C = BLD.CELL, H = BLD.H, cs = Math.cos(pc.rot), sn = Math.sin(pc.rot), out = [];
-  const box = (x, z, hx, hz, y0, y1) => { const c = { type: 'b', x: x, z: z, hx: hx, hz: hz, rot: pc.rot, cs: cs, sn: sn, br: Math.hypot(hx, hz), y0: y0, y1: y1, walkable: true, wall: pc }; out.push(c); return c; };
-  if (pc.kind === 'parede') box(pc.x, pc.z, C / 2, 0.11, pc.y - 0.3, pc.y + H);
-  else if (pc.kind === 'piso') box(pc.x, pc.z, C / 2, C / 2, pc.y - 0.22, pc.y);
-  else {
-    const n = 8, dx = -Math.sin(pc.rot), dz = -Math.cos(pc.rot);
-    for (let k = 0; k < n; k++) { const t = -C / 2 + (k + 0.5) * C / n; const top = pc.y + (k + 1) * H / n; box(pc.x + dx * t, pc.z + dz * t, C / 2, C / n / 2, top - 0.3, top); }
-  }
-  return out;
-};
-BLD.place = function (p) {
-  if (BLD.cd > 0) return;
-  BLD.cd = 0.18;
-  if ((p.mats || 0) < BLD.COST) { notify('info', 'Sem madeira! Abata inimigos para ganhar mais.'); BLD.cd = 0.8; return; }
-  const s = BLD.spot(p, BLD.kind);
-  for (const o of BLD.list) if (o.kind === s.kind && Math.abs(o.x - s.x) < 0.5 && Math.abs(o.z - s.z) < 0.5 && Math.abs(o.y - s.y) < 1 && Math.abs(U.angDiff(o.rot, s.rot)) < 0.3) return;
-  p.mats -= BLD.COST;
-  const m = new THREE.Mesh(BLD.geo(s.kind), BLD.mat());
-  m.position.set(s.x, s.y, s.z); m.rotation.y = s.rot; m.castShadow = m.receiveShadow = true; m.scale.y = 0.1;
-  scene.add(m);
-  const pc = Object.assign(s, { bp: true, mesh: m, hp: BLD.HP, grow: 0, dead: false, cx: s.x, cz: s.z });
-  pc.cols = BLD.cols(pc);
-  for (const c of pc.cols) W.dynamic.push(c);
-  BLD.list.push(pc);
-  SND.play('wall', 0.8);
-};
-BLD.damage = function (pc, dmg, point, dir) {
-  if (pc.dead) return;
-  pc.hp -= dmg;
-  if (point && dir) for (let i = 0; i < 3; i++) FX.shard(point.clone().addScaledVector(dir, -0.1), new V3(-dir.x * 2 + (Math.random() - 0.5) * 3, 1 + Math.random() * 2, -dir.z * 2 + (Math.random() - 0.5) * 3), 0.06 + Math.random() * 0.06, 0.8);
-  pc.mesh.material = pc.hp < BLD.HP * 0.4 ? (BLD._mh || (BLD._mh = U.toon({ map: BLD.tex(), color: 0x8a5a3a }))) : BLD.mat();
-  if (pc.hp <= 0) BLD.remove(pc, true);
-};
-BLD.remove = function (pc, fx) {
-  pc.dead = true;
-  for (const c of pc.cols) { c.dead = true; const i = W.dynamic.indexOf(c); if (i >= 0) W.dynamic.splice(i, 1); }
-  scene.remove(pc.mesh);
-  const i = BLD.list.indexOf(pc); if (i >= 0) BLD.list.splice(i, 1);
-  if (fx) {
-    for (let k = 0; k < 16; k++) FX.shard(new V3(pc.x + (Math.random() - 0.5) * 3, pc.y + Math.random() * 2.5, pc.z + (Math.random() - 0.5) * 3), new V3((Math.random() - 0.5) * 4, 2 + Math.random() * 3, (Math.random() - 0.5) * 4), 0.15 + Math.random() * 0.2, 1.6);
-    if (Math.hypot(pc.x - G.player.pos.x, pc.z - G.player.pos.z) < 45) SND.play('break', 0.6);
-  }
-};
-BLD.blast = function (p, R) { for (const pc of BLD.list.slice()) if (Math.hypot(pc.x - p.x, pc.z - p.z) < R + 2) BLD.damage(pc, 200, p, null); };
-BLD.clear = function () { for (const pc of BLD.list.slice()) BLD.remove(pc, false); BLD.kind = null; };
-BLD.update = function (dt) {
-  BLD.cd -= dt;
-  for (const pc of BLD.list) if (pc.grow < 1) { pc.grow = Math.min(1, pc.grow + dt / 0.15); pc.mesh.scale.y = 0.1 + 0.9 * pc.grow; }
-  const on = BLD.on();
-  if (on) {
-    const s = BLD.spot(G.player, BLD.kind);
-    if (!BLD.ghost) { BLD.ghost = new THREE.Mesh(BLD.geo(s.kind), BLD.gmat()); scene.add(BLD.ghost); }
-    BLD.ghost.geometry = BLD.geo(s.kind); BLD.ghost.position.set(s.x, s.y, s.z); BLD.ghost.rotation.y = s.rot; BLD.ghost.visible = true;
-  } else if (BLD.ghost) BLD.ghost.visible = false;
-  const b = H.btnBuild;
-  if (b) { const lbl = on ? BLD.kind.toUpperCase() : 'CONSTRUIR'; const t = lbl + '|' + (G.player ? G.player.mats || 0 : 0); if (b._t !== t) { b._t = t; b.innerHTML = '<b>' + lbl + '</b><small>🪵 ' + (G.player ? G.player.mats || 0 : 0) + '</small>'; b.classList.toggle('on', on); } }
-};

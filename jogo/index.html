@@ -23,7 +23,9 @@
 <canvas id="c"></canvas>
 
 <!-- ===================== HUD ===================== -->
+<div id="pchat" class="pchat hidden"><div id="pchatLog" class="pchatLog"></div><div class="pchatRow"><input id="pchatIn" maxlength="80" placeholder="Mensagem para o grupo" autocomplete="off"><button id="pchatGo" class="chip hot">ENVIAR</button><button id="pchatMic" class="micBtn" aria-label="Microfone">🎤</button></div></div>
 <div id="hud" class="hidden" data-mode="ground">
+  <button id="btnMic" class="micBtn hudMic hidden" aria-label="Microfone do grupo">🎤</button>
   <div id="hudTL">
     <div class="hpRow"><span data-icon="heart" class="hpIco"></span><div id="hpBar"><div id="hpFill" class="hp-g"></div><div id="healRing"></div></div><b id="hpNum">200</b></div>
     <div class="armorRow"><span id="vestBadge" class="badge"></span><span id="helmBadge" class="badge"></span></div>
@@ -172,7 +174,7 @@
     <button id="mPlay" class="playBtn"><b>INICIAR</b><small>SOLO · DUPLA · TRIO · SQUAD</small></button>
   </div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v4.2</div>
+  <div class="ver">v4.3</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -444,7 +446,7 @@
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v4.2 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v4.3 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>

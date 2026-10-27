@@ -891,6 +891,23 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 #menuScr .sqMe.mate { border-color: #5ff07a; }
 #menuScr .sqAdd { border: 2px dashed rgba(255,210,60,.8); color: #ffd23c; font-weight: 700; }
 
+/* chat do grupo e microfone */
+.pchat { position: fixed; left: calc(max(12px, env(safe-area-inset-left)) + 84px); bottom: max(10px, env(safe-area-inset-bottom)); width: min(300px, 38vw); z-index: 30; display: flex; flex-direction: column; gap: 4px; }
+.pchat.hidden { display: none; }
+.pchatLog { display: flex; flex-direction: column; gap: 2px; max-height: 96px; overflow: hidden; justify-content: flex-end; }
+.pchatLog p { margin: 0; font-size: 11.5px; line-height: 1.25; padding: 2px 7px; background: rgba(4,8,18,.6); border-radius: 4px; text-shadow: 0 1px 2px #000; } .pchatLog b { color: #ffd23c; }
+.pchatRow { display: flex; gap: 4px; } .pchatRow input { flex: 1; min-width: 0; height: 30px; padding: 0 8px; font-size: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,.2); background: rgba(4,8,18,.75); color: #fff; }
+.pchatRow .chip { height: 30px; padding: 0 10px; font-size: 11px; }
+.micBtn { width: 34px; height: 30px; border-radius: 6px; border: 1px solid rgba(255,255,255,.25); background: rgba(4,8,18,.75); font-size: 15px; filter: grayscale(1); opacity: .8; }
+.micBtn.on { background: rgba(40,190,90,.85); border-color: #8dffb0; filter: none; opacity: 1; box-shadow: 0 0 10px rgba(80,255,140,.5); }
+.hudMic { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 44px); right: calc(max(12px, env(safe-area-inset-right)) + 96px); width: 40px; height: 36px; pointer-events: auto; z-index: 5; }
+.hudMic.hidden { display: none; }
+/* perfil do amigo */
+.fpBox { display: flex; gap: 12px; align-items: center; text-align: left; } .fpAv { flex: none; width: 64px; height: 64px; border-radius: 8px; background: #1b2638 center 15% / cover; border: 2px solid var(--yellow); }
+.fpName { font-size: 18px; } .fpBox small { display: block; color: var(--muted); } .fpOn { color: #5ff07a; } .fpId { margin-top: 4px; font-size: 13px; } .fpId b { font-family: monospace; letter-spacing: 1px; }
+.fpStats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; } .fpStats div { background: rgba(255,255,255,.06); border-radius: 6px; padding: 5px 2px; text-align: center; }
+.fpStats b { display: block; font-size: 17px; color: #ffd23c; } .fpStats small { font-size: 8.5px; letter-spacing: .5px; color: var(--muted); }
+
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
   <linearGradient id="gmG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9f6ff"/><stop offset=".5" stop-color="#4fc3ff"/><stop offset="1" stop-color="#7a3cff"/></linearGradient>
@@ -899,7 +916,9 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 <canvas id="c"></canvas>
 
 <!-- ===================== HUD ===================== -->
+<div id="pchat" class="pchat hidden"><div id="pchatLog" class="pchatLog"></div><div class="pchatRow"><input id="pchatIn" maxlength="80" placeholder="Mensagem para o grupo" autocomplete="off"><button id="pchatGo" class="chip hot">ENVIAR</button><button id="pchatMic" class="micBtn" aria-label="Microfone">🎤</button></div></div>
 <div id="hud" class="hidden" data-mode="ground">
+  <button id="btnMic" class="micBtn hudMic hidden" aria-label="Microfone do grupo">🎤</button>
   <div id="hudTL">
     <div class="hpRow"><span data-icon="heart" class="hpIco"></span><div id="hpBar"><div id="hpFill" class="hp-g"></div><div id="healRing"></div></div><b id="hpNum">200</b></div>
     <div class="armorRow"><span id="vestBadge" class="badge"></span><span id="helmBadge" class="badge"></span></div>
@@ -1048,7 +1067,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <button id="mPlay" class="playBtn"><b>INICIAR</b><small>SOLO · DUPLA · TRIO · SQUAD</small></button>
   </div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v4.2</div>
+  <div class="ver">v4.3</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1320,7 +1339,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v4.2 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v4.3 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -8522,7 +8541,7 @@ NET.createRoom = function () {
   NET.setStatus('Criando sala…');
   const tryOpen = (tries) => {
     const peer = new Peer(NET.PREFIX + NET.code, NET.peerOpts());
-    NET.peer = peer;
+    NET.peer = peer; VOICE.listen(peer);
     peer.on('open', () => { NET.setStatus('Sala aberta. Mande o código para os amigos.'); renderRoom(); });
     peer.on('connection', c => NET.hostAccept(c));
     peer.on('error', e => {
@@ -8579,7 +8598,7 @@ NET.joinRoom = function (code) {
   NET.mode = 'client'; NET.code = code;
   NET.setStatus('Conectando na sala ' + code + '…');
   const peer = new Peer(NET.peerOpts());
-  NET.peer = peer;
+  NET.peer = peer; VOICE.listen(peer);
   peer.on('open', () => {
     const c = peer.connect(NET.PREFIX + code, { reliable: true, serialization: 'json' });
     NET.conn = c;
@@ -8602,6 +8621,7 @@ NET.lostHost = function () {
 };
 
 NET.leave = function () {
+  VOICE.stop(true); NET.chat = []; NET.renderChat();
   NET.live = false;
   try { if (NET.conn) NET.conn.close(); } catch (e) { /* ok */ }
   for (const c of NET.conns) try { c.close(); } catch (e) { /* ok */ }
@@ -8623,8 +8643,8 @@ NET.cleanLook = function (lk) {
 
 NET.toPid = function (pid, m) { const p = NET.players.find(x => x.pid === pid); if (p && p.conn && p.conn.open) p.conn.send(m); };
 
-NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av, tierKey(p.vf), p.lk || null]), bots: NET.bots, live: NET.live, map: W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId, gm: NET.gm, gs: NET.gs, bt: NET.bt });
-NET.bcastRoom = function () { if (NET.isHost()) NET.bcast(NET.roomMsg()); };
+NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av, tierKey(p.vf), p.lk || null, p.conn ? p.conn.peer : (NET.peer && NET.peer.id)]), bots: NET.bots, live: NET.live, map: W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId, gm: NET.gm, gs: NET.gs, bt: NET.bt });
+NET.bcastRoom = function () { if (NET.isHost()) NET.bcast(NET.roomMsg()); VOICE.sync(); };
 
 NET.setAvatar = function (av) {
   G.settings.avatar = av; G.saveSettings();
@@ -8785,6 +8805,7 @@ NET.hostRecv = function (c, d) {
   }
   if (!pl) return;
   if (d.t === 'av') { if (CH.AV[d.a]) pl.av = d.a; if (d.lk) pl.lk = NET.cleanLook(d.lk); NET.bcastRoom(); renderRoom(); return; }
+  if (d.t === 'chat') { const m = String(d.m || '').slice(0, 80).trim(); if (m) { NET.chatIn(pl.name, m); NET.bcast({ t: 'chat', n: pl.name, m: m }); } return; }
   if (!NET.live) return;
   const a = NET.actorOf(pl.pid);
   if (!a) return;
@@ -8873,10 +8894,12 @@ NET.onShot = function (a, o, ends, wid) {
 NET.clientRecv = function (d) {
   switch (d.t) {
     case 'wel': NET.pid = d.pid; break;
+    case 'chat': NET.chatIn(String(d.n || '?').slice(0, 14), String(d.m || '').slice(0, 80)); break;
     case 'banned': NET.setStatus('Você está banido ' + d.txt, true); break;
     case 'full': NET.setStatus(d.live ? 'A partida já começou. Espere acabar e tente de novo.' : 'A sala está cheia.', true); break;
     case 'room':
-      NET.players = d.ps.map(p => ({ pid: p[0], name: p[1], av: p[2], vf: tierKey(p[3]), lk: NET.cleanLook(p[4]) }));
+      NET.players = d.ps.map(p => ({ pid: p[0], name: p[1], av: p[2], vf: tierKey(p[3]), lk: NET.cleanLook(p[4]), peer: p[5] || null }));
+      VOICE.sync();
       NET.bots = d.bots; NET.code = d.code; NET.gm = d.gm || 'br'; NET.gs = d.gs || 4; NET.bt = TEAM.size(d.bt || 1);
       if (d.map && d.map !== W.mapId && W.MAPS[d.map] && !NET.live && G.state !== 'play') LOB.switchMap(d.map, () => { if (UI.screen === 'roomScr') renderRoom(); });
       if (!NET.live && G.state !== 'play' && G.state !== 'end') { if (UI.screen !== 'roomScr') openRoom(); else renderRoom(); }
@@ -9043,6 +9066,65 @@ NET.backToRoom = function () {
   G.show.ch.root.visible = true;
   showScreen('roomScr');
   renderRoom();
+};
+
+// ------------------------------------------------------------------ chat do grupo (lobby)
+NET.chat = [];
+NET.myName = () => (ACC.p && ACC.p.name) || G.settings.name || 'Jogador';
+NET.sendChat = function (txt) {
+  const m = String(txt || '').slice(0, 80).trim();
+  if (!m || !NET.on()) return;
+  if (NET.isHost()) { NET.chatIn(NET.myName(), m); NET.bcast({ t: 'chat', n: NET.myName(), m: m }); }
+  else NET.send({ t: 'chat', m: m });
+};
+NET.chatIn = function (n, m) {
+  NET.chat.push({ n: n, m: m });
+  if (NET.chat.length > 30) NET.chat.shift();
+  NET.renderChat();
+  if (n !== NET.myName()) SND.play('ui');
+};
+NET.renderChat = function () {
+  const el = $('pchatLog'); if (!el) return;
+  el.innerHTML = NET.chat.slice(-6).map(c => '<p><b>' + escapeHTML(c.n) + ':</b> ' + escapeHTML(c.m) + '</p>').join('');
+};
+
+// ------------------------------------------------------------------ chat de voz (grupo)
+// quem liga o microfone liga para cada colega (uma chamada só de ida); quem recebe só escuta
+const VOICE = { on: false, stream: null, out: {}, ins: {} };
+VOICE.peers = () => NET.players.filter(p => p.pid !== NET.pid && p.peer).map(p => p.peer);
+VOICE.toggle = async function () {
+  if (VOICE.on) { VOICE.stop(); notify('info', 'Microfone desligado'); return; }
+  if (!NET.on() || !NET.peer) { notify('info', 'O chat de voz funciona com amigos no seu grupo (convide alguém primeiro).'); return; }
+  try { VOICE.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+  catch (e) { notify('info', 'Libere o microfone no navegador para falar com o grupo.'); return; }
+  VOICE.on = true; VOICE.sync(); VOICE.ui(); notify('ok', 'Microfone ligado: seu grupo está te ouvindo');
+};
+VOICE.stop = function (all) {
+  VOICE.on = false;
+  for (const k in VOICE.out) { try { VOICE.out[k].close(); } catch (e) { /* ok */ } }
+  VOICE.out = {};
+  if (VOICE.stream) VOICE.stream.getTracks().forEach(t => t.stop());
+  VOICE.stream = null;
+  if (all) { for (const k in VOICE.ins) { VOICE.ins[k].srcObject = null; } VOICE.ins = {}; }
+  VOICE.ui();
+};
+VOICE.sync = function () {
+  if (!VOICE.on || !NET.peer || !VOICE.stream) return;
+  const want = VOICE.peers();
+  for (const id of want) if (!VOICE.out[id]) {
+    try { const c = NET.peer.call(id, VOICE.stream); if (c) { VOICE.out[id] = c; const drop = () => { if (VOICE.out[id] === c) delete VOICE.out[id]; }; c.on('close', drop); c.on('error', drop); } } catch (e) { /* tenta de novo na próxima */ }
+  }
+  for (const id in VOICE.out) if (want.indexOf(id) < 0) { try { VOICE.out[id].close(); } catch (e) { /* ok */ } delete VOICE.out[id]; }
+};
+VOICE.listen = function (peer) {
+  peer.on('call', (call) => {
+    call.answer();
+    call.on('stream', (st) => { let a = VOICE.ins[call.peer]; if (!a) { a = VOICE.ins[call.peer] = new Audio(); a.autoplay = true; } a.srcObject = st; a.play().catch(() => {}); });
+    call.on('close', () => { const a = VOICE.ins[call.peer]; if (a) { a.srcObject = null; delete VOICE.ins[call.peer]; } });
+  });
+};
+VOICE.ui = function () {
+  for (const id of ['pchatMic', 'btnMic']) { const b = $(id); if (b) { b.classList.toggle('on', VOICE.on); b.title = VOICE.on ? 'Desligar microfone' : 'Ligar microfone'; } }
 };
 
 </script>
@@ -10187,6 +10269,7 @@ LOB.syncParty = function () {
 const _pv = new THREE.Vector3();
 LOB.updateParty = function (dt, t) {
   const show = UI.screen === 'roomScr' || UI.screen === 'menuScr';
+  const pc = $('pchat'); if (pc) { const v = show && NET.on(); if (pc.classList.contains('hidden') === v) pc.classList.toggle('hidden', !v); }
   const tags = $('partyTags'); if (tags) tags.classList.toggle('on', show && LOB.party.length > 0);
   if (!LOB.party.length) return;
   const out = LOB.outYaw, fx = Math.sin(out), fz = Math.cos(out), rx = Math.cos(out), rz = -Math.sin(out);
@@ -11306,6 +11389,12 @@ FR.recv = function (c, d) {
       c.send({ t: 'pong', from: FR.info(), room: NET.on() && NET.isHost() && !NET.live ? NET.code : null, busy: G.state === 'play' });
       if (FR.isFriend(from.id)) { FR.online[from.id] = { t: Date.now() }; FR.touch(from); }
       break;
+    case 'pfq': {
+      const s = p.stats || {};
+      c.send({ t: 'pfa', from: FR.info(), s: { m: s.matches | 0, w: s.wins | 0, k: s.kills | 0, t5: s.top5 | 0, best: s.best | 0, title: p.title || '' } });
+      break;
+    }
+    case 'pfa': FR.touch(from); FR.showProfile(from.id, d.s); break;
     case 'pong':
       FR.online[from.id] = { t: Date.now(), room: d.room, busy: d.busy };
       FR.touch(from); ACC.save();
@@ -11435,6 +11524,7 @@ FR.render = function () {
       return '<div class="frRow">' + avatar(f) + '<div class="frId"><b>' + escapeHTML(f.name) + LOB.vf(f.vf) + '</b><small>NV ' + (f.lvl || 1) + ' · ID ' + f.id + '</small></div>' +
         '<span class="frSt ' + (on ? 'on' : '') + '"><i></i>' + st + '</span>' +
         (on && o.room && !NET.on() ? '<button class="chip" data-join="' + o.room + '">ENTRAR</button>' : '') +
+        '<button class="chip" data-pf="' + f.id + '">' + icon('user') + 'PERFIL</button>' +
         '<button class="chip hot" data-inv="' + f.id + '"' + (on ? '' : ' disabled') + '>' + icon('users') + 'CONVIDAR</button>' +
         '<button class="chip" data-rm="' + f.id + '" aria-label="Remover amigo">' + icon('trash') + '</button></div>';
     }).join('') : '<p class="hint frEmpty">Você ainda não tem amigos aqui. Toque em ADICIONAR e digite o ID de um amigo.</p>';
@@ -11462,10 +11552,27 @@ FR.render = function () {
   }
   const on = (sel, fn) => body.querySelectorAll(sel).forEach(b => b.addEventListener('click', () => { SND.play('ui'); fn(b); }));
   on('[data-inv]', b => FR.invite(b.dataset.inv));
+  on('[data-pf]', b => FR.openProfile(b.dataset.pf));
   on('[data-join]', b => LOB.joinLink(b.dataset.join));
   on('[data-acc]', b => FR.accept(b.dataset.acc));
   on('[data-dec]', b => FR.decline(b.dataset.dec));
   on('[data-rm]', b => { const f = ACC.p.friends.find(x => x.id === b.dataset.rm); LOB.dialog('REMOVER AMIGO', 'Remover <b>' + escapeHTML(f.name) + '</b> da sua lista?', [['REMOVER', () => FR.remove(f.id), 'danger'], ['CANCELAR']]); });
+};
+
+// perfil do amigo: o que está salvo aqui na hora; se ele estiver on-line, pede os números atualizados
+FR.openProfile = function (id) {
+  FR.pfId = id; FR.showProfile(id, null);
+  if (FR.isOnline(id)) FR.send(id, { t: 'pfq' });
+};
+FR.showProfile = function (id, s) {
+  const f = ACC.p && ACC.p.friends.find(x => String(x.id) === String(id));
+  if (!f || String(FR.pfId) !== String(id)) return;
+  const on = FR.isOnline(id), st = (n, l) => '<div><b>' + n + '</b><small>' + l + '</small></div>';
+  const stats = s ? '<div class="fpStats">' + st(s.m, 'PARTIDAS') + st(s.w, 'VITÓRIAS') + st(s.k, 'ABATES') + st(s.t5, 'TOP 5') + st(s.best, 'MELHOR') + '</div>'
+    : '<p class="hint">' + (on ? 'Carregando os números…' : 'Os números aparecem quando ele estiver on-line.') + '</p>';
+  LOB.dialog('PERFIL DO AMIGO', '<div class="fpBox"><i class="fpAv" style="background-image:url(' + (LOB.thumbs[f.skin] || '') + ')"></i><div><b class="fpName">' + escapeHTML(f.name) + LOB.vf(f.vf) + '</b>' +
+    '<small>NV ' + (f.lvl || 1) + ' · ' + (on ? '<span class="fpOn">on-line</span>' : 'off-line') + '</small><div class="fpId">ID <b>' + escapeHTML(String(f.id)) + '</b></div></div></div>' + stats,
+    [['COPIAR ID', () => { U.copy(f.id, 'ID do amigo copiado: ' + f.id); return false; }, true], ['FECHAR', () => { FR.pfId = null; }]]);
 };
 
 </script>
@@ -12837,6 +12944,10 @@ function isTouchEvent(e) { return e.pointerType === 'touch' || (e.sourceCapabili
 
 function initScreens() {
   const click = (id, fn) => $(id).addEventListener('click', () => { SND.init(); SND.play('ui'); fn(); });
+  $('pchatIn').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { NET.sendChat(e.target.value); e.target.value = ''; } });
+  click('pchatGo', () => { const i = $('pchatIn'); NET.sendChat(i.value); i.value = ''; });
+  click('pchatMic', () => VOICE.toggle());
+  $('btnMic').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); VOICE.toggle(); });
   click('mPlay', () => {
     if (LOB.banGate()) return;
     // em grupo (estilo FF): o líder inicia daqui mesmo, com todo mundo junto
@@ -12955,6 +13066,8 @@ function frame(now) {
   PERF.last = now || 0;
   const raw = clock.getDelta();
   const dt = Math.min(raw, 0.05);
+  const micB = H.mic || (H.mic = $('btnMic')), micV = G.state === 'play' && NET.on();
+  if (micB.classList.contains('hidden') === micV) micB.classList.toggle('hidden', !micV);
   SND.musicOn((G.state === 'play' && G.player && G.player.emote === 'jamal') || (G.state === 'menu' && G.showEmote && G.showEmote.k === 'jamal' && G.showEmote.t > 0));
   WPN.timeU.value = (performance.now() / 1000) % 600;
   if (!G.built) return;

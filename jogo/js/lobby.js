@@ -128,6 +128,7 @@ LOB.syncParty = function () {
 const _pv = new THREE.Vector3();
 LOB.updateParty = function (dt, t) {
   const show = UI.screen === 'roomScr' || UI.screen === 'menuScr';
+  const pc = $('pchat'); if (pc) { const v = show && NET.on(); if (pc.classList.contains('hidden') === v) pc.classList.toggle('hidden', !v); }
   const tags = $('partyTags'); if (tags) tags.classList.toggle('on', show && LOB.party.length > 0);
   if (!LOB.party.length) return;
   const out = LOB.outYaw, fx = Math.sin(out), fz = Math.cos(out), rx = Math.cos(out), rz = -Math.sin(out);

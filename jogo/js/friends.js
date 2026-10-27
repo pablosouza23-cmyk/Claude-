@@ -70,6 +70,12 @@ FR.recv = function (c, d) {
       c.send({ t: 'pong', from: FR.info(), room: NET.on() && NET.isHost() && !NET.live ? NET.code : null, busy: G.state === 'play' });
       if (FR.isFriend(from.id)) { FR.online[from.id] = { t: Date.now() }; FR.touch(from); }
       break;
+    case 'pfq': {
+      const s = p.stats || {};
+      c.send({ t: 'pfa', from: FR.info(), s: { m: s.matches | 0, w: s.wins | 0, k: s.kills | 0, t5: s.top5 | 0, best: s.best | 0, title: p.title || '' } });
+      break;
+    }
+    case 'pfa': FR.touch(from); FR.showProfile(from.id, d.s); break;
     case 'pong':
       FR.online[from.id] = { t: Date.now(), room: d.room, busy: d.busy };
       FR.touch(from); ACC.save();
@@ -199,6 +205,7 @@ FR.render = function () {
       return '<div class="frRow">' + avatar(f) + '<div class="frId"><b>' + escapeHTML(f.name) + LOB.vf(f.vf) + '</b><small>NV ' + (f.lvl || 1) + ' · ID ' + f.id + '</small></div>' +
         '<span class="frSt ' + (on ? 'on' : '') + '"><i></i>' + st + '</span>' +
         (on && o.room && !NET.on() ? '<button class="chip" data-join="' + o.room + '">ENTRAR</button>' : '') +
+        '<button class="chip" data-pf="' + f.id + '">' + icon('user') + 'PERFIL</button>' +
         '<button class="chip hot" data-inv="' + f.id + '"' + (on ? '' : ' disabled') + '>' + icon('users') + 'CONVIDAR</button>' +
         '<button class="chip" data-rm="' + f.id + '" aria-label="Remover amigo">' + icon('trash') + '</button></div>';
     }).join('') : '<p class="hint frEmpty">Você ainda não tem amigos aqui. Toque em ADICIONAR e digite o ID de um amigo.</p>';
@@ -226,8 +233,25 @@ FR.render = function () {
   }
   const on = (sel, fn) => body.querySelectorAll(sel).forEach(b => b.addEventListener('click', () => { SND.play('ui'); fn(b); }));
   on('[data-inv]', b => FR.invite(b.dataset.inv));
+  on('[data-pf]', b => FR.openProfile(b.dataset.pf));
   on('[data-join]', b => LOB.joinLink(b.dataset.join));
   on('[data-acc]', b => FR.accept(b.dataset.acc));
   on('[data-dec]', b => FR.decline(b.dataset.dec));
   on('[data-rm]', b => { const f = ACC.p.friends.find(x => x.id === b.dataset.rm); LOB.dialog('REMOVER AMIGO', 'Remover <b>' + escapeHTML(f.name) + '</b> da sua lista?', [['REMOVER', () => FR.remove(f.id), 'danger'], ['CANCELAR']]); });
+};
+
+// perfil do amigo: o que está salvo aqui na hora; se ele estiver on-line, pede os números atualizados
+FR.openProfile = function (id) {
+  FR.pfId = id; FR.showProfile(id, null);
+  if (FR.isOnline(id)) FR.send(id, { t: 'pfq' });
+};
+FR.showProfile = function (id, s) {
+  const f = ACC.p && ACC.p.friends.find(x => String(x.id) === String(id));
+  if (!f || String(FR.pfId) !== String(id)) return;
+  const on = FR.isOnline(id), st = (n, l) => '<div><b>' + n + '</b><small>' + l + '</small></div>';
+  const stats = s ? '<div class="fpStats">' + st(s.m, 'PARTIDAS') + st(s.w, 'VITÓRIAS') + st(s.k, 'ABATES') + st(s.t5, 'TOP 5') + st(s.best, 'MELHOR') + '</div>'
+    : '<p class="hint">' + (on ? 'Carregando os números…' : 'Os números aparecem quando ele estiver on-line.') + '</p>';
+  LOB.dialog('PERFIL DO AMIGO', '<div class="fpBox"><i class="fpAv" style="background-image:url(' + (LOB.thumbs[f.skin] || '') + ')"></i><div><b class="fpName">' + escapeHTML(f.name) + LOB.vf(f.vf) + '</b>' +
+    '<small>NV ' + (f.lvl || 1) + ' · ' + (on ? '<span class="fpOn">on-line</span>' : 'off-line') + '</small><div class="fpId">ID <b>' + escapeHTML(String(f.id)) + '</b></div></div></div>' + stats,
+    [['COPIAR ID', () => { U.copy(f.id, 'ID do amigo copiado: ' + f.id); return false; }, true], ['FECHAR', () => { FR.pfId = null; }]]);
 };

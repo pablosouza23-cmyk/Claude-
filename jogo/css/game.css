@@ -882,3 +882,20 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 #menuScr .lbSide #squadSlots { display: flex; gap: 6px; }
 #menuScr .sqMe.mate { border-color: #5ff07a; }
 #menuScr .sqAdd { border: 2px dashed rgba(255,210,60,.8); color: #ffd23c; font-weight: 700; }
+
+/* chat do grupo e microfone */
+.pchat { position: fixed; left: calc(max(12px, env(safe-area-inset-left)) + 84px); bottom: max(10px, env(safe-area-inset-bottom)); width: min(300px, 38vw); z-index: 30; display: flex; flex-direction: column; gap: 4px; }
+.pchat.hidden { display: none; }
+.pchatLog { display: flex; flex-direction: column; gap: 2px; max-height: 96px; overflow: hidden; justify-content: flex-end; }
+.pchatLog p { margin: 0; font-size: 11.5px; line-height: 1.25; padding: 2px 7px; background: rgba(4,8,18,.6); border-radius: 4px; text-shadow: 0 1px 2px #000; } .pchatLog b { color: #ffd23c; }
+.pchatRow { display: flex; gap: 4px; } .pchatRow input { flex: 1; min-width: 0; height: 30px; padding: 0 8px; font-size: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,.2); background: rgba(4,8,18,.75); color: #fff; }
+.pchatRow .chip { height: 30px; padding: 0 10px; font-size: 11px; }
+.micBtn { width: 34px; height: 30px; border-radius: 6px; border: 1px solid rgba(255,255,255,.25); background: rgba(4,8,18,.75); font-size: 15px; filter: grayscale(1); opacity: .8; }
+.micBtn.on { background: rgba(40,190,90,.85); border-color: #8dffb0; filter: none; opacity: 1; box-shadow: 0 0 10px rgba(80,255,140,.5); }
+.hudMic { position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 44px); right: calc(max(12px, env(safe-area-inset-right)) + 96px); width: 40px; height: 36px; pointer-events: auto; z-index: 5; }
+.hudMic.hidden { display: none; }
+/* perfil do amigo */
+.fpBox { display: flex; gap: 12px; align-items: center; text-align: left; } .fpAv { flex: none; width: 64px; height: 64px; border-radius: 8px; background: #1b2638 center 15% / cover; border: 2px solid var(--yellow); }
+.fpName { font-size: 18px; } .fpBox small { display: block; color: var(--muted); } .fpOn { color: #5ff07a; } .fpId { margin-top: 4px; font-size: 13px; } .fpId b { font-family: monospace; letter-spacing: 1px; }
+.fpStats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; } .fpStats div { background: rgba(255,255,255,.06); border-radius: 6px; padding: 5px 2px; text-align: center; }
+.fpStats b { display: block; font-size: 17px; color: #ffd23c; } .fpStats small { font-size: 8.5px; letter-spacing: .5px; color: var(--muted); }

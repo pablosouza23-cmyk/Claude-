@@ -97,6 +97,12 @@ Como funciona: a conexão é direta entre os celulares (WebRTC, pela biblioteca 
 - **Assistência de mira (toque):** perto de um inimigo, a mira fica mais pesada e, enquanto você atira, puxa de leve para o peito dele. Pode desligar em Configurações → Controles.
 - **Recarga com animação:** a mão de apoio vai até o carregador.
 
+## Novidades da v4.3
+
+- Amigos › PERFIL: ver o perfil do amigo (nível, selo, status e, se ele estiver on-line, partidas, vitórias, abates, top 5 e melhor colocação) e COPIAR ID.
+- Chat do grupo no lobby: mensagens com os amigos que estão no seu grupo.
+- Chat de voz do grupo: botão 🎤 no lobby e na partida (com amigos). Liga o microfone e o grupo te ouve.
+
 ## Novidades da v4.2
 
 - Topo do lobby só com o PASSE (a recarga continua no + dos diamantes).

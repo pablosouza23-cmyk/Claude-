@@ -50,7 +50,7 @@ NET.createRoom = function () {
   NET.setStatus('Criando sala…');
   const tryOpen = (tries) => {
     const peer = new Peer(NET.PREFIX + NET.code, NET.peerOpts());
-    NET.peer = peer;
+    NET.peer = peer; VOICE.listen(peer);
     peer.on('open', () => { NET.setStatus('Sala aberta. Mande o código para os amigos.'); renderRoom(); });
     peer.on('connection', c => NET.hostAccept(c));
     peer.on('error', e => {
@@ -107,7 +107,7 @@ NET.joinRoom = function (code) {
   NET.mode = 'client'; NET.code = code;
   NET.setStatus('Conectando na sala ' + code + '…');
   const peer = new Peer(NET.peerOpts());
-  NET.peer = peer;
+  NET.peer = peer; VOICE.listen(peer);
   peer.on('open', () => {
     const c = peer.connect(NET.PREFIX + code, { reliable: true, serialization: 'json' });
     NET.conn = c;
@@ -130,6 +130,7 @@ NET.lostHost = function () {
 };
 
 NET.leave = function () {
+  VOICE.stop(true); NET.chat = []; NET.renderChat();
   NET.live = false;
   try { if (NET.conn) NET.conn.close(); } catch (e) { /* ok */ }
   for (const c of NET.conns) try { c.close(); } catch (e) { /* ok */ }
@@ -151,8 +152,8 @@ NET.cleanLook = function (lk) {
 
 NET.toPid = function (pid, m) { const p = NET.players.find(x => x.pid === pid); if (p && p.conn && p.conn.open) p.conn.send(m); };
 
-NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av, tierKey(p.vf), p.lk || null]), bots: NET.bots, live: NET.live, map: W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId, gm: NET.gm, gs: NET.gs, bt: NET.bt });
-NET.bcastRoom = function () { if (NET.isHost()) NET.bcast(NET.roomMsg()); };
+NET.roomMsg = () => ({ t: 'room', code: NET.code, ps: NET.players.map(p => [p.pid, p.name, p.av, tierKey(p.vf), p.lk || null, p.conn ? p.conn.peer : (NET.peer && NET.peer.id)]), bots: NET.bots, live: NET.live, map: W.mapId === 'arena' ? (G.settings.map || 'ilha') : W.mapId, gm: NET.gm, gs: NET.gs, bt: NET.bt });
+NET.bcastRoom = function () { if (NET.isHost()) NET.bcast(NET.roomMsg()); VOICE.sync(); };
 
 NET.setAvatar = function (av) {
   G.settings.avatar = av; G.saveSettings();
@@ -313,6 +314,7 @@ NET.hostRecv = function (c, d) {
   }
   if (!pl) return;
   if (d.t === 'av') { if (CH.AV[d.a]) pl.av = d.a; if (d.lk) pl.lk = NET.cleanLook(d.lk); NET.bcastRoom(); renderRoom(); return; }
+  if (d.t === 'chat') { const m = String(d.m || '').slice(0, 80).trim(); if (m) { NET.chatIn(pl.name, m); NET.bcast({ t: 'chat', n: pl.name, m: m }); } return; }
   if (!NET.live) return;
   const a = NET.actorOf(pl.pid);
   if (!a) return;
@@ -401,10 +403,12 @@ NET.onShot = function (a, o, ends, wid) {
 NET.clientRecv = function (d) {
   switch (d.t) {
     case 'wel': NET.pid = d.pid; break;
+    case 'chat': NET.chatIn(String(d.n || '?').slice(0, 14), String(d.m || '').slice(0, 80)); break;
     case 'banned': NET.setStatus('Você está banido ' + d.txt, true); break;
     case 'full': NET.setStatus(d.live ? 'A partida já começou. Espere acabar e tente de novo.' : 'A sala está cheia.', true); break;
     case 'room':
-      NET.players = d.ps.map(p => ({ pid: p[0], name: p[1], av: p[2], vf: tierKey(p[3]), lk: NET.cleanLook(p[4]) }));
+      NET.players = d.ps.map(p => ({ pid: p[0], name: p[1], av: p[2], vf: tierKey(p[3]), lk: NET.cleanLook(p[4]), peer: p[5] || null }));
+      VOICE.sync();
       NET.bots = d.bots; NET.code = d.code; NET.gm = d.gm || 'br'; NET.gs = d.gs || 4; NET.bt = TEAM.size(d.bt || 1);
       if (d.map && d.map !== W.mapId && W.MAPS[d.map] && !NET.live && G.state !== 'play') LOB.switchMap(d.map, () => { if (UI.screen === 'roomScr') renderRoom(); });
       if (!NET.live && G.state !== 'play' && G.state !== 'end') { if (UI.screen !== 'roomScr') openRoom(); else renderRoom(); }
@@ -571,4 +575,63 @@ NET.backToRoom = function () {
   G.show.ch.root.visible = true;
   showScreen('roomScr');
   renderRoom();
+};
+
+// ------------------------------------------------------------------ chat do grupo (lobby)
+NET.chat = [];
+NET.myName = () => (ACC.p && ACC.p.name) || G.settings.name || 'Jogador';
+NET.sendChat = function (txt) {
+  const m = String(txt || '').slice(0, 80).trim();
+  if (!m || !NET.on()) return;
+  if (NET.isHost()) { NET.chatIn(NET.myName(), m); NET.bcast({ t: 'chat', n: NET.myName(), m: m }); }
+  else NET.send({ t: 'chat', m: m });
+};
+NET.chatIn = function (n, m) {
+  NET.chat.push({ n: n, m: m });
+  if (NET.chat.length > 30) NET.chat.shift();
+  NET.renderChat();
+  if (n !== NET.myName()) SND.play('ui');
+};
+NET.renderChat = function () {
+  const el = $('pchatLog'); if (!el) return;
+  el.innerHTML = NET.chat.slice(-6).map(c => '<p><b>' + escapeHTML(c.n) + ':</b> ' + escapeHTML(c.m) + '</p>').join('');
+};
+
+// ------------------------------------------------------------------ chat de voz (grupo)
+// quem liga o microfone liga para cada colega (uma chamada só de ida); quem recebe só escuta
+const VOICE = { on: false, stream: null, out: {}, ins: {} };
+VOICE.peers = () => NET.players.filter(p => p.pid !== NET.pid && p.peer).map(p => p.peer);
+VOICE.toggle = async function () {
+  if (VOICE.on) { VOICE.stop(); notify('info', 'Microfone desligado'); return; }
+  if (!NET.on() || !NET.peer) { notify('info', 'O chat de voz funciona com amigos no seu grupo (convide alguém primeiro).'); return; }
+  try { VOICE.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+  catch (e) { notify('info', 'Libere o microfone no navegador para falar com o grupo.'); return; }
+  VOICE.on = true; VOICE.sync(); VOICE.ui(); notify('ok', 'Microfone ligado: seu grupo está te ouvindo');
+};
+VOICE.stop = function (all) {
+  VOICE.on = false;
+  for (const k in VOICE.out) { try { VOICE.out[k].close(); } catch (e) { /* ok */ } }
+  VOICE.out = {};
+  if (VOICE.stream) VOICE.stream.getTracks().forEach(t => t.stop());
+  VOICE.stream = null;
+  if (all) { for (const k in VOICE.ins) { VOICE.ins[k].srcObject = null; } VOICE.ins = {}; }
+  VOICE.ui();
+};
+VOICE.sync = function () {
+  if (!VOICE.on || !NET.peer || !VOICE.stream) return;
+  const want = VOICE.peers();
+  for (const id of want) if (!VOICE.out[id]) {
+    try { const c = NET.peer.call(id, VOICE.stream); if (c) { VOICE.out[id] = c; const drop = () => { if (VOICE.out[id] === c) delete VOICE.out[id]; }; c.on('close', drop); c.on('error', drop); } } catch (e) { /* tenta de novo na próxima */ }
+  }
+  for (const id in VOICE.out) if (want.indexOf(id) < 0) { try { VOICE.out[id].close(); } catch (e) { /* ok */ } delete VOICE.out[id]; }
+};
+VOICE.listen = function (peer) {
+  peer.on('call', (call) => {
+    call.answer();
+    call.on('stream', (st) => { let a = VOICE.ins[call.peer]; if (!a) { a = VOICE.ins[call.peer] = new Audio(); a.autoplay = true; } a.srcObject = st; a.play().catch(() => {}); });
+    call.on('close', () => { const a = VOICE.ins[call.peer]; if (a) { a.srcObject = null; delete VOICE.ins[call.peer]; } });
+  });
+};
+VOICE.ui = function () {
+  for (const id of ['pchatMic', 'btnMic']) { const b = $(id); if (b) { b.classList.toggle('on', VOICE.on); b.title = VOICE.on ? 'Desligar microfone' : 'Ligar microfone'; } }
 };

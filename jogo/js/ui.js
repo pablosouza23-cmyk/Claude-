@@ -1365,6 +1365,10 @@ function isTouchEvent(e) { return e.pointerType === 'touch' || (e.sourceCapabili
 
 function initScreens() {
   const click = (id, fn) => $(id).addEventListener('click', () => { SND.init(); SND.play('ui'); fn(); });
+  $('pchatIn').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { NET.sendChat(e.target.value); e.target.value = ''; } });
+  click('pchatGo', () => { const i = $('pchatIn'); NET.sendChat(i.value); i.value = ''; });
+  click('pchatMic', () => VOICE.toggle());
+  $('btnMic').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); VOICE.toggle(); });
   click('mPlay', () => {
     if (LOB.banGate()) return;
     // em grupo (estilo FF): o líder inicia daqui mesmo, com todo mundo junto
@@ -1483,6 +1487,8 @@ function frame(now) {
   PERF.last = now || 0;
   const raw = clock.getDelta();
   const dt = Math.min(raw, 0.05);
+  const micB = H.mic || (H.mic = $('btnMic')), micV = G.state === 'play' && NET.on();
+  if (micB.classList.contains('hidden') === micV) micB.classList.toggle('hidden', !micV);
   SND.musicOn((G.state === 'play' && G.player && G.player.emote === 'jamal') || (G.state === 'menu' && G.showEmote && G.showEmote.k === 'jamal' && G.showEmote.t > 0));
   WPN.timeU.value = (performance.now() / 1000) % 600;
   if (!G.built) return;

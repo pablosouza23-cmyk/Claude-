@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Ilha de Fogo — Battle Royale</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="game"></div>
+
+<div id="lobby">
+  <h1>ILHA DE <span>FOGO</span></h1>
+  <p class="sub">Battle Royale · 20 jogadores · último vivo vence</p>
+  <input id="nick" maxlength="14" value="Jogador" aria-label="Seu nome">
+  <div id="skins"></div>
+  <button id="play" disabled>CARREGANDO…</button>
+  <p class="help">PC: WASD mover · Mouse mirar · Clique atirar · Botão direito mira · Espaço pular · R recarregar · E pegar · 1/2 trocar · H curar · Q escudo</p>
+</div>
+
+<div id="hud" class="hidden">
+  <canvas id="mini" width="170" height="170"></canvas>
+  <div id="zoneInfo"></div>
+  <div id="topR"><div><b id="alive">20</b><span>VIVOS</span></div><div><b id="kills">0</b><span>ABATES</span></div></div>
+  <div id="feed"></div>
+  <div id="cross"></div>
+  <div id="bottom"><div id="pname"></div><div class="bar"><i id="hpBar"></i></div><div class="bar arm"><i id="arBar"></i></div></div>
+  <div id="weap"><div class="slot" id="s0"></div><div class="slot" id="s1"></div><div id="ammo"></div></div>
+  <div id="inv">✚ <b id="kitN">0</b> &nbsp; ▣ <b id="shN">1</b></div>
+  <div id="prompt"></div>
+  <div id="hurt"></div>
+  <div id="touch">
+    <div id="joy"><div id="knob"></div></div>
+    <button class="btn big" id="bFire" data-look>🔥</button>
+    <button class="btn" id="bFire2">🔥</button>
+    <button class="btn" id="bAim">◎</button>
+    <button class="btn" id="bJump">⤒</button>
+    <button class="btn" id="bReload">R</button>
+    <button class="btn" id="bPick">E</button>
+    <button class="btn" id="bHeal">✚</button>
+    <button class="btn" id="bShield">▣</button>
+    <button class="btn" id="bSwap">⇄</button>
+  </div>
+</div>
+
+<div id="end" class="hidden"><h1 id="endT"></h1><p id="endS"></p><button onclick="location.reload()">JOGAR DE NOVO</button></div>
+<script type="module" src="game.js"></script>
+</body>
+</html>

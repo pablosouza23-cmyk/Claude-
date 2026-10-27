@@ -655,12 +655,15 @@ function drawMinimap() {
 const NOTE_ICON = { ok: 'check', zone: 'zone', hit: 'hit', rare: 'warn', info: 'info' };
 function notify(kind, text) {
   if (!H.notifs) return;
-  const el = document.createElement('div');
+  // não repete a mesma mensagem em seguida (ex.: pegar várias munições)
+  const last = H.notifs.lastChild;
+  if (last && last._t === text && !last.classList.contains('out')) return;
+  const el = document.createElement('div'); el._t = text;
   el.className = 'note n-' + kind;
   el.innerHTML = icon(NOTE_ICON[kind] || 'info') + '<span>' + String(text).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '</span>';
   H.notifs.appendChild(el);
-  while (H.notifs.children.length > 3) H.notifs.firstChild.remove();
-  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 350); }, 3000);
+  while (H.notifs.children.length > 2) H.notifs.firstChild.remove();
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, G.state === 'play' ? 1800 : 3000);
 }
 function toast(msg) { notify('info', msg); }
 function announce(msg) { notify(/SUPRIMENTO/.test(msg) ? 'rare' : 'zone', msg.charAt(0) + msg.slice(1).toLowerCase()); }
@@ -695,7 +698,7 @@ function killFeed(killer, victim, weapon) {
   el.innerHTML = victim ? '<b>' + nameTag(killer) + '</b> ' + icon('skull') + ' <b>' + nameTag(victim) + '</b> <span>' + esc(weapon) + '</span>'
     : '<b>' + nameTag(killer) + '</b> ' + icon('zone') + ' <span>zona</span>';
   H.killfeed.appendChild(el);
-  while (H.killfeed.children.length > 4) H.killfeed.firstChild.remove();
+  while (H.killfeed.children.length > 3) H.killfeed.firstChild.remove();
   setTimeout(() => el.remove(), 5000);
 }
 

@@ -901,3 +901,14 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 .fpStats b { display: block; font-size: 17px; color: #ffd23c; } .fpStats small { font-size: 8.5px; letter-spacing: .5px; color: var(--muted); }
 
 .mlImg { display: block; width: 100%; max-height: 46vh; object-fit: contain; margin: 6px 0; border-radius: 6px; }
+
+/* avisos da partida menores (abate, dano, itens) */
+#notifs { gap: 3px; }
+.note { min-width: 0; max-width: 60vw; padding: 3px 10px; gap: 5px; font-size: 11px; border-left-width: 2px; }
+.note .ico { width: 13px; height: 13px; }
+#killBanner { top: 33%; gap: 6px; padding: 3px 16px; }
+.kbIco .ico { width: 20px; height: 20px; filter: none; }
+.kbTxt b { font-size: 20px; } .kbTxt span { font-size: 13px; letter-spacing: 1px; } #kbName { font-size: 10px; }
+#bigText { font-size: 42px; -webkit-text-stroke: 1px #3a1c00; }
+.kf { font-size: 10.5px; padding: 0 6px; gap: 4px; } .kf .ico { width: 11px; height: 11px; }
+#topStatus { font-size: 10.5px; }

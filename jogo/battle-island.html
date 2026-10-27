@@ -910,6 +910,17 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
 
 .mlImg { display: block; width: 100%; max-height: 46vh; object-fit: contain; margin: 6px 0; border-radius: 6px; }
 
+/* avisos da partida menores (abate, dano, itens) */
+#notifs { gap: 3px; }
+.note { min-width: 0; max-width: 60vw; padding: 3px 10px; gap: 5px; font-size: 11px; border-left-width: 2px; }
+.note .ico { width: 13px; height: 13px; }
+#killBanner { top: 33%; gap: 6px; padding: 3px 16px; }
+.kbIco .ico { width: 20px; height: 20px; filter: none; }
+.kbTxt b { font-size: 20px; } .kbTxt span { font-size: 13px; letter-spacing: 1px; } #kbName { font-size: 10px; }
+#bigText { font-size: 42px; -webkit-text-stroke: 1px #3a1c00; }
+.kf { font-size: 10.5px; padding: 0 6px; gap: 4px; } .kf .ico { width: 11px; height: 11px; }
+#topStatus { font-size: 10.5px; }
+
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
   <linearGradient id="gmG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9f6ff"/><stop offset=".5" stop-color="#4fc3ff"/><stop offset="1" stop-color="#7a3cff"/></linearGradient>
@@ -1001,7 +1012,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
       </g>
       <g stroke="#050505" stroke-width=".55">
         <path d="M-34 0H34M0 -100V34"/>
-        <path d="M-24 -2.2v4.4M-18 -1.4v2.8M-12 -2.2v4.4M-6 -1.4v2.8M6 -1.4v2.8M12 -2.2v4.4M18 -1.4v2.8M24 -2.2v4.4M-2.2 -24h4.4M-1.4 -18h2.8M-2.2 -12h4.4M-1.4 -6h2.8"/>
+        <path d="M-24 -2.2v4.5M-18 -1.4v2.8M-12 -2.2v4.5M-6 -1.4v2.8M6 -1.4v2.8M12 -2.2v4.5M18 -1.4v2.8M24 -2.2v4.5M-2.2 -24h4.4M-1.4 -18h2.8M-2.2 -12h4.4M-1.4 -6h2.8"/>
         <path d="M-5 8h10M-4 14h8M-3 20h6M-2 26h4" stroke-width=".7"/>
       </g>
       <g fill="#050505" font-size="3.4" font-family="sans-serif"><text x="6.5" y="9.2">1</text><text x="5.5" y="15.2">2</text><text x="4.5" y="21.2">3</text><text x="3.5" y="27.2">4</text></g>
@@ -1069,7 +1080,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <button id="mPlay" class="playBtn"><b>INICIAR</b><small>SOLO · DUPLA · TRIO · SQUAD</small></button>
   </div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v4.4</div>
+  <div class="ver">v4.5</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1341,7 +1352,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v4.4 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v4.5 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -12238,12 +12249,15 @@ function drawMinimap() {
 const NOTE_ICON = { ok: 'check', zone: 'zone', hit: 'hit', rare: 'warn', info: 'info' };
 function notify(kind, text) {
   if (!H.notifs) return;
-  const el = document.createElement('div');
+  // não repete a mesma mensagem em seguida (ex.: pegar várias munições)
+  const last = H.notifs.lastChild;
+  if (last && last._t === text && !last.classList.contains('out')) return;
+  const el = document.createElement('div'); el._t = text;
   el.className = 'note n-' + kind;
   el.innerHTML = icon(NOTE_ICON[kind] || 'info') + '<span>' + String(text).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '</span>';
   H.notifs.appendChild(el);
-  while (H.notifs.children.length > 3) H.notifs.firstChild.remove();
-  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 350); }, 3000);
+  while (H.notifs.children.length > 2) H.notifs.firstChild.remove();
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, G.state === 'play' ? 1800 : 3000);
 }
 function toast(msg) { notify('info', msg); }
 function announce(msg) { notify(/SUPRIMENTO/.test(msg) ? 'rare' : 'zone', msg.charAt(0) + msg.slice(1).toLowerCase()); }
@@ -12278,7 +12292,7 @@ function killFeed(killer, victim, weapon) {
   el.innerHTML = victim ? '<b>' + nameTag(killer) + '</b> ' + icon('skull') + ' <b>' + nameTag(victim) + '</b> <span>' + esc(weapon) + '</span>'
     : '<b>' + nameTag(killer) + '</b> ' + icon('zone') + ' <span>zona</span>';
   H.killfeed.appendChild(el);
-  while (H.killfeed.children.length > 4) H.killfeed.firstChild.remove();
+  while (H.killfeed.children.length > 3) H.killfeed.firstChild.remove();
   setTimeout(() => el.remove(), 5000);
 }
 

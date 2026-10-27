@@ -465,7 +465,12 @@ SND.playCustom = function () {
 SND.db = function (fn) {
   try { const r = indexedDB.open('battleIslandFiles', 1); r.onupgradeneeded = () => r.result.createObjectStore('f'); r.onsuccess = () => fn(r.result.transaction('f', 'readwrite').objectStore('f')); } catch (e) { /* sem armazenamento */ }
 };
-SND.db((st) => { const q = st.get('jamal'); q.onsuccess = () => { if (q.result) SND.customRaw = q.result; }; });
+// 1º: arquivo escolhido no aparelho; 2º: assets/musica-jamal.mp3, se o dono do jogo colocar esse arquivo (licenciado) na pasta
+SND.db((st) => { const q = st.get('jamal'); q.onsuccess = () => { if (q.result) SND.customRaw = q.result; else SND.bundled(); }; q.onerror = () => SND.bundled(); });
+SND.bundled = function () {
+  if (SND.customRaw) return;
+  try { fetch(typeof CH !== 'undefined' && CH.url ? CH.url('assets/musica-jamal.mp3') : 'assets/musica-jamal.mp3').then(r => r.ok ? r.arrayBuffer() : null).then(ab => { if (ab && ab.byteLength > 1000 && !SND.customRaw) SND.customRaw = ab; }).catch(() => {}); } catch (e) { /* sem arquivo */ }
+};
 SND.pickJamal = function () {
   const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'audio/*,video/mp4';
   inp.onchange = async () => {

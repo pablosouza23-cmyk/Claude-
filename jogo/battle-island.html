@@ -5910,10 +5910,14 @@ SND.musicOn = function (want) {
   if (want) {
     if (c.state === 'suspended') c.resume();
     F.out = c.createGain(); F.out.gain.value = 0.55 * (SND.vol === undefined ? 1 : SND.vol); F.out.connect(c.destination);
+    // música escolhida pelo jogador (fica só no aparelho dele); sem ela, o funk sintetizado
+    if (SND.custom) return SND.playCustom();
     F.next = c.currentTime + 0.05; F.step = 0;
     F.timer = setInterval(SND.funkTick, 40);
+    if (SND.customRaw && !SND.decoding) { SND.decoding = true; c.decodeAudioData(SND.customRaw.slice(0)).then(b => { SND.custom = b; if (F.on && !F.src) { clearInterval(F.timer); F.timer = null; SND.playCustom(); } }).catch(() => { SND.customRaw = null; }); }
   } else {
     clearInterval(F.timer); F.timer = null;
+    if (F.src) { try { F.src.stop(); } catch (e) { /* já parou */ } F.src = null; }
     if (F.out) { const o = F.out; o.gain.setTargetAtTime(0, c.currentTime, 0.05); setTimeout(() => o.disconnect(), 400); F.out = null; }
   }
 };
@@ -5937,6 +5941,28 @@ SND.funkTick = function () {
     if (bar % 2 === 1 && LEAD[i]) { tone(t, LEAD[i], LEAD[i], st * 1.6, 0.07, 'square'); tone(t, LEAD[i] * 2, LEAD[i] * 2, st * 1.2, 0.03, 'sawtooth'); }
     F.next += st; F.step++;
   }
+};
+
+SND.playCustom = function () {
+  const F = SND.funk, c = SND.ctx;
+  F.src = c.createBufferSource(); F.src.buffer = SND.custom; F.src.loop = true; F.src.connect(F.out); F.src.start();
+  F.out.gain.value = 0.9 * (SND.vol === undefined ? 1 : SND.vol);
+};
+// guarda o arquivo no IndexedDB do aparelho
+SND.db = function (fn) {
+  try { const r = indexedDB.open('battleIslandFiles', 1); r.onupgradeneeded = () => r.result.createObjectStore('f'); r.onsuccess = () => fn(r.result.transaction('f', 'readwrite').objectStore('f')); } catch (e) { /* sem armazenamento */ }
+};
+SND.db((st) => { const q = st.get('jamal'); q.onsuccess = () => { if (q.result) SND.customRaw = q.result; }; });
+SND.pickJamal = function () {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'audio/*,video/mp4';
+  inp.onchange = async () => {
+    const f = inp.files && inp.files[0]; if (!f) return;
+    const ab = await f.arrayBuffer();
+    SND.customRaw = ab; SND.custom = null; SND.decoding = false;
+    SND.db((st) => st.put(ab, 'jamal'));
+    notify('info', 'Música do Passinho do Jamal salva neste aparelho!');
+  };
+  inp.click();
 };
 
 </script>
@@ -12458,6 +12484,7 @@ const SETTINGS_UI = {
   controles: [
     { k: 'look', label: 'Câmera', type: 'seg', opts: [['tp', '3ª pessoa'], ['fp', '1ª pessoa (bodycam)']] },
     { k: 'hudEdit', label: 'Layout dos botões (HUD)', type: 'action', text: 'EDITAR HUD', run: () => openHudEditor() },
+    { k: 'jamalSong', label: 'Música do Passinho do Jamal (arquivo do seu celular)', type: 'action', text: 'ESCOLHER MÚSICA', run: () => SND.pickJamal() },
     { k: 'aimAssist', label: 'Assistência de mira', type: 'toggle' },
     { k: 'crossStyle', label: 'Mira', type: 'seg', opts: [['cruz', 'Cruz'], ['ponto', 'Ponto'], ['circulo', 'Círculo']] },
     { k: 'crossCol', label: 'Cor da mira', type: 'seg', opts: [['branco', 'Branca'], ['verde', 'Verde'], ['ciano', 'Ciano'], ['amarelo', 'Amarela'], ['rosa', 'Rosa']] },

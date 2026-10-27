@@ -1065,6 +1065,7 @@ const SETTINGS_UI = {
   controles: [
     { k: 'look', label: 'Câmera', type: 'seg', opts: [['tp', '3ª pessoa'], ['fp', '1ª pessoa (bodycam)']] },
     { k: 'hudEdit', label: 'Layout dos botões (HUD)', type: 'action', text: 'EDITAR HUD', run: () => openHudEditor() },
+    { k: 'jamalSong', label: 'Música do Passinho do Jamal (arquivo do seu celular)', type: 'action', text: 'ESCOLHER MÚSICA', run: () => SND.pickJamal() },
     { k: 'aimAssist', label: 'Assistência de mira', type: 'toggle' },
     { k: 'crossStyle', label: 'Mira', type: 'seg', opts: [['cruz', 'Cruz'], ['ponto', 'Ponto'], ['circulo', 'Círculo']] },
     { k: 'crossCol', label: 'Cor da mira', type: 'seg', opts: [['branco', 'Branca'], ['verde', 'Verde'], ['ciano', 'Ciano'], ['amarelo', 'Amarela'], ['rosa', 'Rosa']] },

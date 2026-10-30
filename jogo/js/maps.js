@@ -766,8 +766,8 @@
         const n = a.vila, R = a.r * 0.62;
         for (let i = 0; i < n; i++) {
           const an = i / n * Math.PI * 2 + rnd() * 0.2, x = a.x + Math.cos(an) * R, z = a.z + Math.sin(an) * R, face = Math.atan2(a.x - x, a.z - z);
-          W.fuPut(rnd() < 0.5 ? 'house_a' : 'house_b', x, z, face, 'box');
-          W.lootSpots.push([x + Math.sin(face) * 6.5, z + Math.cos(face) * 6.5, W.height(x, z)]);
+          // casa de entrar (porta, janelas e interior), colorida, virada para a praça
+          W.house(P, x, z, face, W.height(x, z) - 0.05, i + Math.floor(rnd() * 6), W.MAP.fu && W.MAP.fu.house || 'colorida', [3.6 + rnd() * 0.6, 3 + rnd() * 0.4]);
           const an2 = an + Math.PI / n, fx = a.x + Math.cos(an2) * (R + 2), fz2 = a.z + Math.sin(an2) * (R + 2);
           if (rnd() < 0.7) W.fuPut('fence', fx, fz2, an2, 'box');
           if (rnd() < 0.5) W.fuPut(rnd() < 0.5 ? 'crate' : 'barrel', x + Math.cos(an) * 6, z + Math.sin(an) * 6, rnd() * 6, 'box');
@@ -843,7 +843,7 @@
       { name: 'CAMPO ABERTO', x: 150, z: -20, r: 34, hills: 4 },
     ],
     paths: [[[0, 10], [96, 70]], [[0, 10], [-110, -40]], [[0, 10], [70, -100]], [[0, 10], [-80, 110]], [[70, -100], [-110, -40]], [[96, 70], [-80, 110]]],
-    fu: { coast: 50, coastProp: ['rock_0', 'rock_1', 'bush_dry'], scatter: [['tree_dry', 120, 'trunk'], ['bush_dry', 140, false], ['rock_0|rock_1|rock_2', 70, 'box']] },
+    fu: { house: 'pescador', coast: 50, coastProp: ['rock_0', 'rock_1', 'bush_dry'], scatter: [['tree_dry', 120, 'trunk'], ['bush_dry', 140, false], ['rock_0|rock_1|rock_2', 70, 'box']] },
     build: [['Povoados e fazendas', (P, rnd) => W.buildFuria(P, rnd)]],
   };
   W.MAPS.por_do_sol = {

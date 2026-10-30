@@ -506,7 +506,14 @@ A licença MIT pede que o aviso de copyright vá junto com o jogo. Deixe esta ta
 | `assets/props.bin` | Granada, mochila, kit, munição, colete, capacete, gel e caixa (modelados no Blender) |
 | `assets/chars/` | Personagens (malha + texturas) e animações, em formato binário compacto |
 | `assets/guns.bin` | Os 10 modelos de arma e o bipé |
-| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v5.7
+| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v5.8
+
+- Vilas dos mapas Ilha Tropical, Savana Seca e Arquipélago com casas de entrar (porta, janelas, interior), coloridas.
+- Deslizar com animação: o corpo inclina para trás e desce rente ao chão.
+- Paraquedas do Fúria Tropical (velame em faixas laranja e brancas).
+- Som corrigido: limite de sons ao mesmo tempo, sem repetir o mesmo som no mesmo instante e compressor (sem som embolado/estourado); no celular, menos tiros distantes.
+
+## Novidades da v5.7
 
 - Três mapas no estilo do Fúria Tropical (jogo do mesmo dono), com as peças dele (casas, hangar, farol, coqueiros, árvores, pedras, contêineres, cercas, guarda-sóis):
   - ILHA TROPICAL (padrão): praias com coqueiros e guarda-sóis, vilas coloridas, porto com hangar e contêineres, farol, lagoa e morro.

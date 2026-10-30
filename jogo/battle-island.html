@@ -1012,7 +1012,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
       </g>
       <g stroke="#050505" stroke-width=".55">
         <path d="M-34 0H34M0 -100V34"/>
-        <path d="M-24 -2.2v5.7M-18 -1.4v2.8M-12 -2.2v5.7M-6 -1.4v2.8M6 -1.4v2.8M12 -2.2v5.7M18 -1.4v2.8M24 -2.2v5.7M-2.2 -24h4.4M-1.4 -18h2.8M-2.2 -12h4.4M-1.4 -6h2.8"/>
+        <path d="M-24 -2.2v5.8M-18 -1.4v2.8M-12 -2.2v5.8M-6 -1.4v2.8M6 -1.4v2.8M12 -2.2v5.8M18 -1.4v2.8M24 -2.2v5.8M-2.2 -24h4.4M-1.4 -18h2.8M-2.2 -12h4.4M-1.4 -6h2.8"/>
         <path d="M-5 8h10M-4 14h8M-3 20h6M-2 26h4" stroke-width=".7"/>
       </g>
       <g fill="#050505" font-size="3.4" font-family="sans-serif"><text x="6.5" y="9.2">1</text><text x="5.5" y="15.2">2</text><text x="4.5" y="21.2">3</text><text x="3.5" y="27.2">4</text></g>
@@ -1080,7 +1080,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <button id="mPlay" class="playBtn"><b>INICIAR</b><small>SOLO · DUPLA · TRIO · SQUAD</small></button>
   </div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v5.7</div>
+  <div class="ver">v5.8</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1353,7 +1353,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v5.7 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0) · Cidade Kenney (CC0)</div>
+  <div class="ldFoot">v5.8 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0) · Cidade Kenney (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -4219,8 +4219,8 @@ W.update = function (dt, px, pz, py) {
         const n = a.vila, R = a.r * 0.62;
         for (let i = 0; i < n; i++) {
           const an = i / n * Math.PI * 2 + rnd() * 0.2, x = a.x + Math.cos(an) * R, z = a.z + Math.sin(an) * R, face = Math.atan2(a.x - x, a.z - z);
-          W.fuPut(rnd() < 0.5 ? 'house_a' : 'house_b', x, z, face, 'box');
-          W.lootSpots.push([x + Math.sin(face) * 6.5, z + Math.cos(face) * 6.5, W.height(x, z)]);
+          // casa de entrar (porta, janelas e interior), colorida, virada para a praça
+          W.house(P, x, z, face, W.height(x, z) - 0.05, i + Math.floor(rnd() * 6), W.MAP.fu && W.MAP.fu.house || 'colorida', [3.6 + rnd() * 0.6, 3 + rnd() * 0.4]);
           const an2 = an + Math.PI / n, fx = a.x + Math.cos(an2) * (R + 2), fz2 = a.z + Math.sin(an2) * (R + 2);
           if (rnd() < 0.7) W.fuPut('fence', fx, fz2, an2, 'box');
           if (rnd() < 0.5) W.fuPut(rnd() < 0.5 ? 'crate' : 'barrel', x + Math.cos(an) * 6, z + Math.sin(an) * 6, rnd() * 6, 'box');
@@ -4296,7 +4296,7 @@ W.update = function (dt, px, pz, py) {
       { name: 'CAMPO ABERTO', x: 150, z: -20, r: 34, hills: 4 },
     ],
     paths: [[[0, 10], [96, 70]], [[0, 10], [-110, -40]], [[0, 10], [70, -100]], [[0, 10], [-80, 110]], [[70, -100], [-110, -40]], [[96, 70], [-80, 110]]],
-    fu: { coast: 50, coastProp: ['rock_0', 'rock_1', 'bush_dry'], scatter: [['tree_dry', 120, 'trunk'], ['bush_dry', 140, false], ['rock_0|rock_1|rock_2', 70, 'box']] },
+    fu: { house: 'pescador', coast: 50, coastProp: ['rock_0', 'rock_1', 'bush_dry'], scatter: [['tree_dry', 120, 'trunk'], ['bush_dry', 140, false], ['rock_0|rock_1|rock_2', 70, 'box']] },
     build: [['Povoados e fazendas', (P, rnd) => W.buildFuria(P, rnd)]],
   };
   W.MAPS.por_do_sol = {
@@ -4399,6 +4399,12 @@ WPN.load = async function () {
       const PAINT = { palm_a: [0x3f8f3a, 0x8a6a45, 0.62], palm_b: [0x3f8f3a, 0x8a6a45, 0.62], palm_c: [0x48963c, 0x8a6a45, 0.55], tree_a: [0x4a8a36, 0x6e5034, 0.3], tree_b: [0x3d7d34, 0x6e5034, 0.3],
         tree_dry: [0x8f8a40, 0x6e5034, 0.35], bush_a: [0x4f8f3a, 0x4f8f3a, 0], bush_dry: [0xa08a50, 0xa08a50, 0], umbrella: [0xff6b4a, 0xe8e8e8, 0.7] };
       const top = new THREE.Color(), bot = new THREE.Color();
+      // velame do paraquedas em faixas laranja e brancas
+      const pc = WPN.furia.parachute;
+      if (pc) {
+        const c = pc.attributes.color, P = pc.attributes.position, bb = pc.boundingBox, w = bb.max.x - bb.min.x, o = new THREE.Color(0xff7a2a), wh = new THREE.Color(0xf4f0e6);
+        for (let i = 0; i < c.count; i++) if (P.getY(i) > bb.max.y - 1.4) { const q = Math.floor((P.getX(i) - bb.min.x) / w * 7) % 2 ? wh : o; c.setXYZ(i, q.r, q.g, q.b); }
+      }
       for (const k in PAINT) {
         const g = WPN.furia[k]; if (!g) continue;
         const c = g.attributes.color, P = g.attributes.position, bb = g.boundingBox, H = bb.max.y - bb.min.y;
@@ -5447,10 +5453,17 @@ CH.make = function (key, hq) {
     CH.lineMat = new THREE.LineBasicMaterial({ color: 0x2a2d33, transparent: true, opacity: 0.85 });
   }
   const CY = 5.3;
-  const canopy = new THREE.Mesh(CH.chuteGeo(), CH.chuteMat);
-  canopy.position.y = CY; canopy.castShadow = true;
-  chute.add(canopy);
-  chute.add(new THREE.LineSegments(CH.chuteLines(CY), CH.lineMat));
+  const fp = typeof WPN !== 'undefined' && WPN.furia && WPN.furia.parachute;
+  if (fp) {
+    // modelo do Fúria Tropical (velame com as cordas), as cordas começam acima dos ombros
+    const fm = CH.fuChuteMat || (CH.fuChuteMat = new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.02 }));
+    const canopy = new THREE.Mesh(fp, fm); canopy.position.y = 0.66; canopy.castShadow = true; chute.add(canopy);
+  } else {
+    const canopy = new THREE.Mesh(CH.chuteGeo(), CH.chuteMat);
+    canopy.position.y = CY; canopy.castShadow = true;
+    chute.add(canopy);
+    chute.add(new THREE.LineSegments(CH.chuteLines(CY), CH.lineMat));
+  }
   // tirantes nos ombros
   const riser = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.05, 0.06), new THREE.MeshStandardMaterial({ color: 0x1d2026, roughness: 0.8 }));
   riser.position.set(0, 2.02, 0.05); chute.add(riser);
@@ -5885,6 +5898,9 @@ CH.animate = function (ch, dt, s) {
       arm('R', _tgt, _pole);
     }
   }
+  // deslizando: o corpo inclina para trás e cola no chão (pernas vão à frente com a pose de agachar)
+  const sl = U.clamp(s.slide || 0, 0, 1);
+  if (sl > 0 || ch.slideK) { ch.slideK = sl; ch.body.rotation.x = -0.62 * sl; ch.body.position.y = -0.42 * sl; }
   if (s.emote === 'jamal' && ch.acts.jamal) CH.jamal(ch, ch.acts.jamal.time, arm, B);
   // cabeça acompanha a mira
   if (full) rotAxis(B.Bip01_Head, _bodyR, -pitch * 0.25);
@@ -6161,13 +6177,20 @@ SND.loadSamples = function () {
   }
 };
 // toca um som gravado; devolve false se ainda não carregou
+SND.voices = 0; SND.lastT = {};
 SND.sample = function (n, vol, rate, loop) {
   const c = SND.ctx, b = SND.samples[n];
   if (!c || !b || !SND.on) return false;
+  // no máximo 10 sons ao mesmo tempo (6 no celular) e o mesmo som não repete em menos de 45 ms: evita o som embolado e estourado
+  const now = c.currentTime, max = typeof isTouch !== 'undefined' && isTouch ? 6 : 10;
+  if (!loop && (SND.voices >= max || now - (SND.lastT[n] || -1) < 0.045)) return true;
+  SND.lastT[n] = now;
+  if (!SND.bus) { SND.bus = c.createDynamicsCompressor(); SND.bus.threshold.value = -16; SND.bus.ratio.value = 6; SND.bus.connect(c.destination); }
   const s = c.createBufferSource(), g = c.createGain();
+  if (!loop) { SND.voices++; s.onended = () => { SND.voices--; }; }
   s.buffer = b; s.playbackRate.value = rate || 1; s.loop = !!loop;
   g.gain.value = (vol === undefined ? 1 : vol) * (SND.vol === undefined ? 1 : SND.vol);
-  s.connect(g); g.connect(c.destination); s.start();
+  s.connect(g); g.connect(SND.bus); s.start();
   return s;
 };
 SND.MAP = { shot: 'shot_rifle', smg: 'shot_smg', sniper: 'shot_sniper', shotgun: 'shot_shotgun', pistol: 'shot_pistol', laser: 'shot_smg', shotFar: 'shot_rifle', boom: 'explosion',
@@ -6182,6 +6205,7 @@ SND.play = function (type, vol) {
   const sm = SND.MAP[type];
   if (sm) {
     const n = sm === 'step' ? 'step' + Math.floor(Math.random() * 3) : sm, far = type === 'shotFar';
+    if (far && typeof isTouch !== 'undefined' && isTouch && Math.random() < 0.6) return; // no celular, menos tiros de longe
     if (SND.sample(n, (vol === undefined ? 1 : vol) * (far ? 0.35 : type === 'step' ? 0.5 : 0.8), (far ? 0.8 : 1) * (0.96 + Math.random() * 0.08))) return;
   }
   try {
@@ -8236,7 +8260,7 @@ function updatePlayer(dt) {
   p.ch.body.rotation.y = p.face;
   p.ch.root.position.copy(p.pos);
   p.ch.root.visible = !isScoped(p);
-  CH.animate(p.ch, dt, { mode: 'ground', speed: p.speed, vx: p.vel.x, vz: p.vel.z, aim: combat && curSlot(p) ? Math.max(p.aim, 0.85) : p.aim, air: !p.onGround, pitch: combat || G.settings.look === 'fp' ? G.pitch : 0, crouch: p.crouch, armed: !!curSlot(p) && !p.nadeHand && !p.emote, reload: reloadK(p), emote: p.emote, gunAt: fpGunAt(p), inspect: p.inspect ? p.inspT : 0 });
+  CH.animate(p.ch, dt, { mode: 'ground', speed: p.speed, vx: p.vel.x, vz: p.vel.z, aim: combat && curSlot(p) ? Math.max(p.aim, 0.85) : p.aim, air: !p.onGround, pitch: combat || G.settings.look === 'fp' ? G.pitch : 0, crouch: p.crouch, armed: !!curSlot(p) && !p.nadeHand && !p.emote, reload: reloadK(p), emote: p.emote, gunAt: fpGunAt(p), inspect: p.inspect ? p.inspT : 0, slide: p.slideT > 0 ? Math.min(1, p.slideT / 0.18, (0.8 - p.slideT) / 0.08 + 0.2) : 0 });
 
   // passos: poeirinha e som
   if (p.onGround && p.speed > 2.2) {

@@ -1788,7 +1788,7 @@ function updatePlayer(dt) {
   p.ch.body.rotation.y = p.face;
   p.ch.root.position.copy(p.pos);
   p.ch.root.visible = !isScoped(p);
-  CH.animate(p.ch, dt, { mode: 'ground', speed: p.speed, vx: p.vel.x, vz: p.vel.z, aim: combat && curSlot(p) ? Math.max(p.aim, 0.85) : p.aim, air: !p.onGround, pitch: combat || G.settings.look === 'fp' ? G.pitch : 0, crouch: p.crouch, armed: !!curSlot(p) && !p.nadeHand && !p.emote, reload: reloadK(p), emote: p.emote, gunAt: fpGunAt(p), inspect: p.inspect ? p.inspT : 0 });
+  CH.animate(p.ch, dt, { mode: 'ground', speed: p.speed, vx: p.vel.x, vz: p.vel.z, aim: combat && curSlot(p) ? Math.max(p.aim, 0.85) : p.aim, air: !p.onGround, pitch: combat || G.settings.look === 'fp' ? G.pitch : 0, crouch: p.crouch, armed: !!curSlot(p) && !p.nadeHand && !p.emote, reload: reloadK(p), emote: p.emote, gunAt: fpGunAt(p), inspect: p.inspect ? p.inspT : 0, slide: p.slideT > 0 ? Math.min(1, p.slideT / 0.18, (0.8 - p.slideT) / 0.08 + 0.2) : 0 });
 
   // passos: poeirinha e som
   if (p.onGround && p.speed > 2.2) {

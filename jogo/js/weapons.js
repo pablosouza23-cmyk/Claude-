@@ -72,6 +72,12 @@ WPN.load = async function () {
       const PAINT = { palm_a: [0x3f8f3a, 0x8a6a45, 0.62], palm_b: [0x3f8f3a, 0x8a6a45, 0.62], palm_c: [0x48963c, 0x8a6a45, 0.55], tree_a: [0x4a8a36, 0x6e5034, 0.3], tree_b: [0x3d7d34, 0x6e5034, 0.3],
         tree_dry: [0x8f8a40, 0x6e5034, 0.35], bush_a: [0x4f8f3a, 0x4f8f3a, 0], bush_dry: [0xa08a50, 0xa08a50, 0], umbrella: [0xff6b4a, 0xe8e8e8, 0.7] };
       const top = new THREE.Color(), bot = new THREE.Color();
+      // velame do paraquedas em faixas laranja e brancas
+      const pc = WPN.furia.parachute;
+      if (pc) {
+        const c = pc.attributes.color, P = pc.attributes.position, bb = pc.boundingBox, w = bb.max.x - bb.min.x, o = new THREE.Color(0xff7a2a), wh = new THREE.Color(0xf4f0e6);
+        for (let i = 0; i < c.count; i++) if (P.getY(i) > bb.max.y - 1.4) { const q = Math.floor((P.getX(i) - bb.min.x) / w * 7) % 2 ? wh : o; c.setXYZ(i, q.r, q.g, q.b); }
+      }
       for (const k in PAINT) {
         const g = WPN.furia[k]; if (!g) continue;
         const c = g.attributes.color, P = g.attributes.position, bb = g.boundingBox, H = bb.max.y - bb.min.y;

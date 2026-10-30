@@ -528,10 +528,17 @@ CH.make = function (key, hq) {
     CH.lineMat = new THREE.LineBasicMaterial({ color: 0x2a2d33, transparent: true, opacity: 0.85 });
   }
   const CY = 5.3;
-  const canopy = new THREE.Mesh(CH.chuteGeo(), CH.chuteMat);
-  canopy.position.y = CY; canopy.castShadow = true;
-  chute.add(canopy);
-  chute.add(new THREE.LineSegments(CH.chuteLines(CY), CH.lineMat));
+  const fp = typeof WPN !== 'undefined' && WPN.furia && WPN.furia.parachute;
+  if (fp) {
+    // modelo do Fúria Tropical (velame com as cordas), as cordas começam acima dos ombros
+    const fm = CH.fuChuteMat || (CH.fuChuteMat = new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.02 }));
+    const canopy = new THREE.Mesh(fp, fm); canopy.position.y = 0.66; canopy.castShadow = true; chute.add(canopy);
+  } else {
+    const canopy = new THREE.Mesh(CH.chuteGeo(), CH.chuteMat);
+    canopy.position.y = CY; canopy.castShadow = true;
+    chute.add(canopy);
+    chute.add(new THREE.LineSegments(CH.chuteLines(CY), CH.lineMat));
+  }
   // tirantes nos ombros
   const riser = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.05, 0.06), new THREE.MeshStandardMaterial({ color: 0x1d2026, roughness: 0.8 }));
   riser.position.set(0, 2.02, 0.05); chute.add(riser);
@@ -966,6 +973,9 @@ CH.animate = function (ch, dt, s) {
       arm('R', _tgt, _pole);
     }
   }
+  // deslizando: o corpo inclina para trás e cola no chão (pernas vão à frente com a pose de agachar)
+  const sl = U.clamp(s.slide || 0, 0, 1);
+  if (sl > 0 || ch.slideK) { ch.slideK = sl; ch.body.rotation.x = -0.62 * sl; ch.body.position.y = -0.42 * sl; }
   if (s.emote === 'jamal' && ch.acts.jamal) CH.jamal(ch, ch.acts.jamal.time, arm, B);
   // cabeça acompanha a mira
   if (full) rotAxis(B.Bip01_Head, _bodyR, -pitch * 0.25);

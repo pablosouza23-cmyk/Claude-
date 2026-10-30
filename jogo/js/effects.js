@@ -228,13 +228,20 @@ SND.loadSamples = function () {
   }
 };
 // toca um som gravado; devolve false se ainda não carregou
+SND.voices = 0; SND.lastT = {};
 SND.sample = function (n, vol, rate, loop) {
   const c = SND.ctx, b = SND.samples[n];
   if (!c || !b || !SND.on) return false;
+  // no máximo 10 sons ao mesmo tempo (6 no celular) e o mesmo som não repete em menos de 45 ms: evita o som embolado e estourado
+  const now = c.currentTime, max = typeof isTouch !== 'undefined' && isTouch ? 6 : 10;
+  if (!loop && (SND.voices >= max || now - (SND.lastT[n] || -1) < 0.045)) return true;
+  SND.lastT[n] = now;
+  if (!SND.bus) { SND.bus = c.createDynamicsCompressor(); SND.bus.threshold.value = -16; SND.bus.ratio.value = 6; SND.bus.connect(c.destination); }
   const s = c.createBufferSource(), g = c.createGain();
+  if (!loop) { SND.voices++; s.onended = () => { SND.voices--; }; }
   s.buffer = b; s.playbackRate.value = rate || 1; s.loop = !!loop;
   g.gain.value = (vol === undefined ? 1 : vol) * (SND.vol === undefined ? 1 : SND.vol);
-  s.connect(g); g.connect(c.destination); s.start();
+  s.connect(g); g.connect(SND.bus); s.start();
   return s;
 };
 SND.MAP = { shot: 'shot_rifle', smg: 'shot_smg', sniper: 'shot_sniper', shotgun: 'shot_shotgun', pistol: 'shot_pistol', laser: 'shot_smg', shotFar: 'shot_rifle', boom: 'explosion',
@@ -249,6 +256,7 @@ SND.play = function (type, vol) {
   const sm = SND.MAP[type];
   if (sm) {
     const n = sm === 'step' ? 'step' + Math.floor(Math.random() * 3) : sm, far = type === 'shotFar';
+    if (far && typeof isTouch !== 'undefined' && isTouch && Math.random() < 0.6) return; // no celular, menos tiros de longe
     if (SND.sample(n, (vol === undefined ? 1 : vol) * (far ? 0.35 : type === 'step' ? 0.5 : 0.8), (far ? 0.8 : 1) * (0.96 + Math.random() * 0.08))) return;
   }
   try {

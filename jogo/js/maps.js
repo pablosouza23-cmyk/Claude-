@@ -643,15 +643,26 @@
     }
     W.occupied.push([a.x, a.z, a.r]);
   };
+  // cidade montada no editor Godot (godot_mapas/cenas/Cidade.tscn): cada peça vira um modelo do kit, os marcadores viram prédios de entrar
+  W.buildGodotCity = function (P, rnd) {
+    const a = W.A.CIDADE, M = WPN.cityMap;
+    if (!a || !M || !WPN.city) return;
+    const T = M.quadra || 9, base = a.h - 0.05, y = base + 0.03;
+    const cols = [0xd9cfbf, 0xc9b79c, 0xb8c4cc, 0xe0d6c2], trims = [0x8a5a33, 0x5b6268, 0x3f4a57];
+    for (const p of M.pecas) {
+      const x = a.x + p.x * T, z = a.z + p.z * T;
+      if (p.m === 'predio') { W.building(P, x, z, Math.floor(rnd() * 4) * Math.PI / 2, base, 4.2, 4.2, p.andares || 3, cols[Math.floor(rnd() * cols.length)], trims[Math.floor(rnd() * trims.length)]); continue; }
+      const solid = /^building|fountain$/.test(p.m);
+      W.cityPut(p.m, x, y, z, p.r || 0, T * (p.s || 1) * (solid ? 0.98 : 1), solid);
+    }
+    W.occupied.push([a.x, a.z, a.r]);
+  };
   W.MAPS.metropole = {
-    name: 'Metrópole', desc: 'Ilha gigante: torre do relógio, quatro distritos de prédios, fábrica, hangar e usina', color: '#7a8cff',
+    name: 'Metrópole', desc: 'Ilha gigante: cidade grande em volta da torre do relógio, fábrica, hangar e usina', color: '#7a8cff',
     landR: 250, playR: 272, show: 'TORRE DO RELÓGIO', trees: 360,
     areas: [
       { name: 'TORRE DO RELÓGIO', x: 0, z: 0, r: 32, flat: true },
-      { name: 'CENTRO NORTE', x: 0, z: -92, r: 46, flat: true },
-      { name: 'CENTRO SUL', x: 0, z: 94, r: 46, flat: true },
-      { name: 'DISTRITO LESTE', x: 96, z: 0, r: 46, flat: true },
-      { name: 'DISTRITO OESTE', x: -96, z: 2, r: 46, flat: true },
+      { name: 'CIDADE', x: 0, z: 0, r: 80, flat: true },
       { name: 'PICO', x: -100, z: -175, r: 16, flat: true, peak: 26 },
       { name: 'FÁBRICA', x: 178, z: -108, r: 30, flat: true },
       { name: 'HANGAR', x: -60, z: 196, r: 36, flat: true, runway: [0, 56, 6.5, 0, -8] },
@@ -666,17 +677,16 @@
       { name: 'CAMPO ALTO', x: -215, z: 70, r: 28, hills: 9 },
     ],
     paths: [
-      [[0, -92], [0, 0], [0, 94]], [[-96, 2], [0, 0], [96, 0]],
-      [[0, -84], [-50, -130], [-100, -175]], [[0, -84], [40, -150], [70, -196]],
-      [[88, 0], [140, -60], [178, -108]], [[88, 0], [150, 40], [196, 70]],
-      [[0, 86], [-30, 150], [-60, 196]], [[0, 86], [60, 140], [100, 182]],
-      [[-88, 2], [-150, -10], [-205, -20]], [[-88, 2], [-130, -70], [-178, -128]],
+      [[0, -76], [-50, -130], [-100, -175]], [[27, -76], [40, -150], [70, -196]],
+      [[76, -27], [140, -60], [178, -108]], [[76, 27], [150, 40], [196, 70]],
+      [[-27, 76], [-30, 150], [-60, 196]], [[27, 76], [60, 140], [100, 182]],
+      [[-76, 0], [-150, -10], [-205, -20]], [[-76, -27], [-130, -70], [-178, -128]],
       [[-205, -20], [-215, 70], [-150, 110], [-60, 196]],
       [[70, -196], [178, -108]], [[196, 70], [100, 182]], [[-178, -128], [-100, -175]],
     ],
     build: [
       ['Torre do relógio', (P) => { W.buildClockTown(P); W.buildPeak(P); }],
-      ['Distritos', (P, rnd) => { for (const n of ['CENTRO NORTE', 'CENTRO SUL', 'DISTRITO LESTE', 'DISTRITO OESTE']) W.buildDowntown(P, n, rnd); }],
+      ['Cidade (Godot)', (P, rnd) => W.buildGodotCity(P, rnd)],
       ['Fábrica e hangar', (P) => { W.buildFactory(P); W.buildHangar(P); }],
       ['Usina e estaleiro', (P, rnd) => { W.buildPowerPlant(P); W.buildShipyard(P, rnd); }],
       ['Vilas', (P) => { W.buildMillVillage(P); W.buildRiceFields(P); W.buildSettlement(P); W.flushCity(W.root); }],

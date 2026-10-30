@@ -1,0 +1,7 @@
+; Editor de mapas do Battle Island (Godot 4.3)
+config_version=5
+
+[application]
+config/name="Battle Island - Mapas"
+config/features=PackedStringArray("4.3")
+run/main_scene="res://cenas/Cidade.tscn"

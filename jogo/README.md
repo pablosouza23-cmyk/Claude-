@@ -506,7 +506,11 @@ A licença MIT pede que o aviso de copyright vá junto com o jogo. Deixe esta ta
 | `assets/props.bin` | Granada, mochila, kit, munição, colete, capacete, gel e caixa (modelados no Blender) |
 | `assets/chars/` | Personagens (malha + texturas) e animações, em formato binário compacto |
 | `assets/guns.bin` | Os 10 modelos de arma e o bipé |
-| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v5.3
+| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v5.4
+
+- Metrópole com uma cidade grande e contínua em volta da Torre do Relógio, montada no editor Godot (pasta `godot_mapas/`, veja o LEIA-ME de lá): 286 peças entre ruas, cruzamentos, postes, prédios, garagens, praças, fontes e 18 prédios para entrar. O jogo lê `assets/mapa_cidade.json`, exportado pelo Godot.
+
+## Novidades da v5.3
 
 - Distritos da Metrópole refeitos com o kit de cidade da Kenney (modelos CC0, baixados de github.com/KenneyNL/Starter-Kit-City-Builder): ruas de asfalto com faixas, cruzamentos e postes, prédios e garagens coloridos, praças com fonte e árvores, e um prédio por quarteirão para entrar e pegar loot.
 

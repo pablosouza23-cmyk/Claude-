@@ -6,7 +6,7 @@ const V3 = THREE.Vector3;
 
 const G = {
   state: 'menu', time: 0, built: false,
-  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'ilha', mode: 'br', csSize: 4, csGun: 'FUZIL', brTeam: 1, sfx: 'tiros', crossStyle: 'cruz', crossCol: 'branco' },
+  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'triangulo', mode: 'br', csSize: 4, csGun: 'FUZIL', brTeam: 1, sfx: 'tiros', crossStyle: 'cruz', crossCol: 'branco' },
   actors: [], bots: [], walls: [], loot: [], nades: [], props: [],
 };
 
@@ -17,6 +17,8 @@ const G = {
       // versões antigas tinham uma só sensibilidade de mira
       if (s.adsSens !== undefined && s.sensDot === undefined) s.sensDot = s.sens2x = s.sens4x = s.adsSens;
       Object.assign(G.settings, s);
+      // v5.0: o mapa padrão passa a ser a Ilha Triângulo (uma vez só; depois vale a escolha do jogador)
+      if (!G.settings.mapV5) { G.settings.map = 'triangulo'; G.settings.mapV5 = true; }
     }
   } catch (e) { /* armazenamento indisponível */ }
 })();
@@ -2101,21 +2103,30 @@ const CARS = { list: [], COLORS: [0xf2f4f7, 0xd8222c, 0x1d5fd6, 0x161a20, 0xf5b9
 const _cp = new V3();
 CARS.mesh = function (col) {
   const g = new THREE.Group();
-  const paint = new THREE.MeshStandardMaterial({ color: col, metalness: 0.55, roughness: 0.28, envMapIntensity: 1.2 });
-  const dark = new THREE.MeshStandardMaterial({ color: 0x14171d, metalness: 0.3, roughness: 0.6 });
-  const glass = new THREE.MeshStandardMaterial({ color: 0x1b2633, metalness: 0.8, roughness: 0.08 });
+  const paint = WPN.physMat({ color: col, metalness: 0.6, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08, envMap: WPN.studioEnv(), envMapIntensity: 1.3 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x111317, metalness: 0.2, roughness: 0.75 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x0d151f, metalness: 0.9, roughness: 0.05, envMap: WPN.studioEnv(), envMapIntensity: 1.5 });
+  const chrome = new THREE.MeshStandardMaterial({ color: 0xd8dde3, metalness: 1, roughness: 0.18, envMap: WPN.studioEnv() });
   const lightF = new THREE.MeshBasicMaterial({ color: 0xfff6d8 }), lightB = new THREE.MeshBasicMaterial({ color: 0xff2030 });
-  const box = (w, h, d, m, x, y, z, rx) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); if (rx) o.rotation.x = rx; o.castShadow = true; g.add(o); return o; };
-  box(1.9, 0.5, 4.4, paint, 0, 0.6, 0);            // carroceria
-  box(1.86, 0.18, 1.3, paint, 0, 0.9, 1.45, -0.12); // capô
-  box(1.6, 0.5, 2.0, glass, 0, 1.08, -0.25);       // cabine (vidros)
-  box(1.62, 0.08, 1.7, paint, 0, 1.36, -0.3);      // teto
-  box(1.95, 0.22, 0.25, dark, 0, 0.45, 2.22);      // para-choque
-  box(1.95, 0.22, 0.25, dark, 0, 0.45, -2.22);
-  box(0.45, 0.12, 0.05, lightF, 0.62, 0.7, 2.21); box(0.45, 0.12, 0.05, lightF, -0.62, 0.7, 2.21);
-  box(0.5, 0.12, 0.05, lightB, 0.6, 0.72, -2.21); box(0.5, 0.12, 0.05, lightB, -0.6, 0.72, -2.21);
-  const wg = new THREE.CylinderGeometry(0.38, 0.38, 0.3, 16).rotateZ(Math.PI / 2), wheels = [];
-  for (const [x, z] of [[0.86, 1.38], [-0.86, 1.38], [0.86, -1.38], [-0.86, -1.38]]) { const w = new THREE.Mesh(wg, dark); w.position.set(x, 0.38, z); w.castShadow = true; g.add(w); wheels.push(w); }
+  const side = (pts, width, bev) => {
+    const sh = new THREE.Shape(); sh.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < pts.length; k++) sh.lineTo(pts[k][0], pts[k][1]); sh.closePath();
+    return new THREE.ExtrudeGeometry(sh, { depth: width, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 3, curveSegments: 6 }).translate(0, 0, -width / 2).rotateY(-Math.PI / 2);
+  };
+  const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x || 0, y || 0, z || 0); o.castShadow = true; g.add(o); return o; };
+  // carroceria esportiva (perfil lateral extrudado) e cabine de vidro com teto
+  add(side([[2.15, 0.32], [2.25, 0.62], [1.9, 0.82], [0.85, 0.95], [-1.5, 0.98], [-2.15, 0.92], [-2.25, 0.62], [-2.15, 0.32]], 1.72, 0.1), paint);
+  add(side([[0.8, 0.95], [0.05, 1.32], [-0.95, 1.33], [-1.75, 0.97]], 1.46, 0.05), glass);
+  add(side([[0.02, 1.33], [-0.92, 1.34], [-0.98, 1.39], [0.0, 1.38]], 1.42, 0.04), paint);
+  add(new THREE.BoxGeometry(1.86, 0.16, 0.18), dark, 0, 0.34, 2.28); add(new THREE.BoxGeometry(1.86, 0.16, 0.18), dark, 0, 0.34, -2.28);
+  add(new THREE.BoxGeometry(0.42, 0.09, 0.05), lightF, 0.6, 0.72, 2.3); add(new THREE.BoxGeometry(0.42, 0.09, 0.05), lightF, -0.6, 0.72, 2.3);
+  add(new THREE.BoxGeometry(0.55, 0.08, 0.05), lightB, 0.55, 0.8, -2.3); add(new THREE.BoxGeometry(0.55, 0.08, 0.05), lightB, -0.55, 0.8, -2.3);
+  // rodas: pneu escuro com aro cromado e cubo
+  const tire = new THREE.CylinderGeometry(0.37, 0.37, 0.28, 20).rotateZ(Math.PI / 2), rim = new THREE.CylinderGeometry(0.25, 0.25, 0.3, 10).rotateZ(Math.PI / 2), wheels = [];
+  for (const [x, z] of [[0.86, 1.38], [-0.86, 1.38], [0.86, -1.38], [-0.86, -1.38]]) {
+    const w = new THREE.Group(); w.position.set(x, 0.37, z);
+    const t = new THREE.Mesh(tire, dark); t.castShadow = true; w.add(t); w.add(new THREE.Mesh(rim, chrome));
+    g.add(w); wheels.push(w);
+  }
   g.userData.wheels = wheels;
   return g;
 };

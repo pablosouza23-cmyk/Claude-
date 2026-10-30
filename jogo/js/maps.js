@@ -599,5 +599,68 @@
     ],
     build: [['Arena', (P, rnd) => W.buildArena(P, rnd)]],
   };
-  W.MAP_LIST = ['ilha', 'triangulo'];
+  // ---------- Metrópole: ilha gigante com centro da torre do relógio e quatro distritos de prédios ----------
+  W.buildDowntown = function (P, name, rnd) {
+    const a = W.A[name], base = a.h - 0.05;
+    const cols = [0xd9cfbf, 0xc9b79c, 0xb8c4cc, 0xe0d6c2, 0xa9b3a0, 0xd1a98a, 0x9fb2c8, 0xcfc2d6], trims = [0x8a5a33, 0x5b6268, 0x3f4a57, 0x7a3b2e, 0x2f5d50];
+    const F = W.frame(P, a.x, a.z, 0, base);
+    F.box(0, -0.2, 0, a.r * 2 - 4, 0.24, a.r * 2 - 4, 0x7d8084, 'stone', 0);
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      if (i === 0 && j === 0) {
+        // praça do distrito: canteiro, fonte e bancos
+        F.box(0, -0.05, 0, 11, 0.25, 11, 0x5f8f48, 'plain', 0);
+        F.box(0, 0, 0, 3.2, 0.9, 3.2, 0xbfb6a6, 'stone', 2);
+        for (const b of [[-4.5, 0], [4.5, 0], [0, -4.5], [0, 4.5]]) F.box(b[0], 0, b[1], b[0] ? 0.6 : 2.2, 0.5, b[0] ? 2.2 : 0.6, 0x8a5a33, 'wood', 2);
+        continue;
+      }
+      const x = a.x + i * 26, z = a.z + j * 26, hw = 5.5 + rnd() * 2.5, hd = 4.5 + rnd() * 2.5, fl = 2 + Math.floor(rnd() * 4);
+      W.building(P, x, z, Math.floor(rnd() * 4) * Math.PI / 2, base, hw, hd, fl, cols[Math.floor(rnd() * cols.length)], trims[Math.floor(rnd() * trims.length)]);
+    }
+    // postes de luz nas ruas
+    for (const s of [-13, 13]) for (const t of [-36, -13, 13, 36]) for (const [lx, lz] of [[s, t], [t, s]]) {
+      F.box(lx, 0, lz, 0.16, 5.2, 0.16, 0x3a3f44, 'metal', 0); F.box(lx, 5.1, lz, 0.9, 0.12, 0.3, 0x3a3f44, 'metal', 0);
+      F.post(lx, lz, 0.12, 0, 5.2);
+    }
+    W.occupied.push([a.x, a.z, a.r]);
+  };
+  W.MAPS.metropole = {
+    name: 'Metrópole', desc: 'Ilha gigante: torre do relógio, quatro distritos de prédios, fábrica, hangar e usina', color: '#7a8cff',
+    landR: 250, playR: 272, show: 'TORRE DO RELÓGIO', trees: 360,
+    areas: [
+      { name: 'TORRE DO RELÓGIO', x: 0, z: 0, r: 32, flat: true },
+      { name: 'CENTRO NORTE', x: 0, z: -84, r: 40, flat: true },
+      { name: 'CENTRO SUL', x: 0, z: 86, r: 40, flat: true },
+      { name: 'DISTRITO LESTE', x: 88, z: 0, r: 40, flat: true },
+      { name: 'DISTRITO OESTE', x: -88, z: 2, r: 40, flat: true },
+      { name: 'PICO', x: -100, z: -175, r: 16, flat: true, peak: 26 },
+      { name: 'FÁBRICA', x: 178, z: -108, r: 30, flat: true },
+      { name: 'HANGAR', x: -60, z: 196, r: 36, flat: true, runway: [0, 56, 6.5, 0, -8] },
+      { name: 'USINA', x: -205, z: -20, r: 28, flat: true, lift: 1.2 },
+      { name: 'ESTALEIRO', x: 196, z: 70, r: 24, flat: true, sandy: 0.8 },
+      { name: 'VILA DO MOINHO', x: 100, z: 182, r: 24, flat: true },
+      { name: 'ARROZAIS', x: -178, z: -128, r: 30, flat: true, rice: true },
+      { name: 'POVOADO', x: 70, z: -196, r: 24, flat: true, palms: true },
+      { name: 'LAGO', x: -150, z: 110, r: 20, lake: true },
+      { name: 'MATA', x: 150, z: -10, r: 28, forest: true },
+      { name: 'BOSQUE', x: -40, z: -150, r: 26, forest: true },
+      { name: 'CAMPO ALTO', x: -215, z: 70, r: 28, hills: 9 },
+    ],
+    paths: [
+      [[0, -84], [0, 0], [0, 86]], [[-88, 2], [0, 0], [88, 0]],
+      [[0, -84], [-50, -130], [-100, -175]], [[0, -84], [40, -150], [70, -196]],
+      [[88, 0], [140, -60], [178, -108]], [[88, 0], [150, 40], [196, 70]],
+      [[0, 86], [-30, 150], [-60, 196]], [[0, 86], [60, 140], [100, 182]],
+      [[-88, 2], [-150, -10], [-205, -20]], [[-88, 2], [-130, -70], [-178, -128]],
+      [[-205, -20], [-215, 70], [-150, 110], [-60, 196]],
+      [[70, -196], [178, -108]], [[196, 70], [100, 182]], [[-178, -128], [-100, -175]],
+    ],
+    build: [
+      ['Torre do relógio', (P) => { W.buildClockTown(P); W.buildPeak(P); }],
+      ['Distritos', (P, rnd) => { for (const n of ['CENTRO NORTE', 'CENTRO SUL', 'DISTRITO LESTE', 'DISTRITO OESTE']) W.buildDowntown(P, n, rnd); }],
+      ['Fábrica e hangar', (P) => { W.buildFactory(P); W.buildHangar(P); }],
+      ['Usina e estaleiro', (P, rnd) => { W.buildPowerPlant(P); W.buildShipyard(P, rnd); }],
+      ['Vilas', (P) => { W.buildMillVillage(P); W.buildRiceFields(P); W.buildSettlement(P); }],
+    ],
+  };
+  W.MAP_LIST = ['metropole', 'ilha', 'triangulo'];
 })();

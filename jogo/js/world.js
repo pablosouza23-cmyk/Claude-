@@ -465,7 +465,8 @@ W.buildEnv = function (renderer, scene) {
 };
 
 W.buildTerrain = function (scene) {
-  const SIZE = 560, SEG = 200;
+  // mapas grandes ganham um terreno maior (a malha cresce junto para não perder detalhe)
+  const SIZE = Math.max(560, Math.ceil((W.PLAY_R + 50) * 2 / 40) * 40), SEG = SIZE > 560 ? 260 : 200;
   const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position, n = pos.count;

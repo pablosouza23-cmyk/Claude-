@@ -6,7 +6,7 @@ const V3 = THREE.Vector3;
 
 const G = {
   state: 'menu', time: 0, built: false,
-  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'triangulo', mode: 'br', csSize: 4, csGun: 'FUZIL', brTeam: 1, sfx: 'tiros', crossStyle: 'cruz', crossCol: 'branco' },
+  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'metropole', mode: 'br', csSize: 4, csGun: 'FUZIL', brTeam: 1, sfx: 'tiros', crossStyle: 'cruz', crossCol: 'branco' },
   actors: [], bots: [], walls: [], loot: [], nades: [], props: [],
 };
 
@@ -18,7 +18,7 @@ const G = {
       if (s.adsSens !== undefined && s.sensDot === undefined) s.sensDot = s.sens2x = s.sens4x = s.adsSens;
       Object.assign(G.settings, s);
       // v5.0: o mapa padrão passa a ser a Ilha Triângulo (uma vez só; depois vale a escolha do jogador)
-      if (!G.settings.mapV5) { G.settings.map = 'triangulo'; G.settings.mapV5 = true; }
+      if (!G.settings.mapV6) { G.settings.map = 'metropole'; G.settings.mapV6 = true; }
     }
   } catch (e) { /* armazenamento indisponível */ }
 })();

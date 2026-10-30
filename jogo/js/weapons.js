@@ -50,8 +50,8 @@ WPN.MDL = {
   FUZIL: { src: 'AssaultRifle_2', len: 0.88, grip: [0.30, 0.57], fore: [0.67, 0.80], top: [0.45, 0.94], muzzle: 0.84 },
   CARABINA: { src: 'WP_M4', alt: 'AssaultRifle2_1', len: 0.86, grip: [0.36, 0.42], fore: [0.62, 0.62], top: [0.45, 0.9], muzzle: 0.97 },
   SMG: { src: 'SubmachineGun_3', len: 0.62, grip: [0.46, 0.54], fore: [0.85, 0.55], top: [0.6, 0.98], muzzle: 0.81 },
-  PRECISAO: { src: 'WP_SNIPER', alt: 'SniperRifle_2', len: 1.15, grip: [0.24, 0.45], fore: [0.5, 0.55], sight: [0.33, 0.95], muzzle: 0.98 },
-  ESCOPETA: { src: 'WP_SHOTGUN', alt: 'Shotgun_2', len: 1.0, grip: [0.22, 0.5], fore: [0.55, 0.55], sight: [0.6, 0.95], muzzle: 0.98 },
+  PRECISAO: { src: 'WP_SNIPER', alt: 'SniperRifle_2', paint: [0x2f4a2a, [[0, 0.58, 0.62]]], len: 1.15, grip: [0.24, 0.45], fore: [0.5, 0.55], sight: [0.33, 0.95], muzzle: 0.98 },
+  ESCOPETA: { src: 'WP_SHOTGUN', alt: 'Shotgun_2', paint: [0x8a4a22, [[0, 0.33, 1], [0.5, 0.72, 0.5]]], len: 1.0, grip: [0.22, 0.5], fore: [0.55, 0.55], sight: [0.6, 0.95], muzzle: 0.98 },
   METRALHADORA: { src: 'AssaultRifle2_2', len: 1.0, grip: [0.31, 0.46], fore: [0.67, 0.75], top: [0.45, 0.86], muzzle: 0.76, tint: [0.78, 0.86, 0.66], bipod: [0.9, 0.72] },
   PISTOLA: { src: 'WP_PISTOL', alt: 'Pistol_1', len: 0.2, grip: [0.18, 0.4], sight: [0.1, 0.97], muzzle: 0.98, pistol: true },
   REVOLVER: { src: 'Revolver_1', len: 0.28, grip: [0.17, 0.56], sight: [0.1, 0.97], muzzle: 0.86, pistol: true },
@@ -65,7 +65,7 @@ WPN.load = async function () {
     try { WPN.modelsLod = await WPN.loadFile('assets/guns_lod.bin'); } catch (e) { WPN.modelsLod = null; }
     // armas do Weapons_Pack (M4, pistola, escopeta e sniper)
     // só no PC: o celular fica com as armas leves (versão reduzida)
-    if (!isTouch) try { Object.assign(WPN.models, await WPN.loadFile('assets/guns_wp.bin')); if (WPN.modelsLod) Object.assign(WPN.modelsLod, await WPN.loadFile('assets/guns_wp_lod.bin')); } catch (e) { console.warn('pacote de armas indisponível', e); }
+    try { Object.assign(WPN.models, await WPN.loadFile('assets/guns_wp.bin')); if (WPN.modelsLod) Object.assign(WPN.modelsLod, await WPN.loadFile('assets/guns_wp_lod.bin')); } catch (e) { console.warn('pacote de armas indisponível', e); }
     WPN.cache = {};
   } catch (e) { console.warn('armas 3D indisponíveis, usando modelos simples', e); }
 };
@@ -116,6 +116,17 @@ WPN.buildModel = function (id, lod) {
   if (cfg.tint) {
     const c = body.attributes.color;
     for (let i = 0; i < c.count; i++) c.setXYZ(i, Math.min(1, c.getX(i) * cfg.tint[0]), Math.min(1, c.getY(i) * cfg.tint[1]), Math.min(1, c.getZ(i) * cfg.tint[2]));
+  }
+  // pintura das referências: as partes mais claras do modelo (coronha/guarda-mão) ganham a cor nova
+  // pintura das referências por região: [cor, [[início, fim, altura máx.] ao longo do cano (0 = coronha)]]
+  if (cfg.paint) {
+    body.computeBoundingBox();
+    const c = body.attributes.color, P = body.attributes.position, b2 = body.boundingBox, pc = new THREE.Color(cfg.paint[0]);
+    const Lz = b2.max.z - b2.min.z, Hy = b2.max.y - b2.min.y;
+    for (let i = 0; i < c.count; i++) {
+      const f = (P.getZ(i) - b2.min.z) / Lz, h = (P.getY(i) - b2.min.y) / Hy;
+      if (cfg.paint[1].some(r => f >= r[0] && f <= r[1] && h <= r[2])) c.setXYZ(i, pc.r, pc.g, pc.b);
+    }
   }
   U.projectUV(body, 3.2);
   const P = [body], GL = [];

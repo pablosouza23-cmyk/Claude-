@@ -67,6 +67,7 @@ WPN.load = async function () {
     try { WPN.city = await WPN.loadFile('assets/city.bin'); } catch (e) { WPN.city = null; }
     // mapa feito no Godot (godot_mapas/ › exportar_mapa.gd)
     try { const r = await fetch(CH.url('assets/mapa_cidade.json')); WPN.cityMap = r.ok ? await r.json() : null; } catch (e) { WPN.cityMap = null; }
+    try { const r = await fetch(CH.url('assets/mapa_megacidade.json')); WPN.megaMap = r.ok ? await r.json() : null; } catch (e) { WPN.megaMap = null; }
     // armas do Weapons_Pack (M4, pistola, escopeta e sniper)
     // só no PC: o celular fica com as armas leves (versão reduzida)
     try { Object.assign(WPN.models, await WPN.loadFile('assets/guns_wp.bin')); if (WPN.modelsLod) Object.assign(WPN.modelsLod, await WPN.loadFile('assets/guns_wp_lod.bin')); } catch (e) { console.warn('pacote de armas indisponível', e); }

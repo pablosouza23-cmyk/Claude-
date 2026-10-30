@@ -1267,6 +1267,8 @@ W.buildGrass = function (scene, quality) {
   W.grassCenter = { x: 1e9, z: 1e9 };
 };
 
+// cidades e bases (áreas "paved"): sem grama brotando no asfalto e nas praças
+W.isPaved = function (x, z) { for (const a of W.areaDefs) if (a.paved && (x - a.x) * (x - a.x) + (z - a.z) * (z - a.z) < a.r * a.r * 0.85) return true; return false; };
 W.placeGrass = function (cx, cz) {
   const S = W.grassSize, N = W.grassN, side = Math.ceil(Math.sqrt(N)), sp = S / side;
   const ox = Math.floor((cx - S / 2) / sp), oz = Math.floor((cz - S / 2) / sp);
@@ -1278,7 +1280,7 @@ W.placeGrass = function (cx, cz) {
     const x = (gx + U.hash2(gx, gz)) * sp, z = (gz + U.hash2(gz + 7, gx - 3)) * sp;
     const T = W.tg, sa = W.grid2(T.sand, x, z), y = W.grid2(T.h, x, z);
     let sc = (0.8 + U.hash2(gx * 3, gz) * 0.65) * (1 - U.smooth(0.15, 0.5, sa));
-    if (sc > 0 && (y < W.SEA_Y + 0.2 || W.inHouse(x, z))) sc = 0;
+    if (sc > 0 && (y < W.SEA_Y + 0.2 || W.inHouse(x, z) || W.isPaved(x, z))) sc = 0;
     e.set(0, U.hash2(gx, gz * 5) * 6.28, 0); q.setFromEuler(e);
     p.set(x, y - 0.03, z); s.set(sc, sc * (0.75 + U.hash2(gz, gx) * 0.7), sc);
     m.compose(p, q, s);

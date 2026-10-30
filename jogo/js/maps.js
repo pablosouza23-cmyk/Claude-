@@ -662,7 +662,7 @@
     landR: 250, playR: 272, show: 'TORRE DO RELÓGIO', trees: 360,
     areas: [
       { name: 'TORRE DO RELÓGIO', x: 0, z: 0, r: 32, flat: true },
-      { name: 'CIDADE', x: 0, z: 0, r: 80, flat: true },
+      { name: 'CIDADE', x: 0, z: 0, r: 80, flat: true, paved: true },
       { name: 'PICO', x: -100, z: -175, r: 16, flat: true, peak: 26 },
       { name: 'FÁBRICA', x: 178, z: -108, r: 30, flat: true },
       { name: 'HANGAR', x: -60, z: 196, r: 36, flat: true, runway: [0, 56, 6.5, 0, -8] },
@@ -692,5 +692,57 @@
       ['Vilas', (P) => { W.buildMillVillage(P); W.buildRiceFields(P); W.buildSettlement(P); W.flushCity(W.root); }],
     ],
   };
-  W.MAP_LIST = ['metropole', 'ilha', 'triangulo'];
+  // ---------- Megacidade: mapa inteiro desenhado no Godot (godot_mapas/cenas/Megacidade.tscn) ----------
+  // cada peça do JSON: modelo da Kenney, caixa/cilindro com cor e colisão, prédio de entrar ou ponto de loot
+  W.buildGodotMap = function (P, rnd, M) {
+    if (!M) return;
+    const BOXG = new THREE.BoxGeometry(1, 1, 1), cyl = {}, q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3();
+    const cols = [0xd9cfbf, 0xc9b79c, 0xb8c4cc, 0xe0d6c2], trims = [0x8a5a33, 0x5b6268, 0x3f4a57];
+    for (const p of M.pecas) {
+      const h = W.height(p.x, p.z) - 0.05;
+      if (p.m === 'loot') { W.lootSpots.push([p.x, p.z, h + p.y]); continue; }
+      if (p.m === 'predio') { W.building(P, p.x, p.z, p.r || 0, h + p.y, p.lx || 4.2, p.lz || 4.2, p.andares || 2, cols[Math.floor(rnd() * cols.length)], trims[Math.floor(rnd() * trims.length)]); continue; }
+      if (p.m === 'caixa' || p.m === 'cilindro') {
+        const col = parseInt(String(p.cor || '#aaaaaa').slice(1), 16), y = h + p.y;
+        if (p.q) q.set(p.q[0], p.q[1], p.q[2], p.q[3]); else q.setFromAxisAngle(UP3, p.r || 0);
+        let geo;
+        if (p.m === 'caixa') { geo = BOXG; sc.set(p.sx, p.sy, p.sz); }
+        else { const k = p.rt + '|' + p.rb; geo = cyl[k] || (cyl[k] = new THREE.CylinderGeometry(p.rt, p.rb, 1, 18)); sc.set(1, p.h, 1); }
+        P.push(U.part(geo, col, new THREE.Matrix4().compose(v.set(p.x, y, p.z), q, sc), 'radial', p.mat || 'plain'));
+        if (p.solido) {
+          const flatRot = Math.abs(q.x) < 0.02 && Math.abs(q.z) < 0.02;
+          if (p.m === 'caixa' && flatRot) W.addCollider({ type: 'b', x: p.x, z: p.z, hx: p.sx / 2, hz: p.sz / 2, rot: p.r || 0, y0: y - p.sy / 2, y1: y + p.sy / 2, walkable: !!p.piso || p.sy < 1.4 });
+          else if (p.m === 'cilindro' && flatRot) W.addCollider({ type: 'c', x: p.x, z: p.z, r: Math.max(p.rt, p.rb), y0: y - p.h / 2, y1: y + p.h / 2 });
+        }
+        continue;
+      }
+      const solid = /^building|fountain$/.test(p.m);
+      W.cityPut(p.m, p.x, h + p.y + 0.03, p.z, p.r || 0, (p.s || 9) * (solid ? 0.98 : 1), solid);
+    }
+    for (const a of W.areaDefs) if (a.flat) W.occupied.push([a.x, a.z, a.r]);
+  };
+  const UP3 = new THREE.Vector3(0, 1, 0);
+  W.MAPS.megacidade = {
+    name: 'Megacidade', desc: 'Mapa novo feito no Godot: centro com torre do relógio, bairro, zona industrial, porto com navio e base militar', color: '#ff7a3c',
+    landR: 212, playR: 234, show: 'CENTRO', trees: 300,
+    areas: [
+      { name: 'CENTRO', x: 0, z: 0, r: 64, flat: true, paved: true },
+      { name: 'BAIRRO RESIDENCIAL', x: 0, z: -150, r: 46, flat: true, paved: true },
+      { name: 'ZONA INDUSTRIAL', x: 155, z: 5, r: 50, flat: true, paved: true },
+      { name: 'PORTO', x: 5, z: 160, r: 44, flat: true, sandy: 0.7, paved: true },
+      { name: 'BASE MILITAR', x: -155, z: 0, r: 46, flat: true, paved: true },
+      { name: 'FLORESTA', x: 110, z: -112, r: 36, forest: true },
+      { name: 'LAGO', x: -112, z: 112, r: 20, lake: true },
+      { name: 'MORRO', x: 118, z: 116, r: 32, hills: 10 },
+      { name: 'CAMPO', x: -112, z: -112, r: 32, hills: 6 },
+    ],
+    paths: [
+      [[0, -60], [0, -150]], [[60, 0], [155, 5]], [[0, 60], [5, 160]], [[-60, 0], [-155, 0]],
+      [[0, -150], [110, -112], [155, 5]], [[155, 5], [118, 116], [5, 160]], [[5, 160], [-112, 112], [-155, 0]], [[-155, 0], [-112, -112], [0, -150]],
+    ],
+    build: [
+      ['Megacidade (Godot)', (P, rnd) => { W.buildGodotMap(P, rnd, WPN.megaMap); W.flushCity(W.root); }],
+    ],
+  };
+  W.MAP_LIST = ['megacidade', 'metropole', 'ilha', 'triangulo'];
 })();

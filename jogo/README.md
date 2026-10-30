@@ -506,7 +506,16 @@ A licença MIT pede que o aviso de copyright vá junto com o jogo. Deixe esta ta
 | `assets/props.bin` | Granada, mochila, kit, munição, colete, capacete, gel e caixa (modelados no Blender) |
 | `assets/chars/` | Personagens (malha + texturas) e animações, em formato binário compacto |
 | `assets/guns.bin` | Os 10 modelos de arma e o bipé |
-| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v5.4
+| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v5.5
+
+- Mapa novo MEGACIDADE (padrão), criado do zero no Godot (`godot_mapas/ferramentas/gerar_megacidade.gd` gera a cena `cenas/Megacidade.tscn`; `exportar_mapa.gd` grava `assets/mapa_megacidade.json`):
+  - Centro: grade de ruas e quarteirões com prédios, praças e uma torre do relógio nova no meio.
+  - Bairro residencial com casas e quintais, zona industrial (galpões de entrar, contêineres, silos e chaminé), porto (píer, guindaste e navio atracado) e base militar (muralha com portão, torres de vigia, bunkers, alojamentos e heliponto).
+  - Avenidas ligando tudo, floresta, lago, morro e campo.
+- O exportador do Godot agora leva caixas e cilindros (com cor e colisão), prédios de entrar e pontos de loot.
+- Sem grama brotando no asfalto das cidades.
+
+## Novidades da v5.4
 
 - Metrópole com uma cidade grande e contínua em volta da Torre do Relógio, montada no editor Godot (pasta `godot_mapas/`, veja o LEIA-ME de lá): 286 peças entre ruas, cruzamentos, postes, prédios, garagens, praças, fontes e 18 prédios para entrar. O jogo lê `assets/mapa_cidade.json`, exportado pelo Godot.
 

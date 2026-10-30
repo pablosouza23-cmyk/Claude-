@@ -506,7 +506,11 @@ A licença MIT pede que o aviso de copyright vá junto com o jogo. Deixe esta ta
 | `assets/props.bin` | Granada, mochila, kit, munição, colete, capacete, gel e caixa (modelados no Blender) |
 | `assets/chars/` | Personagens (malha + texturas) e animações, em formato binário compacto |
 | `assets/guns.bin` | Os 10 modelos de arma e o bipé |
-| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v5.5
+| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v5.6
+
+- Megacidade corrigida: prédios menores que a quadra (com passagem entre eles, sem ficar um grudado no outro), postes finos no lugar dos postes gigantes, fonte nova com água no lugar da fonte enorme, e sem árvores nascendo dentro da cidade e da zona industrial.
+
+## Novidades da v5.5
 
 - Mapa novo MEGACIDADE (padrão), criado do zero no Godot (`godot_mapas/ferramentas/gerar_megacidade.gd` gera a cena `cenas/Megacidade.tscn`; `exportar_mapa.gd` grava `assets/mapa_megacidade.json`):
   - Centro: grade de ruas e quarteirões com prédios, praças e uma torre do relógio nova no meio.

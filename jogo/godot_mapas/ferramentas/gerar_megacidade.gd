@@ -53,12 +53,28 @@ func cilindro(p: Node3D, pos: Vector3, r_top: float, r_bot: float, h: float, cor
 func kenney(p: Node3D, nome: String, pos: Vector3, rot := 0.0) -> void:
 	if not cache.has(nome): cache[nome] = load("res://modelos/%s.glb" % nome)
 	var n: Node3D = cache[nome].instantiate(); n_id += 1; n.name = "%s_%d" % [nome, n_id]
-	n.position = pos; n.rotation.y = rot; n.scale = Vector3.ONE * T
+	n.position = pos; n.rotation.y = rot; n.scale = Vector3.ONE * (T * 0.78 if nome.begins_with("building") else T)
 	p.add_child(n)
 
 func predio(p: Node3D, pos: Vector3, andares: int, lx := 4.2, lz := 4.2) -> void:
 	var m := Marker3D.new(); n_id += 1; m.name = "predio_%d" % n_id; m.position = pos
 	m.set_meta("andares", andares); m.set_meta("largura", lx); m.set_meta("fundo", lz); p.add_child(m)
+
+# poste fino de rua: haste, braço e luminária
+func poste(p: Node3D, pos: Vector3, rot := 0.0) -> void:
+	var g := Node3D.new(); n_id += 1; g.name = "poste_%d" % n_id; g.position = pos; g.rotation.y = rot; p.add_child(g)
+	caixa(g, Vector3.ZERO, Vector3(0.16, 5.4, 0.16), Color("3a3f44"), "metal")
+	caixa(g, Vector3(0, 5.3, 0.6), Vector3(0.1, 0.1, 1.3), Color("3a3f44"), "metal", false)
+	caixa(g, Vector3(0, 5.05, 1.15), Vector3(0.45, 0.22, 0.45), Color("f6edc8"), "plain", false)
+
+# fonte da praça: borda de pedra, água, coluna e bacia
+func fonte(p: Node3D, pos: Vector3) -> void:
+	var g := Node3D.new(); n_id += 1; g.name = "fonte_%d" % n_id; g.position = pos; p.add_child(g)
+	cilindro(g, Vector3.ZERO, 2.8, 3.0, 0.6, Color("bfb6a6"), "stone")
+	cilindro(g, Vector3(0, 0.05, 0), 2.45, 2.45, 0.6, Color("3d8fc4"), "plain", false)
+	cilindro(g, Vector3(0, 0.6, 0), 0.35, 0.45, 1.6, Color("bfb6a6"), "stone")
+	cilindro(g, Vector3(0, 2.1, 0), 1.1, 0.5, 0.35, Color("bfb6a6"), "stone", false)
+	cilindro(g, Vector3(0, 2.25, 0), 0.9, 0.9, 0.22, Color("5aa9dd"), "plain", false)
 
 func loot(p: Node3D, pos: Vector3) -> void:
 	var m := Marker3D.new(); n_id += 1; m.name = "loot_%d" % n_id; m.position = pos; p.add_child(m)
@@ -76,16 +92,20 @@ func centro() -> void:
 			if ri and rj: kenney(g, "road-intersection", pos); continue
 			if ri or rj:
 				var k := j if ri else i
-				kenney(g, "road-straight-lightposts" if k % 2 != 0 else "road-straight", pos, 0.0 if ri else PI / 2); continue
+				kenney(g, "road-straight", pos, 0.0 if ri else PI / 2); continue
 			var bi := posmod(i + 6, 4); var bj := posmod(j + 6, 4)
 			if bi == 2 and bj == 2:
 				if rng.randf() < 0.6: predio(g, pos, 2 + rng.randi() % 4)
 				else:
-					kenney(g, "pavement", pos); kenney(g, "pavement-fountain", pos)
+					kenney(g, "pavement", pos); fonte(g, pos)
 				continue
 			if rng.randf() < 0.12: kenney(g, "grass-trees", pos); continue
 			var face := -PI / 2 if bi == 1 else (PI / 2 if bi == 3 else (PI if bj == 1 else 0.0))
 			kenney(g, PREDIOS[rng.randi() % PREDIOS.size()], pos, face)
+	for i in range(-6, 7):
+		for r in ruas:
+			if i % 2 == 0 and not ruas.has(i) and abs(i) > 1:
+				poste(g, Vector3(r * T + 3.9, 0, i * T), -PI / 2); poste(g, Vector3(i * T, 0, r * T + 3.9), PI)
 	torre(g, Vector3.ZERO)
 
 func torre(p: Node3D, c: Vector3) -> void:
@@ -111,8 +131,8 @@ func torre(p: Node3D, c: Vector3) -> void:
 func residencial(c: Vector3) -> void:
 	var g := grupo("BairroResidencial", c)
 	for i in range(-4, 5):
-		kenney(g, "road-straight-lightposts" if i % 2 else "road-straight", Vector3(i * T, 0, -9), PI / 2)
-		kenney(g, "road-straight-lightposts" if i % 2 else "road-straight", Vector3(i * T, 0, 18), PI / 2)
+		kenney(g, "road-straight", Vector3(i * T, 0, -9), PI / 2)
+		kenney(g, "road-straight", Vector3(i * T, 0, 18), PI / 2)
 	kenney(g, "road-intersection", Vector3(0, 0, -9)); kenney(g, "road-intersection", Vector3(0, 0, 18))
 	for j in [0, 9]: kenney(g, "road-straight", Vector3(0, 0, j))
 	for i in range(-4, 5):
@@ -200,4 +220,6 @@ func base_militar(c: Vector3) -> void:
 func avenida(a: Vector3, b: Vector3) -> void:
 	var g := grupo("Avenida", Vector3.ZERO)
 	var d := b - a; var n := int(round(d.length() / T)); var rot := 0.0 if abs(d.z) > abs(d.x) else PI / 2
-	for k in n + 1: kenney(g, "road-straight-lightposts" if k % 3 == 1 else "road-straight", a + d.normalized() * k * T, rot)
+	for k in n + 1:
+		kenney(g, "road-straight", a + d.normalized() * k * T, rot)
+		if k % 2 == 1: poste(g, a + d.normalized() * k * T + (Vector3(3.9, 0, 0) if rot == 0.0 else Vector3(0, 0, 3.9)), -PI / 2 if rot == 0.0 else PI)

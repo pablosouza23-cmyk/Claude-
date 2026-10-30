@@ -726,9 +726,9 @@
     name: 'Megacidade', desc: 'Mapa novo feito no Godot: centro com torre do relógio, bairro, zona industrial, porto com navio e base militar', color: '#ff7a3c',
     landR: 212, playR: 234, show: 'CENTRO', trees: 300,
     areas: [
-      { name: 'CENTRO', x: 0, z: 0, r: 64, flat: true, paved: true },
+      { name: 'CENTRO', x: 0, z: 0, r: 86, flat: true, paved: true },
       { name: 'BAIRRO RESIDENCIAL', x: 0, z: -150, r: 46, flat: true, paved: true },
-      { name: 'ZONA INDUSTRIAL', x: 155, z: 5, r: 50, flat: true, paved: true },
+      { name: 'ZONA INDUSTRIAL', x: 155, z: 5, r: 58, flat: true, paved: true },
       { name: 'PORTO', x: 5, z: 160, r: 44, flat: true, sandy: 0.7, paved: true },
       { name: 'BASE MILITAR', x: -155, z: 0, r: 46, flat: true, paved: true },
       { name: 'FLORESTA', x: 110, z: -112, r: 36, forest: true },
@@ -737,7 +737,7 @@
       { name: 'CAMPO', x: -112, z: -112, r: 32, hills: 6 },
     ],
     paths: [
-      [[0, -60], [0, -150]], [[60, 0], [155, 5]], [[0, 60], [5, 160]], [[-60, 0], [-155, 0]],
+      [[0, -86], [0, -150]], [[86, 0], [155, 5]], [[0, 86], [5, 160]], [[-86, 0], [-155, 0]],
       [[0, -150], [110, -112], [155, 5]], [[155, 5], [118, 116], [5, 160]], [[5, 160], [-112, 112], [-155, 0]], [[-155, 0], [-112, -112], [0, -150]],
     ],
     build: [

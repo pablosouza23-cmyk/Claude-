@@ -1202,7 +1202,7 @@ W.buildGrass = function (scene, quality) {
   const counts = { baixa: 3200, media: 7000, alta: 12000 };
   // no celular, menos tufos de grama (é o que mais pesa no chão)
   W.grassN = Math.round((counts[quality] || 7000) * (typeof isTouch !== 'undefined' && isTouch ? 0.65 : 1));
-  W.grassSize = quality === 'baixa' ? 32 : quality === 'alta' ? 70 : 60;
+  W.grassSize = quality === 'baixa' ? 32 : quality === 'ultra' ? 95 : quality === 'alta' ? 70 : 60;
   const blade = new THREE.BufferGeometry();
   const v = [];
   // tufo de 5 folhas curvas (2 triângulos cada)

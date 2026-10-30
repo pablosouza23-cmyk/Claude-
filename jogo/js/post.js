@@ -9,7 +9,7 @@ POST.ensure = function (renderer) {
     const gl2 = renderer.capabilities.isWebGL2;
     POST.rt = new THREE.WebGLRenderTarget(w, h, {
       type: gl2 && renderer.extensions.has('EXT_color_buffer_float') ? THREE.HalfFloatType : THREE.UnsignedByteType,
-      samples: gl2 && G.settings.quality === 'alta' ? 4 : 0,
+      samples: gl2 && (G.settings.quality === 'alta' || G.settings.quality === 'ultra') ? 4 : 0,
       depthBuffer: true,
     });
     POST.mat = new THREE.ShaderMaterial({
@@ -57,8 +57,43 @@ POST.ensure = function (renderer) {
 };
 
 POST.begin = function (renderer) { POST.ensure(renderer); renderer.setRenderTarget(POST.rt); renderer.clear(); };
-POST.end = function (renderer, t) {
+POST.end = function (renderer, t, cine) {
   renderer.setRenderTarget(null);
   POST.mat.uniforms.time.value = t;
+  if (cine) { POST.cineMat = POST.cineMat || POST.makeCine(); POST.cineMat.uniforms.res.value.copy(POST.mat.uniforms.res.value); POST.quad.material = POST.cineMat; } else POST.quad.material = POST.mat;
   renderer.render(POST.scene, POST.cam);
+};
+
+// Ultra (PC): filtro de cinema leve — brilho suave nas luzes fortes, cor mais viva e contraste, vinheta fraca e nitidez
+POST.makeCine = function () {
+  return new THREE.ShaderMaterial({
+    depthTest: false, depthWrite: false,
+    uniforms: { tDiffuse: { value: POST.rt.texture }, res: { value: new THREE.Vector2(1, 1) } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: [
+      'uniform sampler2D tDiffuse; uniform vec2 res; varying vec2 vUv;',
+      'vec3 tap(vec2 o){ vec3 c = texture2D(tDiffuse, vUv + o).rgb; return max(c - 0.9, 0.0); }',
+      'void main(){',
+      ' vec2 px = 1.0 / res;',
+      ' vec3 col = texture2D(tDiffuse, vUv).rgb;',
+      // nitidez (realça o contorno das texturas depois do anti-serrilhado)
+      ' vec3 nb = texture2D(tDiffuse, vUv + vec2(px.x, 0.0)).rgb + texture2D(tDiffuse, vUv - vec2(px.x, 0.0)).rgb + texture2D(tDiffuse, vUv + vec2(0.0, px.y)).rgb + texture2D(tDiffuse, vUv - vec2(0.0, px.y)).rgb;',
+      ' col = max(col + (col * 4.0 - nb) * 0.12, 0.0);',
+      // brilho (bloom) em dois raios, só do que passa do branco
+      ' vec3 b = vec3(0.0);',
+      ' for (int i = 0; i < 8; i++) { float a = float(i) * 0.785398; vec2 d = vec2(cos(a), sin(a)); b += tap(d * px * 6.0) + tap(d * px * 14.0) * 0.6; }',
+      ' col += b * 0.07;',
+      ' gl_FragColor = vec4(col, 1.0);',
+      '#include <tonemapping_fragment>',
+      '#include <colorspace_fragment>',
+      ' vec3 c = gl_FragColor.rgb;',
+      ' float l = dot(c, vec3(0.299, 0.587, 0.114));',
+      ' c = mix(vec3(l), c, 1.14);',
+      ' c = (c - 0.5) * 1.06 + 0.5;',
+      ' c *= mix(vec3(0.97, 1.0, 1.04), vec3(1.04, 1.0, 0.95), smoothstep(0.2, 0.8, l));',
+      ' vec2 cc = (vUv - 0.5) * vec2(res.x / res.y, 1.0);',
+      ' c *= mix(1.0, smoothstep(1.25, 0.45, length(cc)), 0.35);',
+      ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);',
+      '}'].join('\n'),
+  });
 };

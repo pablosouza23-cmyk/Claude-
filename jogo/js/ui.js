@@ -50,7 +50,11 @@ const ICON = {
   smile: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zM8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM12 17.5c2.3 0 4.2-1.5 5-3.5H7c.8 2 2.7 3.5 5 3.5z"/>',
 };
 // nomes dos personagens que dá para escolher
-const SKINS = [['heroi', 'Cacheado'], ['swat', 'SWAT'], ['soldado', 'Soldado'], ['soldado2', 'Sargento'], ['bone', 'Boné'], ['camisa', 'Camiseta'], ['jeans', 'Jeans'], ['soldada', 'Soldada'], ['carrasco', 'Carrasco'], ['craque', 'Craque 10']];
+const SKINS = [['heroi', 'Cacheado'], ['swat', 'SWAT'], ['soldado', 'Soldado'], ['soldado2', 'Sargento'], ['bone', 'Boné'], ['camisa', 'Camiseta'], ['jeans', 'Jeans'], ['soldada', 'Soldada'], ['carrasco', 'Carrasco'], ['craque', 'Craque 10'],
+  ['cm_tropical', 'Camisa Tropical'], ['cm_oceano', 'Camisa Oceano'], ['cm_vulcao', 'Camisa Vulcão'], ['cm_floresta', 'Camisa Floresta'], ['cm_neon', 'Camisa Neon'],
+  ['cm_areia', 'Camisa Areia'], ['cm_gelo', 'Camisa Gelo'], ['cm_noite', 'Camisa Noite'], ['cm_rosa', 'Camisa Rosa Choque'], ['cm_listrada', 'Camisa Listrada'],
+  ['cj_artico', 'Conjunto Ártico'], ['cj_deserto', 'Conjunto Deserto'], ['cj_urbano', 'Conjunto Urbano'], ['cj_carmesim', 'Conjunto Carmesim'], ['cj_real', 'Conjunto Real'],
+  ['cj_cyber', 'Conjunto Cyber'], ['cj_selva', 'Conjunto Selva'], ['cj_oceano', 'Conjunto Oceano'], ['cj_sombra', 'Conjunto Sombra'], ['cj_lava', 'Conjunto Lava']];
 const skinName = k => (SKINS.find(x => x[0] === k) || SKINS[0])[1];
 // emotes (animações de captura de movimento): [clipe, nome, ícone, duração máx.]
 const EMOTES = [['dance', 'Dança', '🕺', 8], ['dance2', 'Dança louca', '🤪', 8], ['dance3', 'Passinho', '🔥', 8], ['jamal', 'Passinho do Jamal', '🇧🇷', 8.6], ['dance4', 'Balanço', '🎶', 8],
@@ -714,7 +718,7 @@ function goMenu() {
   G.ads = false; G.nearWin = null; G.sprint = false;
   H.scope.classList.remove('show'); H.reticle.innerHTML = ''; H.cache.sight = '';
   if (G.gelAim) releaseGelAim(true);
-  G.state = 'menu';
+  G.state = 'menu'; G.training = false;
   H.hud.classList.add('hidden'); H.touch.classList.add('hidden');
   setupShowcase();
   G.show.ch.root.visible = true;
@@ -814,6 +818,7 @@ function startMatch(msg) {
   // sala de espera antes do avião
   G.dropArgs = msg ? [msg.ang, msg.side] : [Math.random() * Math.PI * 2, Math.random() - 0.5];
   startWaiting(msg ? U.rng(msg.seed + 11) : Math.random);
+  const training = G.training && !msg;
   G.state = 'play';
   H.hud.classList.remove('hidden');
   H.touch.classList.toggle('hidden', !isTouch);
@@ -822,6 +827,7 @@ function startMatch(msg) {
   H.jumpHint.classList.remove('show');
   onResize();
   warmup();
+  if (training) setupTraining();
 }
 
 // pré-aquece: monta os modelos de todos os itens e compila todos os shaders antes de jogar,
@@ -1062,7 +1068,7 @@ const SETTINGS_UI = {
     { k: 'sens4x', label: 'Luneta 4x (precisão)', type: 'range', min: 0.1, max: 3, step: 0.05, show: v => Math.round(v * 100) + '%' },
   ],
   graficos: [
-    { k: 'quality', label: 'Qualidade gráfica', type: 'seg', opts: [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta']] },
+    { k: 'quality', label: 'Qualidade gráfica', type: 'seg', opts: [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta'], ['ultra', 'Ultra (PC)']] },
     { k: 'fx', label: 'Estilo da imagem', type: 'seg', opts: [['normal', 'Normal'], ['bodycam', 'Bodycam']] },
     { k: 'dynRes', label: 'Resolução automática (evita travar)', type: 'toggle' },
     { k: 'fps', label: 'Mostrar FPS', type: 'toggle' },
@@ -1377,7 +1383,8 @@ function initScreens() {
     if (NET.on()) { if (NET.isHost()) NET.hostStart(); else notify('info', 'Esperando o líder do grupo iniciar a partida'); return; }
     showScreen('modeScr'); LOB.renderMode();
   });
-  click('mdSolo', () => goLobby());
+  click('mdSolo', () => { G.training = false; goLobby(); });
+  click('mdTrain', () => { G.training = true; beginMatch(); });
   click('mdCreate', () => { NET.createRoom(); openRoom(); });
   click('mdJoin', () => { showScreen('joinScr'); NET.setStatus(''); setTimeout(() => $('joinCode').focus(), 50); });
   click('mdBack', () => goMenu());
@@ -1505,8 +1512,8 @@ function frame(now) {
   }
   updateCamera(G.state === 'pause' ? 0 : dt);
   if (G.state === 'play') updateHUD(dt);
-  const bodycam = G.settings.fx === 'bodycam';
-  if (bodycam) POST.begin(renderer);
+  const bodycam = G.settings.fx === 'bodycam', cine = !bodycam && G.settings.quality === 'ultra';
+  if (bodycam || cine) POST.begin(renderer);
   if (isTouch && renderer.shadowMap.enabled) { PERF.sh = (PERF.sh + 1) % 2; if (!PERF.sh) renderer.shadowMap.needsUpdate = true; }
   renderer.render(scene, camera);
   // a arma da mira (1ª pessoa) só aparece dentro da partida
@@ -1517,7 +1524,7 @@ function frame(now) {
     renderer.render(fpScene, fpCam);
     renderer.autoClear = true;
   }
-  if (bodycam) POST.end(renderer, performance.now() / 1000);
+  if (bodycam || cine) POST.end(renderer, performance.now() / 1000, cine);
 }
 
 // ------------------------------------------------------------------ carregamento

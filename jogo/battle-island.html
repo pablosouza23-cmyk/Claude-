@@ -995,7 +995,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
   <div id="gelHint" class="hidden">Arraste para girar e afastar · solte para colocar o gel</div>
   <button id="vaultBtn" class="hidden"><span data-icon="jump"></span>PULAR JANELA</button>
   <button id="useBtn" class="hidden"></button>
-  <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha · R recarrega · E pegar · Q granada · G gel (segure, mire e solte) · I inspeciona a arma · Shift corre · Espaço perto da janela pula a janela · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · roda do mouse troca a arma · Esc pausa</div>
+  <div id="keysHint">WASD andar · mouse mira · clique atira · botão dir. mira · Espaço pula · C agacha (correndo: desliza) · R recarrega · E pegar · Q granada · G gel (segure, mire e solte) · I inspeciona a arma · Shift corre · Espaço perto da janela pula a janela · 5 kit · 1/2/3/4 armas · Tab inventário · M mapa · roda do mouse troca a arma · Esc pausa</div>
   <div id="fps" class="hidden"></div>
 </div>
 <!-- luneta: fica embaixo dos botões de toque (que continuam visíveis e clicáveis) -->
@@ -1012,7 +1012,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
       </g>
       <g stroke="#050505" stroke-width=".55">
         <path d="M-34 0H34M0 -100V34"/>
-        <path d="M-24 -2.2v4.7M-18 -1.4v2.8M-12 -2.2v4.7M-6 -1.4v2.8M6 -1.4v2.8M12 -2.2v4.7M18 -1.4v2.8M24 -2.2v4.7M-2.2 -24h4.4M-1.4 -18h2.8M-2.2 -12h4.4M-1.4 -6h2.8"/>
+        <path d="M-24 -2.2v4.8M-18 -1.4v2.8M-12 -2.2v4.8M-6 -1.4v2.8M6 -1.4v2.8M12 -2.2v4.8M18 -1.4v2.8M24 -2.2v4.8M-2.2 -24h4.4M-1.4 -18h2.8M-2.2 -12h4.4M-1.4 -6h2.8"/>
         <path d="M-5 8h10M-4 14h8M-3 20h6M-2 26h4" stroke-width=".7"/>
       </g>
       <g fill="#050505" font-size="3.4" font-family="sans-serif"><text x="6.5" y="9.2">1</text><text x="5.5" y="15.2">2</text><text x="4.5" y="21.2">3</text><text x="3.5" y="27.2">4</text></g>
@@ -1080,7 +1080,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <button id="mPlay" class="playBtn"><b>INICIAR</b><small>SOLO · DUPLA · TRIO · SQUAD</small></button>
   </div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v4.7</div>
+  <div class="ver">v4.8</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1179,6 +1179,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <div id="csSizes" class="csSizes hidden"></div>
     <div id="brSizes" class="csSizes brSizes"></div>
     <button id="mdSolo" class="modeCard"><i data-icon="person"></i><div><b id="mdSoloB">SOLO</b><small id="mdSoloTxt">Você contra 24 bots</small></div></button>
+    <button id="mdTrain" class="modeCard"><i data-icon="aim"></i><div><b>TREINAMENTO</b><small>Campo de tiro: todas as armas, alvos e munição infinita</small></div></button>
     <button id="mdCreate" class="modeCard hot"><i data-icon="users"></i><div><b>CRIAR SALA</b><small>Jogue com os amigos: mande o código</small></div></button>
     <button id="mdJoin" class="modeCard"><i data-icon="enter"></i><div><b>ENTRAR NA SALA</b><small>Digite o código que o amigo mandou</small></div></button>
     <button id="mdBack" class="mBtn ghost">VOLTAR</button>
@@ -1352,7 +1353,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v4.7 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
+  <div class="ldFoot">v4.8 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -3324,7 +3325,7 @@ W.buildGrass = function (scene, quality) {
   const counts = { baixa: 3200, media: 7000, alta: 12000 };
   // no celular, menos tufos de grama (é o que mais pesa no chão)
   W.grassN = Math.round((counts[quality] || 7000) * (typeof isTouch !== 'undefined' && isTouch ? 0.65 : 1));
-  W.grassSize = quality === 'baixa' ? 32 : quality === 'alta' ? 70 : 60;
+  W.grassSize = quality === 'baixa' ? 32 : quality === 'ultra' ? 95 : quality === 'alta' ? 70 : 60;
   const blade = new THREE.BufferGeometry();
   const v = [];
   // tufo de 5 folhas curvas (2 triângulos cada)
@@ -4465,7 +4466,7 @@ WPN.studioEnv = function () {
 };
 
 // celular e qualidade baixa/média: material padrão (sem a camada extra de verniz, que dobra o custo do brilho)
-WPN.lite = () => (typeof isTouch !== 'undefined' && isTouch) || (typeof G !== 'undefined' && G.settings && G.settings.quality !== 'alta');
+WPN.lite = () => (typeof isTouch !== 'undefined' && isTouch) || (typeof G !== 'undefined' && G.settings && G.settings.quality !== 'alta' && G.settings.quality !== 'ultra');
 WPN.physMat = function (o) {
   if (!WPN.lite()) return new THREE.MeshPhysicalMaterial(o);
   delete o.clearcoat; delete o.clearcoatRoughness;
@@ -4622,6 +4623,15 @@ CH.AV = {
   // jogador de futebol original: camisa amarela com detalhes verdes, calção azul, número 10 e nome CRAQUE
   craque: { base: 'bone', kit: { cell: 'm022_body', name: 'CRAQUE', num: '10', sleeve: [0.42, 0.86], cuff: 0.79, front: [0.56, 0.56], back: [0.5, 0.31, 0.2] } },
 };
+// 10 camisas (molde do Boné) e 10 conjuntos (roupa inteira recolorida), todos originais do jogo
+const KIT0 = { cell: 'm022_body', sleeve: [0.42, 0.86], cuff: 0.79, front: [0.56, 0.56], back: [0.5, 0.31, 0.2] };
+const SHIRTS = [['cm_tropical', [255, 140, 0], [255, 220, 0], [30, 30, 30]], ['cm_oceano', [20, 110, 200], [255, 255, 255], [20, 40, 90]], ['cm_vulcao', [200, 30, 30], [30, 30, 30], [40, 40, 40]],
+  ['cm_floresta', [40, 120, 50], [230, 200, 60], [60, 50, 30]], ['cm_neon', [170, 40, 220], [40, 240, 255], [20, 20, 40]], ['cm_areia', [220, 195, 140], [120, 80, 40], [90, 70, 50]],
+  ['cm_gelo', [200, 235, 255], [60, 150, 230], [220, 230, 240]], ['cm_noite', [25, 25, 35], [255, 200, 0], [25, 25, 35]], ['cm_rosa', [255, 80, 160], [255, 255, 255], [60, 30, 60]], ['cm_listrada', [245, 245, 245], [20, 60, 160], [20, 40, 90], [8, [30, 70, 190]]]];
+for (const s of SHIRTS) CH.AV[s[0]] = { base: 'bone', lazy: true, kit: Object.assign({}, KIT0, { shirt: s[1], cuffC: s[2], pants: s[3], stripe: s[4] }) };
+const OUTFITS = [['cj_artico', 'soldado', [235, 240, 250]], ['cj_deserto', 'soldado2', [205, 175, 115]], ['cj_urbano', 'swat', [95, 100, 115]], ['cj_carmesim', 'jeans', [175, 30, 40]], ['cj_real', 'soldada', [215, 170, 45]],
+  ['cj_cyber', 'swat', [90, 45, 210]], ['cj_selva', 'soldado', [65, 115, 45]], ['cj_oceano', 'camisa', [30, 95, 185]], ['cj_sombra', 'heroi', [38, 38, 44]], ['cj_lava', 'jeans', [235, 95, 25]]];
+for (const o of OUTFITS) CH.AV[o[0]] = { base: o[1], lazy: true, grade: { tint: o[2] } };
 CH.PLAYER_PAL = 'heroi';
 CH.BOT_PALS = ['swat', 'soldado', 'bone', 'camisa', 'soldado2', 'jeans', 'soldada', 'swat', 'bone', 'soldado'];
 CH.data = {};
@@ -4723,7 +4733,7 @@ CH.load = async function (onStep) {
     CH.data[k] = av;
     if (onStep) onStep((i + 1) / keys.length);
   }
-  for (const k in CH.AV) if (CH.AV[k].base && CH.data[CH.AV[k].base]) CH.data[k] = CH.variant(k, CH.AV[k]);
+  for (const k in CH.AV) if (CH.AV[k].base && !CH.AV[k].lazy && CH.data[CH.AV[k].base]) CH.data[k] = CH.variant(k, CH.AV[k]);
   CH.ready = true;
 };
 
@@ -4736,6 +4746,14 @@ CH.grade = function (tex, kind) {
   const d = g.getImageData(0, 0, c.width, c.height), a = d.data;
   for (let i = 0; i < a.length; i += 4) {
     const l = a[i] * 0.3 + a[i + 1] * 0.59 + a[i + 2] * 0.11;
+    if (kind && kind.tint) {
+      // conjunto: roupa ganha a cor nova (com as dobras do tecido), a pele continua igual
+      const R = a[i], Gc = a[i + 1], B = a[i + 2];
+      if (R > Gc + 18 && R > B + 30 && l > 70) continue;
+      const k = 0.32 + Math.min(1, l / 200) * 0.85, T = kind.tint;
+      a[i] = Math.min(255, T[0] * k); a[i + 1] = Math.min(255, T[1] * k); a[i + 2] = Math.min(255, T[2] * k);
+      continue;
+    }
     const n = (Math.random() - 0.5) * 18; // sujeira
     a[i] = Math.max(0, Math.min(255, (l * 0.86 + a[i] * 0.14) * 0.92 + n));
     a[i + 1] = Math.max(0, Math.min(255, (l * 0.86 + a[i + 1] * 0.14) * 0.94 + n));
@@ -4760,11 +4778,12 @@ CH.kitTex = function (tex, cell, kit) {
     const pants = (u < 0.3 || u > 0.7) && v < sv[0] - 0.01;
     if (shirt || sleeve) {
       // cor lisa (some o desenho da roupa original), só com um pouco das dobras do tecido
-      const k = 0.78 + Math.min(1, l / 255) * 0.3;
-      if (sleeve && v > kit.cuff) tint(i, 0, 150, 90, k); else tint(i, 250, 214, 30, k);
+      const k = 0.78 + Math.min(1, l / 255) * 0.3, S1 = kit.shirt || [250, 214, 30], C1 = kit.cuffC || [0, 150, 90];
+      const st = kit.stripe && shirt && Math.floor(u * kit.stripe[0]) % 2 === 1;
+      if (sleeve && v > kit.cuff) tint(i, C1[0], C1[1], C1[2], k); else if (st) tint(i, kit.stripe[1][0], kit.stripe[1][1], kit.stripe[1][2], k); else tint(i, S1[0], S1[1], S1[2], k);
     } else if (pants) {
-      const k = 0.55 + Math.min(1, l / 150) * 0.6;
-      tint(i, 32, 72, 205, k);
+      const k = 0.55 + Math.min(1, l / 150) * 0.6, P1 = kit.pants || [32, 72, 205];
+      tint(i, P1[0], P1[1], P1[2], k);
     }
   }
   g.putImageData(d, 0, 0);
@@ -4775,9 +4794,11 @@ CH.kitTex = function (tex, cell, kit) {
     g.lineWidth = Math.max(2, S * 0.006); g.strokeStyle = '#0a7a4a'; g.fillStyle = '#1636a8';
     g.strokeText(s, 0, 0); g.fillText(s, 0, 0); g.restore();
   };
-  txt(kit.num, kit.front[0], kit.front[1], 0.075, false);
-  txt(kit.name, kit.back[0], kit.back[1], 0.045, true);
-  txt(kit.num, kit.back[0], kit.back[2], 0.13, true);
+  if (kit.num) {
+    txt(kit.num, kit.front[0], kit.front[1], 0.075, false);
+    txt(kit.name, kit.back[0], kit.back[1], 0.045, true);
+    txt(kit.num, kit.back[0], kit.back[2], 0.13, true);
+  }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.flipY = tex.flipY;
   return t;
 };
@@ -5061,6 +5082,7 @@ CH.chuteLines = function (y0) {
 // ---------- personagem ----------
 // hq = armas com o modelo detalhado (jogador local); os outros usam a versão leve
 CH.make = function (key, hq) {
+  if (!CH.data[key] && CH.AV[key] && CH.AV[key].base && CH.data[CH.AV[key].base]) CH.data[key] = CH.variant(key, CH.AV[key]);
   const av = CH.data[key] || CH.data.heroi;
   const mats = av.mats.map(m => m.clone());
   const r = CH.rig(av, mats);
@@ -5484,14 +5506,15 @@ CH.animate = function (ch, dt, s) {
     } else {
       _gunE.set(pitch * 0.98 - rc * 0.1 - dk * 1.1, face, dk * 0.6);
       _gunQ.setFromEuler(_gunE);
-      _gunPos.copy(chest).addScaledVector(_bodyR, sx * (1 - ie * 0.35)).addScaledVector(UP, sy - 0.12 - dk * 0.28 + ie * 0.06);
-      _tmp.set(0, -0.02, sz - rc * 0.05 - ie * 0.04).applyQuaternion(_gunQ);
+      _gunPos.copy(chest).addScaledVector(_bodyR, sx * (1 - ie * 0.45)).addScaledVector(UP, sy - 0.12 - dk * 0.28 + ie * 0.03);
+      // inspecionando: a arma vem para perto do peito, assim as duas mãos alcançam o cabo e a telha
+      _tmp.set(0, -0.02, sz - rc * 0.05 - ie * 0.14).applyQuaternion(_gunQ);
       _gunPos.add(_tmp);
     }
     if (ie > 0) {
       // gira pouco em volta do próprio cano (mostra um lado, depois o outro): as mãos continuam no cabo e na telha
-      const roll = it < 0.5 ? U.smooth(0.1, 0.4, it) * 0.62 : 0.62 - U.smooth(0.5, 0.8, it) * 1.1;
-      _gunE.set(0.24 + Math.sin(it * 6) * 0.02, s.gunAt ? -0.3 : 0.42, roll); _gunE.x *= ie; _gunE.y *= ie; _gunE.z *= ie;
+      const rm = s.gunAt ? 1 : 0.55, roll = (it < 0.5 ? U.smooth(0.1, 0.4, it) * 0.62 : 0.62 - U.smooth(0.5, 0.8, it) * 1.1) * rm;
+      _gunE.set((0.24 + Math.sin(it * 6) * 0.02) * (s.gunAt ? 1 : 0.6), s.gunAt ? -0.3 : 0.22, roll); _gunE.x *= ie; _gunE.y *= ie; _gunE.z *= ie;
       _q1.setFromEuler(_gunE); _gunQ.multiply(_q1);
     }
     // o grupo da arma é filho do corpo: converte para o espaço local
@@ -6142,6 +6165,8 @@ function autoQuality() {
 
 function qualityDPR(q) {
   const dpr = window.devicePixelRatio || 1;
+  // ultra (PC): desenha acima da resolução da tela (super-amostragem) para ficar bem nítido
+  if (q === 'ultra') return isTouch ? Math.min(dpr, 2) : Math.min(Math.max(dpr, 1.5), 2);
   return q === 'baixa' ? Math.min(dpr, 1) * 0.9 : q === 'media' ? Math.min(dpr, isTouch ? 1.1 : 1.3) : Math.min(dpr, isTouch ? 1.5 : 2);
 }
 // troca a qualidade sem sair do jogo: resolução e sombras mudam na hora; texturas e grama na próxima abertura
@@ -6150,12 +6175,12 @@ function applyQuality() {
   G.baseDPR = qualityDPR(q);
   renderer.setPixelRatio(G.baseDPR * (G.dprScale || 1));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
-  renderer.shadowMap.type = q === 'alta' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+  renderer.shadowMap.type = q === 'alta' || q === 'ultra' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   if (renderer.shadowMap.enabled !== sh || sun.castShadow !== sh) {
     renderer.shadowMap.enabled = sh; sun.castShadow = sh;
     scene.traverse(o => { const m = o.material; if (m) for (const x of Array.isArray(m) ? m : [m]) x.needsUpdate = true; });
   }
-  const sz = q === 'alta' ? (isTouch ? 1024 : 2048) : isTouch ? 768 : 1024;
+  const sz = q === 'ultra' ? (isTouch ? 2048 : 4096) : q === 'alta' ? (isTouch ? 1024 : 2048) : isTouch ? 768 : 1024;
   if (sun.shadow.mapSize.x !== sz) { sun.shadow.mapSize.set(sz, sz); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
 }
 function initRenderer() {
@@ -6164,7 +6189,7 @@ function initRenderer() {
   const q = G.settings.quality;
   const canvas = $('c');
   try {
-    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: q === 'alta', powerPreference: 'high-performance' });
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: q === 'alta' || q === 'ultra', powerPreference: 'high-performance' });
   } catch (e) {
     $('errorBox').textContent = 'Seu navegador não conseguiu iniciar o WebGL. Ative a aceleração de hardware no Chrome e tente de novo.';
     $('errorBox').classList.remove('hidden');
@@ -6176,7 +6201,7 @@ function initRenderer() {
   renderer.setPixelRatio(G.baseDPR);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.shadowMap.enabled = q !== 'baixa';
-  renderer.shadowMap.type = q === 'alta' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+  renderer.shadowMap.type = q === 'alta' || q === 'ultra' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.92;
 
@@ -6190,22 +6215,23 @@ function initRenderer() {
   scene.add(hemi);
   sun = new THREE.DirectionalLight(0xfff0d8, 2.9);
   sun.castShadow = renderer.shadowMap.enabled;
-  const sz = q === 'alta' ? (isTouch ? 1024 : 2048) : isTouch ? 768 : 1024;
+  const sz = q === 'ultra' ? (isTouch ? 2048 : 4096) : q === 'alta' ? (isTouch ? 1024 : 2048) : isTouch ? 768 : 1024;
   sun.shadow.mapSize.set(sz, sz);
   const sc = sun.shadow.camera;
-  sc.left = -34; sc.right = 34; sc.top = 34; sc.bottom = -34; sc.near = 1; sc.far = 160;
+  const sr = q === 'ultra' ? 48 : 34;
+  sc.left = -sr; sc.right = sr; sc.top = sr; sc.bottom = -sr; sc.near = 1; sc.far = 180;
   sun.shadow.camera.layers.enable(1); // sombras das árvores próximas (camada 1)
   sun.shadow.bias = -0.0008;
   sun.shadow.normalBias = 0.04;
   scene.add(sun); scene.add(sun.target);
   G.sunDir = new V3(-0.55, 1, 0.42).normalize();
 
-  TX.aniso = Math.min(q === 'baixa' ? 2 : isTouch ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
+  TX.aniso = Math.min(q === 'ultra' ? 16 : q === 'baixa' ? 2 : isTouch ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
   // texturas das armas e skins menores no celular (menos memória e carregamento mais rápido)
-  if (isTouch || q !== 'alta') for (const k of ['gunMetal', 'gunWood', 'skinGold']) TX.SIZE[k] = q === 'baixa' ? 256 : 512;
+  if (isTouch || (q !== 'alta' && q !== 'ultra')) for (const k of ['gunMetal', 'gunWood', 'skinGold']) TX.SIZE[k] = q === 'baixa' ? 256 : 512;
   // sombras no celular: redesenhadas a cada 2 quadros (o sol quase não muda de um quadro para o outro)
   if (isTouch) renderer.shadowMap.autoUpdate = false;
-  if (q === 'alta') for (const k of ['ground', 'plaster', 'roof', 'wood', 'stone', 'metal', 'plain']) TX.SIZE[k] = Math.min(1024, (TX.SIZE[k] || 256) * 2);
+  if (q === 'alta' || q === 'ultra') for (const k of ['ground', 'plaster', 'roof', 'wood', 'stone', 'metal', 'plain']) TX.SIZE[k] = Math.min(q === 'ultra' ? 2048 : 1024, (TX.SIZE[k] || 256) * (q === 'ultra' ? 4 : 2));
   window.addEventListener('resize', onResize);
 }
 
@@ -6402,7 +6428,7 @@ function punch(a) {
 
 function damageActor(a, dmg, attacker, head, weapon) {
   if (!a.alive) return;
-  if (G.wait) return; // sala de espera: os tiros não machucam
+  if (G.wait && !G.wait.training) return; // sala de espera: os tiros não machucam (no treino machucam os alvos)
   if (attacker && attacker !== a && CS.ally(attacker, a)) return; // sem fogo amigo no Contra Squad
   // no multiplayer o cliente só avisa o anfitrião dos acertos que ele mesmo fez
   if (NET.isClient()) {
@@ -7109,7 +7135,7 @@ function nearestWeaponLoot(a, maxD) {
 
 function playerPickup() {
   const p = G.player;
-  if (G.wait) { toast('Os itens valem depois do salto'); return; }
+  if (G.wait && !G.wait.training) { toast('Os itens valem depois do salto'); return; }
   const it = nearestWeaponLoot(p, 2.2);
   if (!it) return;
   if (NET.isClient()) { NET.requestTake(it); return; }
@@ -7127,7 +7153,7 @@ function updateLoot(dt) {
   for (let i = G.loot.length - 1; i >= 0; i--) {
     const it = G.loot[i];
     it.t += dt;
-    if (G.wait) continue; // na sala de espera ninguém pega os itens do mapa
+    if (G.wait && !G.wait.training) continue; // na sala de espera ninguém pega os itens do mapa
     for (const a of G.actors) {
       if (!a.alive || a.phase !== 'ground' || a.remote) continue;
       if (it.byHuman && !a.isPlayer && !a.human) continue; // bots não pegam o que um jogador largou
@@ -7436,6 +7462,8 @@ function placeWaiting(ac, rnd) {
 }
 function updateWaiting(dt) {
   const w = G.wait;
+  // treinamento: não acaba, munição infinita e vida cheia
+  if (w.training) { for (const s of G.player.slots) if (s) s.reserve = Math.max(s.reserve || 0, 300); G.player.hp = G.player.maxHp; return; }
   w.t -= dt;
   if (w.t > 0) return;
   // fim da espera: limpa tudo e começa o voo
@@ -7780,8 +7808,13 @@ function updatePlayer(dt) {
   if (G.sprint && Math.hypot(mv.mx, mv.my) < 0.2) mv.my = 1;
   const sprinting = (G.sprint || holdRun) && mv.my > 0.4 && !p.aimOn && !p.crouch && p.healT <= 0 && G.time - p.lastFire > 0.4 && !p.nadeHand;
   const sy = Math.sin(G.yaw), cy = Math.cos(G.yaw);
-  const wx = -sy * mv.my + cy * mv.mx, wz = -cy * mv.my - sy * mv.mx;
-  if (consume('crouch', 'KeyC')) p.crouch = !p.crouch;
+  let wx = -sy * mv.my + cy * mv.mx, wz = -cy * mv.my - sy * mv.mx;
+  // agachar correndo = deslizar (como no Blood Strike): sai rápido, perde velocidade e termina agachado
+  if (consume('crouch', 'KeyC')) {
+    if (p.wasSprint && p.onGround && !(p.slideT > 0)) { const l = Math.hypot(wx, wz) || 1; p.slideT = 0.8; p.slideX = wx / l; p.slideZ = wz / l; p.crouch = true; SND.play('step', 1.4); }
+    else p.crouch = !p.crouch;
+  }
+  p.wasSprint = sprinting;
   let maxS = (p.crouch ? 2.6 : 6.2) * (curW(p) && curW(p).slow ? curW(p).slow : 1) * (sprinting ? 1.38 : 1);
   if (p.aimOn) maxS = Math.min(maxS, 3.2);
   if (p.healT > 0) maxS = 2.2;
@@ -7789,6 +7822,11 @@ function updatePlayer(dt) {
   G.nearWin = p.onGround && !p.inspect ? nearWindow(p) : null;
   const jumpNow = consume('jump', 'Space'), vaultNow = consume('vault');
   if (G.nearWin && (vaultNow || jumpNow)) { startVault(p, G.nearWin); updateVault(p, dt); return; }
+  if (p.slideT > 0) {
+    p.slideT -= dt;
+    if (jumpNow || p.aimOn) p.slideT = 0;
+    else { wx = p.slideX; wz = p.slideZ; maxS = 3.5 + 8.5 * Math.max(0, p.slideT / 0.8); G.shake = Math.max(G.shake || 0, 0.04); }
+  }
   moveActor(p, wx, wz, maxS, dt, jumpNow);
 
   // ações
@@ -8038,6 +8076,8 @@ function botAirControl(b, dt) {
 
 function updateBot(b, dt) {
   if (b.remote) { updatePuppet(b, dt); return; }
+  // treinamento: alvo abatido volta em 2,5 s
+  if (G.wait && G.wait.training && !b.alive) { b.rsT = (b.rsT || 0) + dt; if (b.rsT > 2.5) { b.rsT = 0; b.alive = true; b.hp = b.maxHp; placeWaiting(b, Math.random); } }
   if (b.phase === 'plane') return;
   const near = b.pos.distanceTo(G.player.pos);
   if (!b.alive) { if (near < 120) CH.animate(b.ch, dt, { dead: true }); return; }
@@ -8139,6 +8179,20 @@ function botShoot(b, t, dist) {
 }
 
 
+
+// ------------------------------------------------------------------ treinamento
+// campo de tiro na ilha: os bots são alvos que andam e renascem, todas as armas ficam no chão, sem zona e sem fim
+function setupTraining() {
+  const P = G.player, w = G.wait;
+  w.training = true; w.t = 1e9;
+  G.botDmgScale = 0;
+  H.waitBox.classList.add('hidden');
+  giveWeapon(P, 'FUZIL'); giveWeapon(P, 'PRECISAO'); selectSlot(P, 0);
+  P.kits = 5; P.gel = 8; P.nades = 4;
+  WPN.ORDER.forEach((id, i) => { const an = i / WPN.ORDER.length * Math.PI * 2; spawnLoot('w:' + id, P.pos.x + Math.cos(an) * 3.2, P.pos.z + Math.sin(an) * 3.2); });
+  bigText('TREINAMENTO');
+  notify('info', 'Treinamento: atire nos alvos, troque de arma no chão e teste o deslize (correr + agachar). Pause para sair.');
+}
 
 </script>
 <script>
@@ -9167,7 +9221,7 @@ POST.ensure = function (renderer) {
     const gl2 = renderer.capabilities.isWebGL2;
     POST.rt = new THREE.WebGLRenderTarget(w, h, {
       type: gl2 && renderer.extensions.has('EXT_color_buffer_float') ? THREE.HalfFloatType : THREE.UnsignedByteType,
-      samples: gl2 && G.settings.quality === 'alta' ? 4 : 0,
+      samples: gl2 && (G.settings.quality === 'alta' || G.settings.quality === 'ultra') ? 4 : 0,
       depthBuffer: true,
     });
     POST.mat = new THREE.ShaderMaterial({
@@ -9215,10 +9269,45 @@ POST.ensure = function (renderer) {
 };
 
 POST.begin = function (renderer) { POST.ensure(renderer); renderer.setRenderTarget(POST.rt); renderer.clear(); };
-POST.end = function (renderer, t) {
+POST.end = function (renderer, t, cine) {
   renderer.setRenderTarget(null);
   POST.mat.uniforms.time.value = t;
+  if (cine) { POST.cineMat = POST.cineMat || POST.makeCine(); POST.cineMat.uniforms.res.value.copy(POST.mat.uniforms.res.value); POST.quad.material = POST.cineMat; } else POST.quad.material = POST.mat;
   renderer.render(POST.scene, POST.cam);
+};
+
+// Ultra (PC): filtro de cinema leve — brilho suave nas luzes fortes, cor mais viva e contraste, vinheta fraca e nitidez
+POST.makeCine = function () {
+  return new THREE.ShaderMaterial({
+    depthTest: false, depthWrite: false,
+    uniforms: { tDiffuse: { value: POST.rt.texture }, res: { value: new THREE.Vector2(1, 1) } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: [
+      'uniform sampler2D tDiffuse; uniform vec2 res; varying vec2 vUv;',
+      'vec3 tap(vec2 o){ vec3 c = texture2D(tDiffuse, vUv + o).rgb; return max(c - 0.9, 0.0); }',
+      'void main(){',
+      ' vec2 px = 1.0 / res;',
+      ' vec3 col = texture2D(tDiffuse, vUv).rgb;',
+      // nitidez (realça o contorno das texturas depois do anti-serrilhado)
+      ' vec3 nb = texture2D(tDiffuse, vUv + vec2(px.x, 0.0)).rgb + texture2D(tDiffuse, vUv - vec2(px.x, 0.0)).rgb + texture2D(tDiffuse, vUv + vec2(0.0, px.y)).rgb + texture2D(tDiffuse, vUv - vec2(0.0, px.y)).rgb;',
+      ' col = max(col + (col * 4.0 - nb) * 0.12, 0.0);',
+      // brilho (bloom) em dois raios, só do que passa do branco
+      ' vec3 b = vec3(0.0);',
+      ' for (int i = 0; i < 8; i++) { float a = float(i) * 0.785398; vec2 d = vec2(cos(a), sin(a)); b += tap(d * px * 6.0) + tap(d * px * 14.0) * 0.6; }',
+      ' col += b * 0.07;',
+      ' gl_FragColor = vec4(col, 1.0);',
+      '#include <tonemapping_fragment>',
+      '#include <colorspace_fragment>',
+      ' vec3 c = gl_FragColor.rgb;',
+      ' float l = dot(c, vec3(0.299, 0.587, 0.114));',
+      ' c = mix(vec3(l), c, 1.14);',
+      ' c = (c - 0.5) * 1.06 + 0.5;',
+      ' c *= mix(vec3(0.97, 1.0, 1.04), vec3(1.04, 1.0, 0.95), smoothstep(0.2, 0.8, l));',
+      ' vec2 cc = (vUv - 0.5) * vec2(res.x / res.y, 1.0);',
+      ' c *= mix(1.0, smoothstep(1.25, 0.45, length(cc)), 0.35);',
+      ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);',
+      '}'].join('\n'),
+  });
 };
 
 </script>
@@ -9280,6 +9369,12 @@ const SHOP = {
     carrasco: { price: ['gems', 199], rare: 'lendario' },
     // exclusiva: não está à venda, só com código de resgate
     craque: { price: null, rare: 'diamante', excl: true },
+    cm_tropical: { price: ['gold', 800], rare: 'raro' }, cm_oceano: { price: ['gold', 800], rare: 'raro' }, cm_vulcao: { price: ['gold', 1200], rare: 'epico' }, cm_floresta: { price: ['gold', 800], rare: 'raro' },
+    cm_neon: { price: ['gems', 40], rare: 'epico' }, cm_areia: { price: ['gold', 600], rare: 'comum' }, cm_gelo: { price: ['gems', 40], rare: 'epico' }, cm_noite: { price: ['gold', 1200], rare: 'epico' },
+    cm_rosa: { price: ['gold', 800], rare: 'raro' }, cm_listrada: { price: ['gold', 1000], rare: 'raro' },
+    cj_artico: { price: ['gems', 80], rare: 'lendario' }, cj_deserto: { price: ['gold', 2500], rare: 'epico' }, cj_urbano: { price: ['gold', 2500], rare: 'epico' }, cj_carmesim: { price: ['gems', 70], rare: 'lendario' },
+    cj_real: { price: ['gems', 150], rare: 'diamante' }, cj_cyber: { price: ['gems', 100], rare: 'lendario' }, cj_selva: { price: ['gold', 2500], rare: 'epico' }, cj_oceano: { price: ['gems', 60], rare: 'lendario' },
+    cj_sombra: { price: ['gems', 90], rare: 'lendario' }, cj_lava: { price: ['gems', 120], rare: 'diamante' },
   },
   emotes: {
     wave: { price: null, rare: 'comum' }, clap: { price: null, rare: 'comum' }, shrug: { price: null, rare: 'comum' }, dance: { price: null, rare: 'comum' },
@@ -11658,7 +11753,11 @@ const ICON = {
   smile: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zM8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM12 17.5c2.3 0 4.2-1.5 5-3.5H7c.8 2 2.7 3.5 5 3.5z"/>',
 };
 // nomes dos personagens que dá para escolher
-const SKINS = [['heroi', 'Cacheado'], ['swat', 'SWAT'], ['soldado', 'Soldado'], ['soldado2', 'Sargento'], ['bone', 'Boné'], ['camisa', 'Camiseta'], ['jeans', 'Jeans'], ['soldada', 'Soldada'], ['carrasco', 'Carrasco'], ['craque', 'Craque 10']];
+const SKINS = [['heroi', 'Cacheado'], ['swat', 'SWAT'], ['soldado', 'Soldado'], ['soldado2', 'Sargento'], ['bone', 'Boné'], ['camisa', 'Camiseta'], ['jeans', 'Jeans'], ['soldada', 'Soldada'], ['carrasco', 'Carrasco'], ['craque', 'Craque 10'],
+  ['cm_tropical', 'Camisa Tropical'], ['cm_oceano', 'Camisa Oceano'], ['cm_vulcao', 'Camisa Vulcão'], ['cm_floresta', 'Camisa Floresta'], ['cm_neon', 'Camisa Neon'],
+  ['cm_areia', 'Camisa Areia'], ['cm_gelo', 'Camisa Gelo'], ['cm_noite', 'Camisa Noite'], ['cm_rosa', 'Camisa Rosa Choque'], ['cm_listrada', 'Camisa Listrada'],
+  ['cj_artico', 'Conjunto Ártico'], ['cj_deserto', 'Conjunto Deserto'], ['cj_urbano', 'Conjunto Urbano'], ['cj_carmesim', 'Conjunto Carmesim'], ['cj_real', 'Conjunto Real'],
+  ['cj_cyber', 'Conjunto Cyber'], ['cj_selva', 'Conjunto Selva'], ['cj_oceano', 'Conjunto Oceano'], ['cj_sombra', 'Conjunto Sombra'], ['cj_lava', 'Conjunto Lava']];
 const skinName = k => (SKINS.find(x => x[0] === k) || SKINS[0])[1];
 // emotes (animações de captura de movimento): [clipe, nome, ícone, duração máx.]
 const EMOTES = [['dance', 'Dança', '🕺', 8], ['dance2', 'Dança louca', '🤪', 8], ['dance3', 'Passinho', '🔥', 8], ['jamal', 'Passinho do Jamal', '🇧🇷', 8.6], ['dance4', 'Balanço', '🎶', 8],
@@ -12322,7 +12421,7 @@ function goMenu() {
   G.ads = false; G.nearWin = null; G.sprint = false;
   H.scope.classList.remove('show'); H.reticle.innerHTML = ''; H.cache.sight = '';
   if (G.gelAim) releaseGelAim(true);
-  G.state = 'menu';
+  G.state = 'menu'; G.training = false;
   H.hud.classList.add('hidden'); H.touch.classList.add('hidden');
   setupShowcase();
   G.show.ch.root.visible = true;
@@ -12422,6 +12521,7 @@ function startMatch(msg) {
   // sala de espera antes do avião
   G.dropArgs = msg ? [msg.ang, msg.side] : [Math.random() * Math.PI * 2, Math.random() - 0.5];
   startWaiting(msg ? U.rng(msg.seed + 11) : Math.random);
+  const training = G.training && !msg;
   G.state = 'play';
   H.hud.classList.remove('hidden');
   H.touch.classList.toggle('hidden', !isTouch);
@@ -12430,6 +12530,7 @@ function startMatch(msg) {
   H.jumpHint.classList.remove('show');
   onResize();
   warmup();
+  if (training) setupTraining();
 }
 
 // pré-aquece: monta os modelos de todos os itens e compila todos os shaders antes de jogar,
@@ -12670,7 +12771,7 @@ const SETTINGS_UI = {
     { k: 'sens4x', label: 'Luneta 4x (precisão)', type: 'range', min: 0.1, max: 3, step: 0.05, show: v => Math.round(v * 100) + '%' },
   ],
   graficos: [
-    { k: 'quality', label: 'Qualidade gráfica', type: 'seg', opts: [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta']] },
+    { k: 'quality', label: 'Qualidade gráfica', type: 'seg', opts: [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta'], ['ultra', 'Ultra (PC)']] },
     { k: 'fx', label: 'Estilo da imagem', type: 'seg', opts: [['normal', 'Normal'], ['bodycam', 'Bodycam']] },
     { k: 'dynRes', label: 'Resolução automática (evita travar)', type: 'toggle' },
     { k: 'fps', label: 'Mostrar FPS', type: 'toggle' },
@@ -12985,7 +13086,8 @@ function initScreens() {
     if (NET.on()) { if (NET.isHost()) NET.hostStart(); else notify('info', 'Esperando o líder do grupo iniciar a partida'); return; }
     showScreen('modeScr'); LOB.renderMode();
   });
-  click('mdSolo', () => goLobby());
+  click('mdSolo', () => { G.training = false; goLobby(); });
+  click('mdTrain', () => { G.training = true; beginMatch(); });
   click('mdCreate', () => { NET.createRoom(); openRoom(); });
   click('mdJoin', () => { showScreen('joinScr'); NET.setStatus(''); setTimeout(() => $('joinCode').focus(), 50); });
   click('mdBack', () => goMenu());
@@ -13113,8 +13215,8 @@ function frame(now) {
   }
   updateCamera(G.state === 'pause' ? 0 : dt);
   if (G.state === 'play') updateHUD(dt);
-  const bodycam = G.settings.fx === 'bodycam';
-  if (bodycam) POST.begin(renderer);
+  const bodycam = G.settings.fx === 'bodycam', cine = !bodycam && G.settings.quality === 'ultra';
+  if (bodycam || cine) POST.begin(renderer);
   if (isTouch && renderer.shadowMap.enabled) { PERF.sh = (PERF.sh + 1) % 2; if (!PERF.sh) renderer.shadowMap.needsUpdate = true; }
   renderer.render(scene, camera);
   // a arma da mira (1ª pessoa) só aparece dentro da partida
@@ -13125,7 +13227,7 @@ function frame(now) {
     renderer.render(fpScene, fpCam);
     renderer.autoClear = true;
   }
-  if (bodycam) POST.end(renderer, performance.now() / 1000);
+  if (bodycam || cine) POST.end(renderer, performance.now() / 1000, cine);
 }
 
 // ------------------------------------------------------------------ carregamento

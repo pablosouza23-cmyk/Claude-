@@ -55,6 +55,12 @@ const SHOP = {
     carrasco: { price: ['gems', 199], rare: 'lendario' },
     // exclusiva: não está à venda, só com código de resgate
     craque: { price: null, rare: 'diamante', excl: true },
+    cm_tropical: { price: ['gold', 800], rare: 'raro' }, cm_oceano: { price: ['gold', 800], rare: 'raro' }, cm_vulcao: { price: ['gold', 1200], rare: 'epico' }, cm_floresta: { price: ['gold', 800], rare: 'raro' },
+    cm_neon: { price: ['gems', 40], rare: 'epico' }, cm_areia: { price: ['gold', 600], rare: 'comum' }, cm_gelo: { price: ['gems', 40], rare: 'epico' }, cm_noite: { price: ['gold', 1200], rare: 'epico' },
+    cm_rosa: { price: ['gold', 800], rare: 'raro' }, cm_listrada: { price: ['gold', 1000], rare: 'raro' },
+    cj_artico: { price: ['gems', 80], rare: 'lendario' }, cj_deserto: { price: ['gold', 2500], rare: 'epico' }, cj_urbano: { price: ['gold', 2500], rare: 'epico' }, cj_carmesim: { price: ['gems', 70], rare: 'lendario' },
+    cj_real: { price: ['gems', 150], rare: 'diamante' }, cj_cyber: { price: ['gems', 100], rare: 'lendario' }, cj_selva: { price: ['gold', 2500], rare: 'epico' }, cj_oceano: { price: ['gems', 60], rare: 'lendario' },
+    cj_sombra: { price: ['gems', 90], rare: 'lendario' }, cj_lava: { price: ['gems', 120], rare: 'diamante' },
   },
   emotes: {
     wave: { price: null, rare: 'comum' }, clap: { price: null, rare: 'comum' }, shrug: { price: null, rare: 'comum' }, dance: { price: null, rare: 'comum' },

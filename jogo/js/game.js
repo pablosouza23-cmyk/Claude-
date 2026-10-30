@@ -64,6 +64,8 @@ function autoQuality() {
 
 function qualityDPR(q) {
   const dpr = window.devicePixelRatio || 1;
+  // ultra (PC): desenha acima da resolução da tela (super-amostragem) para ficar bem nítido
+  if (q === 'ultra') return isTouch ? Math.min(dpr, 2) : Math.min(Math.max(dpr, 1.5), 2);
   return q === 'baixa' ? Math.min(dpr, 1) * 0.9 : q === 'media' ? Math.min(dpr, isTouch ? 1.1 : 1.3) : Math.min(dpr, isTouch ? 1.5 : 2);
 }
 // troca a qualidade sem sair do jogo: resolução e sombras mudam na hora; texturas e grama na próxima abertura
@@ -72,12 +74,12 @@ function applyQuality() {
   G.baseDPR = qualityDPR(q);
   renderer.setPixelRatio(G.baseDPR * (G.dprScale || 1));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
-  renderer.shadowMap.type = q === 'alta' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+  renderer.shadowMap.type = q === 'alta' || q === 'ultra' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   if (renderer.shadowMap.enabled !== sh || sun.castShadow !== sh) {
     renderer.shadowMap.enabled = sh; sun.castShadow = sh;
     scene.traverse(o => { const m = o.material; if (m) for (const x of Array.isArray(m) ? m : [m]) x.needsUpdate = true; });
   }
-  const sz = q === 'alta' ? (isTouch ? 1024 : 2048) : isTouch ? 768 : 1024;
+  const sz = q === 'ultra' ? (isTouch ? 2048 : 4096) : q === 'alta' ? (isTouch ? 1024 : 2048) : isTouch ? 768 : 1024;
   if (sun.shadow.mapSize.x !== sz) { sun.shadow.mapSize.set(sz, sz); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
 }
 function initRenderer() {
@@ -86,7 +88,7 @@ function initRenderer() {
   const q = G.settings.quality;
   const canvas = $('c');
   try {
-    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: q === 'alta', powerPreference: 'high-performance' });
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: q === 'alta' || q === 'ultra', powerPreference: 'high-performance' });
   } catch (e) {
     $('errorBox').textContent = 'Seu navegador não conseguiu iniciar o WebGL. Ative a aceleração de hardware no Chrome e tente de novo.';
     $('errorBox').classList.remove('hidden');
@@ -98,7 +100,7 @@ function initRenderer() {
   renderer.setPixelRatio(G.baseDPR);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.shadowMap.enabled = q !== 'baixa';
-  renderer.shadowMap.type = q === 'alta' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+  renderer.shadowMap.type = q === 'alta' || q === 'ultra' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.92;
 
@@ -112,22 +114,23 @@ function initRenderer() {
   scene.add(hemi);
   sun = new THREE.DirectionalLight(0xfff0d8, 2.9);
   sun.castShadow = renderer.shadowMap.enabled;
-  const sz = q === 'alta' ? (isTouch ? 1024 : 2048) : isTouch ? 768 : 1024;
+  const sz = q === 'ultra' ? (isTouch ? 2048 : 4096) : q === 'alta' ? (isTouch ? 1024 : 2048) : isTouch ? 768 : 1024;
   sun.shadow.mapSize.set(sz, sz);
   const sc = sun.shadow.camera;
-  sc.left = -34; sc.right = 34; sc.top = 34; sc.bottom = -34; sc.near = 1; sc.far = 160;
+  const sr = q === 'ultra' ? 48 : 34;
+  sc.left = -sr; sc.right = sr; sc.top = sr; sc.bottom = -sr; sc.near = 1; sc.far = 180;
   sun.shadow.camera.layers.enable(1); // sombras das árvores próximas (camada 1)
   sun.shadow.bias = -0.0008;
   sun.shadow.normalBias = 0.04;
   scene.add(sun); scene.add(sun.target);
   G.sunDir = new V3(-0.55, 1, 0.42).normalize();
 
-  TX.aniso = Math.min(q === 'baixa' ? 2 : isTouch ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
+  TX.aniso = Math.min(q === 'ultra' ? 16 : q === 'baixa' ? 2 : isTouch ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
   // texturas das armas e skins menores no celular (menos memória e carregamento mais rápido)
-  if (isTouch || q !== 'alta') for (const k of ['gunMetal', 'gunWood', 'skinGold']) TX.SIZE[k] = q === 'baixa' ? 256 : 512;
+  if (isTouch || (q !== 'alta' && q !== 'ultra')) for (const k of ['gunMetal', 'gunWood', 'skinGold']) TX.SIZE[k] = q === 'baixa' ? 256 : 512;
   // sombras no celular: redesenhadas a cada 2 quadros (o sol quase não muda de um quadro para o outro)
   if (isTouch) renderer.shadowMap.autoUpdate = false;
-  if (q === 'alta') for (const k of ['ground', 'plaster', 'roof', 'wood', 'stone', 'metal', 'plain']) TX.SIZE[k] = Math.min(1024, (TX.SIZE[k] || 256) * 2);
+  if (q === 'alta' || q === 'ultra') for (const k of ['ground', 'plaster', 'roof', 'wood', 'stone', 'metal', 'plain']) TX.SIZE[k] = Math.min(q === 'ultra' ? 2048 : 1024, (TX.SIZE[k] || 256) * (q === 'ultra' ? 4 : 2));
   window.addEventListener('resize', onResize);
 }
 
@@ -324,7 +327,7 @@ function punch(a) {
 
 function damageActor(a, dmg, attacker, head, weapon) {
   if (!a.alive) return;
-  if (G.wait) return; // sala de espera: os tiros não machucam
+  if (G.wait && !G.wait.training) return; // sala de espera: os tiros não machucam (no treino machucam os alvos)
   if (attacker && attacker !== a && CS.ally(attacker, a)) return; // sem fogo amigo no Contra Squad
   // no multiplayer o cliente só avisa o anfitrião dos acertos que ele mesmo fez
   if (NET.isClient()) {
@@ -1031,7 +1034,7 @@ function nearestWeaponLoot(a, maxD) {
 
 function playerPickup() {
   const p = G.player;
-  if (G.wait) { toast('Os itens valem depois do salto'); return; }
+  if (G.wait && !G.wait.training) { toast('Os itens valem depois do salto'); return; }
   const it = nearestWeaponLoot(p, 2.2);
   if (!it) return;
   if (NET.isClient()) { NET.requestTake(it); return; }
@@ -1049,7 +1052,7 @@ function updateLoot(dt) {
   for (let i = G.loot.length - 1; i >= 0; i--) {
     const it = G.loot[i];
     it.t += dt;
-    if (G.wait) continue; // na sala de espera ninguém pega os itens do mapa
+    if (G.wait && !G.wait.training) continue; // na sala de espera ninguém pega os itens do mapa
     for (const a of G.actors) {
       if (!a.alive || a.phase !== 'ground' || a.remote) continue;
       if (it.byHuman && !a.isPlayer && !a.human) continue; // bots não pegam o que um jogador largou
@@ -1358,6 +1361,8 @@ function placeWaiting(ac, rnd) {
 }
 function updateWaiting(dt) {
   const w = G.wait;
+  // treinamento: não acaba, munição infinita e vida cheia
+  if (w.training) { for (const s of G.player.slots) if (s) s.reserve = Math.max(s.reserve || 0, 300); G.player.hp = G.player.maxHp; return; }
   w.t -= dt;
   if (w.t > 0) return;
   // fim da espera: limpa tudo e começa o voo
@@ -1702,8 +1707,13 @@ function updatePlayer(dt) {
   if (G.sprint && Math.hypot(mv.mx, mv.my) < 0.2) mv.my = 1;
   const sprinting = (G.sprint || holdRun) && mv.my > 0.4 && !p.aimOn && !p.crouch && p.healT <= 0 && G.time - p.lastFire > 0.4 && !p.nadeHand;
   const sy = Math.sin(G.yaw), cy = Math.cos(G.yaw);
-  const wx = -sy * mv.my + cy * mv.mx, wz = -cy * mv.my - sy * mv.mx;
-  if (consume('crouch', 'KeyC')) p.crouch = !p.crouch;
+  let wx = -sy * mv.my + cy * mv.mx, wz = -cy * mv.my - sy * mv.mx;
+  // agachar correndo = deslizar (como no Blood Strike): sai rápido, perde velocidade e termina agachado
+  if (consume('crouch', 'KeyC')) {
+    if (p.wasSprint && p.onGround && !(p.slideT > 0)) { const l = Math.hypot(wx, wz) || 1; p.slideT = 0.8; p.slideX = wx / l; p.slideZ = wz / l; p.crouch = true; SND.play('step', 1.4); }
+    else p.crouch = !p.crouch;
+  }
+  p.wasSprint = sprinting;
   let maxS = (p.crouch ? 2.6 : 6.2) * (curW(p) && curW(p).slow ? curW(p).slow : 1) * (sprinting ? 1.38 : 1);
   if (p.aimOn) maxS = Math.min(maxS, 3.2);
   if (p.healT > 0) maxS = 2.2;
@@ -1711,6 +1721,11 @@ function updatePlayer(dt) {
   G.nearWin = p.onGround && !p.inspect ? nearWindow(p) : null;
   const jumpNow = consume('jump', 'Space'), vaultNow = consume('vault');
   if (G.nearWin && (vaultNow || jumpNow)) { startVault(p, G.nearWin); updateVault(p, dt); return; }
+  if (p.slideT > 0) {
+    p.slideT -= dt;
+    if (jumpNow || p.aimOn) p.slideT = 0;
+    else { wx = p.slideX; wz = p.slideZ; maxS = 3.5 + 8.5 * Math.max(0, p.slideT / 0.8); G.shake = Math.max(G.shake || 0, 0.04); }
+  }
   moveActor(p, wx, wz, maxS, dt, jumpNow);
 
   // ações
@@ -1960,6 +1975,8 @@ function botAirControl(b, dt) {
 
 function updateBot(b, dt) {
   if (b.remote) { updatePuppet(b, dt); return; }
+  // treinamento: alvo abatido volta em 2,5 s
+  if (G.wait && G.wait.training && !b.alive) { b.rsT = (b.rsT || 0) + dt; if (b.rsT > 2.5) { b.rsT = 0; b.alive = true; b.hp = b.maxHp; placeWaiting(b, Math.random); } }
   if (b.phase === 'plane') return;
   const near = b.pos.distanceTo(G.player.pos);
   if (!b.alive) { if (near < 120) CH.animate(b.ch, dt, { dead: true }); return; }
@@ -2061,3 +2078,17 @@ function botShoot(b, t, dist) {
 }
 
 
+
+// ------------------------------------------------------------------ treinamento
+// campo de tiro na ilha: os bots são alvos que andam e renascem, todas as armas ficam no chão, sem zona e sem fim
+function setupTraining() {
+  const P = G.player, w = G.wait;
+  w.training = true; w.t = 1e9;
+  G.botDmgScale = 0;
+  H.waitBox.classList.add('hidden');
+  giveWeapon(P, 'FUZIL'); giveWeapon(P, 'PRECISAO'); selectSlot(P, 0);
+  P.kits = 5; P.gel = 8; P.nades = 4;
+  WPN.ORDER.forEach((id, i) => { const an = i / WPN.ORDER.length * Math.PI * 2; spawnLoot('w:' + id, P.pos.x + Math.cos(an) * 3.2, P.pos.z + Math.sin(an) * 3.2); });
+  bigText('TREINAMENTO');
+  notify('info', 'Treinamento: atire nos alvos, troque de arma no chão e teste o deslize (correr + agachar). Pause para sair.');
+}

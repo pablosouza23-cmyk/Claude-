@@ -421,7 +421,7 @@ WPN.studioEnv = function () {
 };
 
 // celular e qualidade baixa/média: material padrão (sem a camada extra de verniz, que dobra o custo do brilho)
-WPN.lite = () => (typeof isTouch !== 'undefined' && isTouch) || (typeof G !== 'undefined' && G.settings && G.settings.quality !== 'alta');
+WPN.lite = () => (typeof isTouch !== 'undefined' && isTouch) || (typeof G !== 'undefined' && G.settings && G.settings.quality !== 'alta' && G.settings.quality !== 'ultra');
 WPN.physMat = function (o) {
   if (!WPN.lite()) return new THREE.MeshPhysicalMaterial(o);
   delete o.clearcoat; delete o.clearcoatRoughness;

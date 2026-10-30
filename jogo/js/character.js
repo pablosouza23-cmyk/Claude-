@@ -23,6 +23,15 @@ CH.AV = {
   // jogador de futebol original: camisa amarela com detalhes verdes, calção azul, número 10 e nome CRAQUE
   craque: { base: 'bone', kit: { cell: 'm022_body', name: 'CRAQUE', num: '10', sleeve: [0.42, 0.86], cuff: 0.79, front: [0.56, 0.56], back: [0.5, 0.31, 0.2] } },
 };
+// 10 camisas (molde do Boné) e 10 conjuntos (roupa inteira recolorida), todos originais do jogo
+const KIT0 = { cell: 'm022_body', sleeve: [0.42, 0.86], cuff: 0.79, front: [0.56, 0.56], back: [0.5, 0.31, 0.2] };
+const SHIRTS = [['cm_tropical', [255, 140, 0], [255, 220, 0], [30, 30, 30]], ['cm_oceano', [20, 110, 200], [255, 255, 255], [20, 40, 90]], ['cm_vulcao', [200, 30, 30], [30, 30, 30], [40, 40, 40]],
+  ['cm_floresta', [40, 120, 50], [230, 200, 60], [60, 50, 30]], ['cm_neon', [170, 40, 220], [40, 240, 255], [20, 20, 40]], ['cm_areia', [220, 195, 140], [120, 80, 40], [90, 70, 50]],
+  ['cm_gelo', [200, 235, 255], [60, 150, 230], [220, 230, 240]], ['cm_noite', [25, 25, 35], [255, 200, 0], [25, 25, 35]], ['cm_rosa', [255, 80, 160], [255, 255, 255], [60, 30, 60]], ['cm_listrada', [245, 245, 245], [20, 60, 160], [20, 40, 90], [8, [30, 70, 190]]]];
+for (const s of SHIRTS) CH.AV[s[0]] = { base: 'bone', lazy: true, kit: Object.assign({}, KIT0, { shirt: s[1], cuffC: s[2], pants: s[3], stripe: s[4] }) };
+const OUTFITS = [['cj_artico', 'soldado', [235, 240, 250]], ['cj_deserto', 'soldado2', [205, 175, 115]], ['cj_urbano', 'swat', [95, 100, 115]], ['cj_carmesim', 'jeans', [175, 30, 40]], ['cj_real', 'soldada', [215, 170, 45]],
+  ['cj_cyber', 'swat', [90, 45, 210]], ['cj_selva', 'soldado', [65, 115, 45]], ['cj_oceano', 'camisa', [30, 95, 185]], ['cj_sombra', 'heroi', [38, 38, 44]], ['cj_lava', 'jeans', [235, 95, 25]]];
+for (const o of OUTFITS) CH.AV[o[0]] = { base: o[1], lazy: true, grade: { tint: o[2] } };
 CH.PLAYER_PAL = 'heroi';
 CH.BOT_PALS = ['swat', 'soldado', 'bone', 'camisa', 'soldado2', 'jeans', 'soldada', 'swat', 'bone', 'soldado'];
 CH.data = {};
@@ -124,7 +133,7 @@ CH.load = async function (onStep) {
     CH.data[k] = av;
     if (onStep) onStep((i + 1) / keys.length);
   }
-  for (const k in CH.AV) if (CH.AV[k].base && CH.data[CH.AV[k].base]) CH.data[k] = CH.variant(k, CH.AV[k]);
+  for (const k in CH.AV) if (CH.AV[k].base && !CH.AV[k].lazy && CH.data[CH.AV[k].base]) CH.data[k] = CH.variant(k, CH.AV[k]);
   CH.ready = true;
 };
 
@@ -137,6 +146,14 @@ CH.grade = function (tex, kind) {
   const d = g.getImageData(0, 0, c.width, c.height), a = d.data;
   for (let i = 0; i < a.length; i += 4) {
     const l = a[i] * 0.3 + a[i + 1] * 0.59 + a[i + 2] * 0.11;
+    if (kind && kind.tint) {
+      // conjunto: roupa ganha a cor nova (com as dobras do tecido), a pele continua igual
+      const R = a[i], Gc = a[i + 1], B = a[i + 2];
+      if (R > Gc + 18 && R > B + 30 && l > 70) continue;
+      const k = 0.32 + Math.min(1, l / 200) * 0.85, T = kind.tint;
+      a[i] = Math.min(255, T[0] * k); a[i + 1] = Math.min(255, T[1] * k); a[i + 2] = Math.min(255, T[2] * k);
+      continue;
+    }
     const n = (Math.random() - 0.5) * 18; // sujeira
     a[i] = Math.max(0, Math.min(255, (l * 0.86 + a[i] * 0.14) * 0.92 + n));
     a[i + 1] = Math.max(0, Math.min(255, (l * 0.86 + a[i + 1] * 0.14) * 0.94 + n));
@@ -161,11 +178,12 @@ CH.kitTex = function (tex, cell, kit) {
     const pants = (u < 0.3 || u > 0.7) && v < sv[0] - 0.01;
     if (shirt || sleeve) {
       // cor lisa (some o desenho da roupa original), só com um pouco das dobras do tecido
-      const k = 0.78 + Math.min(1, l / 255) * 0.3;
-      if (sleeve && v > kit.cuff) tint(i, 0, 150, 90, k); else tint(i, 250, 214, 30, k);
+      const k = 0.78 + Math.min(1, l / 255) * 0.3, S1 = kit.shirt || [250, 214, 30], C1 = kit.cuffC || [0, 150, 90];
+      const st = kit.stripe && shirt && Math.floor(u * kit.stripe[0]) % 2 === 1;
+      if (sleeve && v > kit.cuff) tint(i, C1[0], C1[1], C1[2], k); else if (st) tint(i, kit.stripe[1][0], kit.stripe[1][1], kit.stripe[1][2], k); else tint(i, S1[0], S1[1], S1[2], k);
     } else if (pants) {
-      const k = 0.55 + Math.min(1, l / 150) * 0.6;
-      tint(i, 32, 72, 205, k);
+      const k = 0.55 + Math.min(1, l / 150) * 0.6, P1 = kit.pants || [32, 72, 205];
+      tint(i, P1[0], P1[1], P1[2], k);
     }
   }
   g.putImageData(d, 0, 0);
@@ -176,9 +194,11 @@ CH.kitTex = function (tex, cell, kit) {
     g.lineWidth = Math.max(2, S * 0.006); g.strokeStyle = '#0a7a4a'; g.fillStyle = '#1636a8';
     g.strokeText(s, 0, 0); g.fillText(s, 0, 0); g.restore();
   };
-  txt(kit.num, kit.front[0], kit.front[1], 0.075, false);
-  txt(kit.name, kit.back[0], kit.back[1], 0.045, true);
-  txt(kit.num, kit.back[0], kit.back[2], 0.13, true);
+  if (kit.num) {
+    txt(kit.num, kit.front[0], kit.front[1], 0.075, false);
+    txt(kit.name, kit.back[0], kit.back[1], 0.045, true);
+    txt(kit.num, kit.back[0], kit.back[2], 0.13, true);
+  }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.flipY = tex.flipY;
   return t;
 };
@@ -462,6 +482,7 @@ CH.chuteLines = function (y0) {
 // ---------- personagem ----------
 // hq = armas com o modelo detalhado (jogador local); os outros usam a versão leve
 CH.make = function (key, hq) {
+  if (!CH.data[key] && CH.AV[key] && CH.AV[key].base && CH.data[CH.AV[key].base]) CH.data[key] = CH.variant(key, CH.AV[key]);
   const av = CH.data[key] || CH.data.heroi;
   const mats = av.mats.map(m => m.clone());
   const r = CH.rig(av, mats);
@@ -885,14 +906,15 @@ CH.animate = function (ch, dt, s) {
     } else {
       _gunE.set(pitch * 0.98 - rc * 0.1 - dk * 1.1, face, dk * 0.6);
       _gunQ.setFromEuler(_gunE);
-      _gunPos.copy(chest).addScaledVector(_bodyR, sx * (1 - ie * 0.35)).addScaledVector(UP, sy - 0.12 - dk * 0.28 + ie * 0.06);
-      _tmp.set(0, -0.02, sz - rc * 0.05 - ie * 0.04).applyQuaternion(_gunQ);
+      _gunPos.copy(chest).addScaledVector(_bodyR, sx * (1 - ie * 0.45)).addScaledVector(UP, sy - 0.12 - dk * 0.28 + ie * 0.03);
+      // inspecionando: a arma vem para perto do peito, assim as duas mãos alcançam o cabo e a telha
+      _tmp.set(0, -0.02, sz - rc * 0.05 - ie * 0.14).applyQuaternion(_gunQ);
       _gunPos.add(_tmp);
     }
     if (ie > 0) {
       // gira pouco em volta do próprio cano (mostra um lado, depois o outro): as mãos continuam no cabo e na telha
-      const roll = it < 0.5 ? U.smooth(0.1, 0.4, it) * 0.62 : 0.62 - U.smooth(0.5, 0.8, it) * 1.1;
-      _gunE.set(0.24 + Math.sin(it * 6) * 0.02, s.gunAt ? -0.3 : 0.42, roll); _gunE.x *= ie; _gunE.y *= ie; _gunE.z *= ie;
+      const rm = s.gunAt ? 1 : 0.55, roll = (it < 0.5 ? U.smooth(0.1, 0.4, it) * 0.62 : 0.62 - U.smooth(0.5, 0.8, it) * 1.1) * rm;
+      _gunE.set((0.24 + Math.sin(it * 6) * 0.02) * (s.gunAt ? 1 : 0.6), s.gunAt ? -0.3 : 0.22, roll); _gunE.x *= ie; _gunE.y *= ie; _gunE.z *= ie;
       _q1.setFromEuler(_gunE); _gunQ.multiply(_q1);
     }
     // o grupo da arma é filho do corpo: converte para o espaço local

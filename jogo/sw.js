@@ -1,6 +1,6 @@
 // Service worker: guarda os arquivos do jogo para abrir rápido e funcionar sem internet.
 // Ao publicar uma versão nova, troque o número em CACHE para os jogadores receberem a atualização.
-const CACHE = 'battle-island-v33';
+const CACHE = 'battle-island-v34';
 const FILES = [
   './',
   './index.html',
@@ -26,6 +26,8 @@ const FILES = [
   './js/ui.js',
   './assets/guns.bin',
   './assets/guns_lod.bin',
+  './assets/guns_wp.bin',
+  './assets/guns_wp_lod.bin',
   './assets/props.bin',
   './assets/verified.png',
   './assets/badge_dourado.png',

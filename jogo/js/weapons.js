@@ -48,12 +48,12 @@ WPN.ICON = {
 // grip = mão direita no cabo, fore = mão de apoio, top = onde a mira vai montada, sight = mira já do modelo
 WPN.MDL = {
   FUZIL: { src: 'AssaultRifle_2', len: 0.88, grip: [0.30, 0.57], fore: [0.67, 0.80], top: [0.45, 0.94], muzzle: 0.84 },
-  CARABINA: { src: 'AssaultRifle2_1', len: 0.84, grip: [0.29, 0.53], fore: [0.64, 0.77], top: [0.42, 0.86], muzzle: 0.77, tint: [0.62, 0.62, 0.66] },
+  CARABINA: { src: 'WP_M4', alt: 'AssaultRifle2_1', len: 0.86, grip: [0.36, 0.42], fore: [0.62, 0.62], top: [0.45, 0.9], muzzle: 0.97 },
   SMG: { src: 'SubmachineGun_3', len: 0.62, grip: [0.46, 0.54], fore: [0.85, 0.55], top: [0.6, 0.98], muzzle: 0.81 },
-  PRECISAO: { src: 'SniperRifle_2', len: 1.15, grip: [0.26, 0.40], fore: [0.54, 0.58], sight: [0.27, 0.91], muzzle: 0.72 },
-  ESCOPETA: { src: 'Shotgun_2', len: 1.0, grip: [0.29, 0.53], fore: [0.57, 0.62], sight: [0.55, 0.92], muzzle: 0.85 },
+  PRECISAO: { src: 'WP_SNIPER', alt: 'SniperRifle_2', len: 1.15, grip: [0.24, 0.45], fore: [0.5, 0.55], sight: [0.33, 0.95], muzzle: 0.98 },
+  ESCOPETA: { src: 'WP_SHOTGUN', alt: 'Shotgun_2', len: 1.0, grip: [0.22, 0.5], fore: [0.55, 0.55], sight: [0.6, 0.95], muzzle: 0.98 },
   METRALHADORA: { src: 'AssaultRifle2_2', len: 1.0, grip: [0.31, 0.46], fore: [0.67, 0.75], top: [0.45, 0.86], muzzle: 0.76, tint: [0.78, 0.86, 0.66], bipod: [0.9, 0.72] },
-  PISTOLA: { src: 'Pistol_1', len: 0.2, grip: [0.15, 0.46], sight: [0.06, 0.97], muzzle: 0.86, pistol: true },
+  PISTOLA: { src: 'WP_PISTOL', alt: 'Pistol_1', len: 0.2, grip: [0.18, 0.4], sight: [0.1, 0.97], muzzle: 0.98, pistol: true },
   REVOLVER: { src: 'Revolver_1', len: 0.28, grip: [0.17, 0.56], sight: [0.1, 0.97], muzzle: 0.86, pistol: true },
   FUTURISTA: { src: 'Bullpup_2', len: 0.74, grip: [0.27, 0.48], fore: [0.82, 0.61], top: [0.5, 0.98], muzzle: 0.81, tint: [0.55, 0.7, 1.15], glowLine: [0.3, 0.86, 0.74] },
   BLASTER: { src: 'Bullpup_3', len: 0.75, grip: [0.37, 0.50], fore: [0.68, 0.62], top: [0.5, 0.98], muzzle: 0.88, tint: [0.75, 0.68, 0.62], glowRings: [0.72, 0.95, 0.8] },
@@ -63,6 +63,9 @@ WPN.load = async function () {
   try {
     WPN.models = await WPN.loadFile('assets/guns.bin');
     try { WPN.modelsLod = await WPN.loadFile('assets/guns_lod.bin'); } catch (e) { WPN.modelsLod = null; }
+    // armas do Weapons_Pack (M4, pistola, escopeta e sniper)
+    // só no PC: o celular fica com as armas leves (versão reduzida)
+    if (!isTouch) try { Object.assign(WPN.models, await WPN.loadFile('assets/guns_wp.bin')); if (WPN.modelsLod) Object.assign(WPN.modelsLod, await WPN.loadFile('assets/guns_wp_lod.bin')); } catch (e) { console.warn('pacote de armas indisponível', e); }
     WPN.cache = {};
   } catch (e) { console.warn('armas 3D indisponíveis, usando modelos simples', e); }
 };
@@ -99,7 +102,7 @@ WPN.loadFile = async function (path) {
 WPN.buildModel = function (id, lod) {
   const cfg = WPN.MDL[id], def = WPN.DEF[id];
   const lib = lod && WPN.modelsLod ? WPN.modelsLod : WPN.models;
-  const src = lib[cfg.src] || WPN.models[cfg.src];
+  const src = lib[cfg.src] || WPN.models[cfg.src] || lib[cfg.alt] || WPN.models[cfg.alt];
   const bb = src.boundingBox;
   const L = bb.max.z - bb.min.z, Hh = bb.max.y - bb.min.y, s = cfg.len / L;
   const at = (f) => new THREE.Vector3(0, (bb.min.y + f[1] * Hh) * s, (bb.min.z + f[0] * L) * s);

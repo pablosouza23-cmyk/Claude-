@@ -377,6 +377,7 @@ W.buildSteps = function (scene, quality, mapId) {
   if (W.root) { scene.remove(W.root); W.root.traverse(o => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); }); }
   W.root = new THREE.Group(); scene.add(W.root);
   const R = W.root;
+  W.cityList = {};
   W.statics = []; W.grid = new Map(); W.dynamic = []; W.houses = []; W.lootSpots = []; W.windows = []; W.olSets = []; W.occupied = []; W.spinners = [];
   W.grassCenter = { x: 1e9, z: 1e9 };
   const steps = [];

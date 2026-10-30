@@ -63,6 +63,8 @@ WPN.load = async function () {
   try {
     WPN.models = await WPN.loadFile('assets/guns.bin');
     try { WPN.modelsLod = await WPN.loadFile('assets/guns_lod.bin'); } catch (e) { WPN.modelsLod = null; }
+    // cidade da Kenney (CC0): prédios, ruas, calçadas, fonte e árvores
+    try { WPN.city = await WPN.loadFile('assets/city.bin'); } catch (e) { WPN.city = null; }
     // armas do Weapons_Pack (M4, pistola, escopeta e sniper)
     // só no PC: o celular fica com as armas leves (versão reduzida)
     try { Object.assign(WPN.models, await WPN.loadFile('assets/guns_wp.bin')); if (WPN.modelsLod) Object.assign(WPN.modelsLod, await WPN.loadFile('assets/guns_wp_lod.bin')); } catch (e) { console.warn('pacote de armas indisponível', e); }

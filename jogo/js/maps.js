@@ -600,26 +600,46 @@
     build: [['Arena', (P, rnd) => W.buildArena(P, rnd)]],
   };
   // ---------- Metrópole: ilha gigante com centro da torre do relógio e quatro distritos de prédios ----------
+  // modelos do kit de cidade (Kenney, CC0): guardados por tipo e desenhados com instâncias (pouco custo)
+  W.cityPut = function (name, x, y, z, rot, sc, coll) {
+    const g = WPN.city && WPN.city[name]; if (!g) return;
+    const bb = g.boundingBox, cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2;
+    const m = new THREE.Matrix4().makeTranslation(x, y, z).multiply(new THREE.Matrix4().makeRotationY(rot)).multiply(new THREE.Matrix4().makeScale(sc, sc, sc)).multiply(new THREE.Matrix4().makeTranslation(-cx, -bb.min.y, -cz));
+    (W.cityList[name] = W.cityList[name] || []).push(m);
+    if (coll) W.addCollider({ type: 'b', x: x, z: z, hx: (bb.max.x - bb.min.x) * sc / 2 * 0.96, hz: (bb.max.z - bb.min.z) * sc / 2 * 0.96, rot: rot, y0: y - 0.3, y1: y + (bb.max.y - bb.min.y) * sc, walkable: false });
+  };
+  W.flushCity = function (R) {
+    const mat = W.cityMat || (W.cityMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.05 }));
+    for (const k in W.cityList) {
+      const L = W.cityList[k], im = new THREE.InstancedMesh(WPN.city[k], mat, L.length);
+      L.forEach((m, i) => im.setMatrixAt(i, m));
+      im.castShadow = !/^road|^pavement$|^grass$/.test(k); im.receiveShadow = true;
+      im.computeBoundingSphere(); R.add(im);
+    }
+    W.cityList = {};
+  };
+  // distrito de cidade: grade de 9 x 9 quadras de 9 m; ruas a cada 4 quadras, quarteirões de 3 x 3 entre elas
   W.buildDowntown = function (P, name, rnd) {
-    const a = W.A[name], base = a.h - 0.05;
-    const cols = [0xd9cfbf, 0xc9b79c, 0xb8c4cc, 0xe0d6c2, 0xa9b3a0, 0xd1a98a, 0x9fb2c8, 0xcfc2d6], trims = [0x8a5a33, 0x5b6268, 0x3f4a57, 0x7a3b2e, 0x2f5d50];
-    const F = W.frame(P, a.x, a.z, 0, base);
-    F.box(0, -0.2, 0, a.r * 2 - 4, 0.24, a.r * 2 - 4, 0x7d8084, 'stone', 0);
-    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
-      if (i === 0 && j === 0) {
-        // praça do distrito: canteiro, fonte e bancos
-        F.box(0, -0.05, 0, 11, 0.25, 11, 0x5f8f48, 'plain', 0);
-        F.box(0, 0, 0, 3.2, 0.9, 3.2, 0xbfb6a6, 'stone', 2);
-        for (const b of [[-4.5, 0], [4.5, 0], [0, -4.5], [0, 4.5]]) F.box(b[0], 0, b[1], b[0] ? 0.6 : 2.2, 0.5, b[0] ? 2.2 : 0.6, 0x8a5a33, 'wood', 2);
+    const a = W.A[name], base = a.h - 0.05, T = 9, y = base + 0.03;
+    if (!WPN.city) return;
+    const blds = ['building-small-a', 'building-small-b', 'building-small-c', 'building-small-d', 'building-small-b', 'building-garage'];
+    const cols = [0xd9cfbf, 0xc9b79c, 0xb8c4cc, 0xe0d6c2], trims = [0x8a5a33, 0x5b6268, 0x3f4a57];
+    for (let i = 0; i <= 8; i++) for (let j = 0; j <= 8; j++) {
+      const x = a.x + (i - 4) * T, z = a.z + (j - 4) * T, ri = i % 4 === 0, rj = j % 4 === 0;
+      if (ri && rj) { W.cityPut('road-intersection', x, y, z, 0, T); continue; }
+      if (ri || rj) { W.cityPut((ri ? j : i) % 2 ? 'road-straight-lightposts' : 'road-straight', x, y, z, ri ? 0 : Math.PI / 2, T); continue; }
+      // dentro do quarteirão
+      const bi = i % 4, bj = j % 4, centre = bi === 2 && bj === 2;
+      if (centre) {
+        const k = Math.floor(i / 4) + Math.floor(j / 4) * 2;
+        if (k === 0 || k === 3) W.building(P, x, z, Math.floor(rnd() * 4) * Math.PI / 2, base, 4.2, 4.2, 2 + Math.floor(rnd() * 3), cols[Math.floor(rnd() * cols.length)], trims[Math.floor(rnd() * trims.length)]);
+        else { W.cityPut('pavement', x, y, z, 0, T); W.cityPut(k === 1 ? 'pavement-fountain' : 'grass-trees-tall', x, y, z, 0, T, k === 1); }
         continue;
       }
-      const x = a.x + i * 26, z = a.z + j * 26, hw = 5.5 + rnd() * 2.5, hd = 4.5 + rnd() * 2.5, fl = 2 + Math.floor(rnd() * 4);
-      W.building(P, x, z, Math.floor(rnd() * 4) * Math.PI / 2, base, hw, hd, fl, cols[Math.floor(rnd() * cols.length)], trims[Math.floor(rnd() * trims.length)]);
-    }
-    // postes de luz nas ruas
-    for (const s of [-13, 13]) for (const t of [-36, -13, 13, 36]) for (const [lx, lz] of [[s, t], [t, s]]) {
-      F.box(lx, 0, lz, 0.16, 5.2, 0.16, 0x3a3f44, 'metal', 0); F.box(lx, 5.1, lz, 0.9, 0.12, 0.3, 0x3a3f44, 'metal', 0);
-      F.post(lx, lz, 0.12, 0, 5.2);
+      // casas e prédios virados para a rua mais perto; às vezes um jardim
+      if (rnd() < 0.18) { W.cityPut(rnd() < 0.5 ? 'grass-trees' : 'grass', x, y, z, 0, T); continue; }
+      const face = bi === 1 ? -Math.PI / 2 : bi === 3 ? Math.PI / 2 : bj === 1 ? Math.PI : 0;
+      W.cityPut(blds[Math.floor(rnd() * blds.length)], x, y, z, face, T * 0.98, true);
     }
     W.occupied.push([a.x, a.z, a.r]);
   };
@@ -628,10 +648,10 @@
     landR: 250, playR: 272, show: 'TORRE DO RELÓGIO', trees: 360,
     areas: [
       { name: 'TORRE DO RELÓGIO', x: 0, z: 0, r: 32, flat: true },
-      { name: 'CENTRO NORTE', x: 0, z: -84, r: 40, flat: true },
-      { name: 'CENTRO SUL', x: 0, z: 86, r: 40, flat: true },
-      { name: 'DISTRITO LESTE', x: 88, z: 0, r: 40, flat: true },
-      { name: 'DISTRITO OESTE', x: -88, z: 2, r: 40, flat: true },
+      { name: 'CENTRO NORTE', x: 0, z: -92, r: 46, flat: true },
+      { name: 'CENTRO SUL', x: 0, z: 94, r: 46, flat: true },
+      { name: 'DISTRITO LESTE', x: 96, z: 0, r: 46, flat: true },
+      { name: 'DISTRITO OESTE', x: -96, z: 2, r: 46, flat: true },
       { name: 'PICO', x: -100, z: -175, r: 16, flat: true, peak: 26 },
       { name: 'FÁBRICA', x: 178, z: -108, r: 30, flat: true },
       { name: 'HANGAR', x: -60, z: 196, r: 36, flat: true, runway: [0, 56, 6.5, 0, -8] },
@@ -646,7 +666,7 @@
       { name: 'CAMPO ALTO', x: -215, z: 70, r: 28, hills: 9 },
     ],
     paths: [
-      [[0, -84], [0, 0], [0, 86]], [[-88, 2], [0, 0], [88, 0]],
+      [[0, -92], [0, 0], [0, 94]], [[-96, 2], [0, 0], [96, 0]],
       [[0, -84], [-50, -130], [-100, -175]], [[0, -84], [40, -150], [70, -196]],
       [[88, 0], [140, -60], [178, -108]], [[88, 0], [150, 40], [196, 70]],
       [[0, 86], [-30, 150], [-60, 196]], [[0, 86], [60, 140], [100, 182]],
@@ -659,7 +679,7 @@
       ['Distritos', (P, rnd) => { for (const n of ['CENTRO NORTE', 'CENTRO SUL', 'DISTRITO LESTE', 'DISTRITO OESTE']) W.buildDowntown(P, n, rnd); }],
       ['Fábrica e hangar', (P) => { W.buildFactory(P); W.buildHangar(P); }],
       ['Usina e estaleiro', (P, rnd) => { W.buildPowerPlant(P); W.buildShipyard(P, rnd); }],
-      ['Vilas', (P) => { W.buildMillVillage(P); W.buildRiceFields(P); W.buildSettlement(P); }],
+      ['Vilas', (P) => { W.buildMillVillage(P); W.buildRiceFields(P); W.buildSettlement(P); W.flushCity(W.root); }],
     ],
   };
   W.MAP_LIST = ['metropole', 'ilha', 'triangulo'];

@@ -133,14 +133,28 @@ WPN.buildModel = function (id, lod) {
   const K = 0x2c2e33, K2 = 0x45484f;
   const add = (geo, c, mm, glow) => { const pp = U.part(geo, c, mm, 'radial', 'gun'); (glow ? GL : P).push(pp.g); };
   const B = (w, h, d, c, x, y, z, rx, ry, rz, glow) => add(new THREE.BoxGeometry(w, h, d), c, U.mat4(x, y, z, rx || 0, ry || 0, rz || 0), glow);
+  // mira holográfica arredondada: base com trilho, capô curvo (meio tubo) e o ponto brilhando no meio
   const holo = (z, y, frame, glowC, wide) => {
-    const w = wide ? 0.07 : 0.056;
-    B(w, 0.012, 0.075, frame, 0, y, z);
-    B(0.009, 0.06, 0.065, frame, w / 2 - 0.004, y + 0.036, z); B(0.009, 0.06, 0.065, frame, -w / 2 + 0.004, y + 0.036, z);
-    B(w + 0.004, 0.011, 0.07, frame, 0, y + 0.068, z);
-    B(w - 0.016, 0.018, 0.026, K2, 0, y + 0.012, z - 0.05);
-    if (glowC) { B(0.004, 0.05, 0.004, glowC, w / 2 - 0.002, y + 0.036, z + 0.034, 0, 0, 0, true); B(0.004, 0.05, 0.004, glowC, -w / 2 + 0.002, y + 0.036, z + 0.034, 0, 0, 0, true); }
-    return y + 0.036;
+    const r = wide ? 0.036 : 0.03;
+    B(r * 2 + 0.006, 0.014, 0.08, frame, 0, y, z);
+    B(r * 2 - 0.012, 0.01, 0.06, K2, 0, y - 0.01, z);
+    add(new THREE.CylinderGeometry(r, r, 0.062, 20, 1, true, -Math.PI / 2, Math.PI).rotateX(Math.PI / 2), frame, U.mat4(0, y + 0.012, z));
+    for (const dz of [-0.031, 0.031]) add(new THREE.TorusGeometry(r, 0.0045, 6, 20, Math.PI), frame, U.mat4(0, y + 0.012, z + dz));
+    B(0.016, 0.014, 0.022, K2, r - 0.004, y + 0.014, z - 0.042);
+    add(new THREE.SphereGeometry(0.0035, 8, 6), glowC || 0xff2a2a, U.mat4(0, y + 0.03, z + 0.02), true);
+    return y + 0.03;
+  };
+  // red dot de tubo: corpo redondo aberto, anéis nas pontas, lente vermelha e botão de ajuste do lado
+  const tube = (z, y, frame) => {
+    const r = 0.021, L = 0.075, cy = y + 0.036;
+    B(0.026, 0.02, 0.05, frame, 0, y + 0.008, z);
+    add(new THREE.CylinderGeometry(r, r, L, 22, 1, true).rotateX(Math.PI / 2), frame, U.mat4(0, cy, z));
+    for (const dz of [-L / 2, L / 2]) add(new THREE.TorusGeometry(r + 0.002, 0.0045, 6, 22), frame, U.mat4(0, cy, z + dz));
+    add(new THREE.CylinderGeometry(0.008, 0.008, 0.012, 12).rotateZ(Math.PI / 2), K2, U.mat4(r + 0.006, cy, z));
+    add(new THREE.CylinderGeometry(0.008, 0.008, 0.012, 12), K2, U.mat4(0, cy + r + 0.006, z));
+    add(new THREE.CircleGeometry(r - 0.002, 22), 0x3a0d10, U.mat4(0, cy, z + L / 2 - 0.004), true);
+    add(new THREE.SphereGeometry(0.003, 8, 6), 0xff2a2a, U.mat4(0, cy, z + 0.01), true);
+    return cy;
   };
   let sightY, sightZ;
   if (cfg.sight) { const sp = pt(cfg.sight); sightY = sp.y; sightZ = sp.z; }
@@ -157,7 +171,7 @@ WPN.buildModel = function (id, lod) {
       sightY = y; sightZ = tp.z;
     } else {
       const gl = def.sight === 'brackets' ? 0xff2a2a : def.sight === 'cyan' ? 0x39e0ff : def.sight === 'orange' ? def.glow : null;
-      sightY = holo(tp.z, tp.y + 0.006, K, gl, def.sight === 'cyan' || def.sight === 'orange'); sightZ = tp.z;
+      sightY = def.sight === 'reddot' || def.sight === 'greendot' ? tube(tp.z, tp.y + 0.006, K) : holo(tp.z, tp.y + 0.006, K, gl, def.sight === 'cyan' || def.sight === 'orange'); sightZ = tp.z;
     }
   }
   // detalhes de energia e acessórios

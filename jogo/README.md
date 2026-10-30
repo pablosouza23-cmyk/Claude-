@@ -506,7 +506,11 @@ A licença MIT pede que o aviso de copyright vá junto com o jogo. Deixe esta ta
 | `assets/props.bin` | Granada, mochila, kit, munição, colete, capacete, gel e caixa (modelados no Blender) |
 | `assets/chars/` | Personagens (malha + texturas) e animações, em formato binário compacto |
 | `assets/guns.bin` | Os 10 modelos de arma e o bipé |
-| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v5.0
+| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v5.1
+
+- Miras das armas refeitas: red dot de tubo redondo (com anéis, lente e botões de ajuste) e holográfica com capô curvo, no lugar dos blocos quadrados.
+
+## Novidades da v5.0
 
 - Carro novo: esportivo com carroceria arredondada, vidros, rodas com aro cromado e pintura com verniz.
 - Mapa padrão agora é a Ilha Triângulo (torre do relógio, pico, fábrica, hangar, usina, estaleiro, moinho e arrozais).

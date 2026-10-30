@@ -506,7 +506,15 @@ A licença MIT pede que o aviso de copyright vá junto com o jogo. Deixe esta ta
 | `assets/props.bin` | Granada, mochila, kit, munição, colete, capacete, gel e caixa (modelados no Blender) |
 | `assets/chars/` | Personagens (malha + texturas) e animações, em formato binário compacto |
 | `assets/guns.bin` | Os 10 modelos de arma e o bipé |
-| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v5.6
+| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v5.7
+
+- Três mapas no estilo do Fúria Tropical (jogo do mesmo dono), com as peças dele (casas, hangar, farol, coqueiros, árvores, pedras, contêineres, cercas, guarda-sóis):
+  - ILHA TROPICAL (padrão): praias com coqueiros e guarda-sóis, vilas coloridas, porto com hangar e contêineres, farol, lagoa e morro.
+  - SAVANA SECA: terra vermelha, acácias e arbustos secos, povoados, fazenda, armazém e planalto; céu e luz quentes.
+  - ARQUIPÉLAGO PÔR DO SOL: ilhas separadas por canais com pontes de madeira, muitas vilas, cais e farol; céu rosado e luz dourada.
+- Sons do Fúria Tropical: tiro de cada arma, acerto, tiro na cabeça, abate, recarga, passos, explosão, itens, cura, vitória, derrota, zona e música do lobby (assets/sfx).
+
+## Novidades da v5.6
 
 - Megacidade corrigida: prédios menores que a quadra (com passagem entre eles, sem ficar um grudado no outro), postes finos no lugar dos postes gigantes, fonte nova com água no lugar da fonte enorme, e sem árvores nascendo dentro da cidade e da zona industrial.
 

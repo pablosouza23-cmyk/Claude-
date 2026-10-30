@@ -601,8 +601,9 @@
   };
   // ---------- Metrópole: ilha gigante com centro da torre do relógio e quatro distritos de prédios ----------
   // modelos do kit de cidade (Kenney, CC0): guardados por tipo e desenhados com instâncias (pouco custo)
+  const cityGeo = (name) => name.indexOf('f:') === 0 ? WPN.furia && WPN.furia[name.slice(2)] : WPN.city && WPN.city[name];
   W.cityPut = function (name, x, y, z, rot, sc, coll) {
-    const g = WPN.city && WPN.city[name]; if (!g) return;
+    const g = cityGeo(name); if (!g) return;
     const bb = g.boundingBox, cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2;
     const m = new THREE.Matrix4().makeTranslation(x, y, z).multiply(new THREE.Matrix4().makeRotationY(rot)).multiply(new THREE.Matrix4().makeScale(sc, sc, sc)).multiply(new THREE.Matrix4().makeTranslation(-cx, -bb.min.y, -cz));
     (W.cityList[name] = W.cityList[name] || []).push(m);
@@ -611,9 +612,11 @@
   W.flushCity = function (R) {
     const mat = W.cityMat || (W.cityMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.05 }));
     for (const k in W.cityList) {
-      const L = W.cityList[k], im = new THREE.InstancedMesh(WPN.city[k], mat, L.length);
+      const L = W.cityList[k], im = new THREE.InstancedMesh(cityGeo(k), mat, L.length);
       L.forEach((m, i) => im.setMatrixAt(i, m));
-      im.castShadow = !/^road|^pavement$|^grass$/.test(k); im.receiveShadow = true;
+      // vilas coloridas: cada casa ganha uma cor de parede (a cor multiplica a do modelo)
+      if (/house/.test(k)) { const pal = [0xffd6a0, 0xa8e0ff, 0xffb3b3, 0xc8f0a8, 0xffe08a, 0xe0c0ff, 0xffc49a, 0xb8f0e0], c = new THREE.Color(); L.forEach((m, i) => im.setColorAt(i, c.setHex(pal[(i * 7 + k.length) % pal.length]))); }
+      im.castShadow = !/^road|^pavement$|^grass$|bush/.test(k); im.receiveShadow = true;
       im.computeBoundingSphere(); R.add(im);
     }
     W.cityList = {};
@@ -744,5 +747,125 @@
       ['Megacidade (Godot)', (P, rnd) => { W.buildGodotMap(P, rnd, WPN.megaMap); W.flushCity(W.root); }],
     ],
   };
-  W.MAP_LIST = ['megacidade', 'metropole', 'ilha', 'triangulo'];
+  // ---------- mapas do Fúria Tropical: Ilha Tropical, Savana Seca e Arquipélago Pôr do Sol ----------
+  // peças do Fúria (casas, hangar, farol, coqueiros, árvores, pedras, contêineres, cercas...) com o prefixo f:
+  const fz = (name) => WPN.furia && WPN.furia[name];
+  W.fuPut = function (name, x, z, rot, coll, sc) {
+    const g = fz(name); if (!g) return;
+    const y = W.height(x, z) - 0.04, bb = g.boundingBox, k = sc || 1;
+    W.cityPut('f:' + name, x, y, z, rot, k, false);
+    if (coll === 'box') W.addCollider({ type: 'b', x: x, z: z, hx: (bb.max.x - bb.min.x) * k / 2 * 0.92, hz: (bb.max.z - bb.min.z) * k / 2 * 0.92, rot: rot, y0: y - 0.3, y1: y + (bb.max.y - bb.min.y) * k, walkable: (bb.max.y - bb.min.y) * k < 1.3 });
+    else if (coll === 'trunk') W.addCollider({ type: 'c', x: x, z: z, r: 0.35 * k, y0: y - 0.3, y1: y + 5 * k });
+  };
+  const landPt = (rnd, tries) => { for (let i = 0; i < (tries || 30); i++) { const p = W.randLand(rnd, 10); if (!W.inHouse(p[0], p[1]) && W.isFree(p[0], p[1], 3, W.occupied) && W.height(p[0], p[1]) > 0.6) return p; } return null; };
+  W.buildFuria = function (P, rnd) {
+    const M = W.MAP.fu || {};
+    for (const a of W.areaDefs) {
+      // vila: casas em roda viradas para a praça, cercas, caixas e barris; loot na porta de cada casa
+      if (a.vila) {
+        const n = a.vila, R = a.r * 0.62;
+        for (let i = 0; i < n; i++) {
+          const an = i / n * Math.PI * 2 + rnd() * 0.2, x = a.x + Math.cos(an) * R, z = a.z + Math.sin(an) * R, face = Math.atan2(a.x - x, a.z - z);
+          W.fuPut(rnd() < 0.5 ? 'house_a' : 'house_b', x, z, face, 'box');
+          W.lootSpots.push([x + Math.sin(face) * 6.5, z + Math.cos(face) * 6.5, W.height(x, z)]);
+          const an2 = an + Math.PI / n, fx = a.x + Math.cos(an2) * (R + 2), fz2 = a.z + Math.sin(an2) * (R + 2);
+          if (rnd() < 0.7) W.fuPut('fence', fx, fz2, an2, 'box');
+          if (rnd() < 0.5) W.fuPut(rnd() < 0.5 ? 'crate' : 'barrel', x + Math.cos(an) * 6, z + Math.sin(an) * 6, rnd() * 6, 'box');
+        }
+        if (M.umbrellas) W.fuPut('umbrella', a.x + 2, a.z - 2, 0, false);
+        W.lootSpots.push([a.x, a.z, W.height(a.x, a.z)]);
+        W.occupied.push([a.x, a.z, a.r]);
+      }
+      // porto: hangar, fileiras de contêineres, barris e caixas
+      if (a.porto) {
+        const face = Math.atan2(-a.x, -a.z);
+        W.fuPut('hangar', a.x, a.z, face, 'box');
+        for (let i = 0; i < 6; i++) { const off = (i - 2.5) * 3.2; W.fuPut('container', a.x + Math.cos(face) * off + Math.sin(face) * 14, a.z - Math.sin(face) * off + Math.cos(face) * 14, face, 'box'); }
+        for (let i = 0; i < 6; i++) W.fuPut(i % 2 ? 'barrel' : 'crate', a.x - Math.sin(face) * 12 + (rnd() - 0.5) * 10, a.z - Math.cos(face) * 12 + (rnd() - 0.5) * 10, rnd() * 6, 'box');
+        W.lootSpots.push([a.x, a.z, W.height(a.x, a.z)]);
+        W.occupied.push([a.x, a.z, a.r]);
+      }
+      // farol com pedras em volta
+      if (a.farol) {
+        W.fuPut('lighthouse', a.x, a.z, 0, 'box');
+        for (let i = 0; i < 6; i++) { const an = i * 1.05; W.fuPut('rock_' + (i % 3), a.x + Math.cos(an) * 8, a.z + Math.sin(an) * 8, an, 'box'); }
+        W.lootSpots.push([a.x + 5, a.z, W.height(a.x + 5, a.z)]);
+        W.occupied.push([a.x, a.z, a.r]);
+      }
+      // pontes de madeira sobre os canais do arquipélago
+      if (a.ponte) W.box(P, a.x, a.z, a.ponte[0], 0.5, a.ponte[1], a.ponte[2] || 0, 0x8a6a48, 0.2, { walkable: true }, 'wood');
+    }
+    // beira da praia: coqueiros e guarda-sóis (ou pedras na savana)
+    for (let k = 0; k < (M.coast || 0); k++) {
+      const an = k / M.coast * Math.PI * 2 + rnd() * 0.05, r0 = W.LAND_R * W.shape(an);
+      for (let t = 0; t < 8; t++) {
+        const r = r0 * (0.86 + rnd() * 0.1), x = Math.cos(an) * r, z = Math.sin(an) * r, h = W.height(x, z);
+        if (h > 0.4 && h < 3 && W.isFree(x, z, 3, W.occupied)) { W.fuPut(M.coastProp ? M.coastProp[Math.floor(rnd() * M.coastProp.length)] : 'palm_' + 'abc'[Math.floor(rnd() * 3)], x, z, rnd() * 6, M.coastProp ? 'box' : 'trunk', 0.85 + rnd() * 0.35); if (M.umbrellas && rnd() < 0.15) W.fuPut('umbrella', x + 3, z + 2, rnd() * 6, false); break; }
+      }
+    }
+    // árvores, arbustos e pedras espalhados
+    for (const [name, cnt, coll] of (M.scatter || [])) for (let i = 0; i < cnt; i++) {
+      const p = landPt(rnd); if (!p) continue;
+      const nm = name.indexOf('|') > 0 ? name.split('|')[Math.floor(rnd() * name.split('|').length)] : name;
+      W.fuPut(nm, p[0], p[1], rnd() * 6.28, coll, 0.8 + rnd() * 0.45);
+    }
+    W.flushCity(W.root);
+  };
+  W.MAPS.tropical = {
+    name: 'Ilha Tropical', desc: 'Praias, coqueiros e vilas coloridas', color: '#2ec5c0',
+    landR: 190, playR: 212, show: 'VILA CENTRAL', trees: 30,
+    areas: [
+      { name: 'VILA CENTRAL', x: 0, z: 0, r: 32, flat: true, vila: 8 },
+      { name: 'VILA DO PORTO', x: -112, z: 40, r: 34, flat: true, porto: true, sandy: 0.6 },
+      { name: 'VILA DA PRAIA', x: 96, z: -86, r: 28, flat: true, vila: 6, sandy: 0.5 },
+      { name: 'VILA ALTA', x: 74, z: 96, r: 28, flat: true, vila: 6, lift: 4 },
+      { name: 'VILA DO MATO', x: -70, z: -96, r: 26, flat: true, vila: 5 },
+      { name: 'FAROL', x: 18, z: -168, r: 14, flat: true, farol: true, lift: 5 },
+      { name: 'LAGOA', x: -36, z: 96, r: 18, lake: true },
+      { name: 'MORRO', x: 130, z: 20, r: 30, hills: 9 },
+    ],
+    paths: [[[0, 0], [-112, 40]], [[0, 0], [96, -86]], [[0, 0], [74, 96]], [[0, 0], [-70, -96]], [[96, -86], [18, -168]], [[-70, -96], [18, -168]], [[-112, 40], [-36, 120], [74, 96]]],
+    fu: { coast: 90, umbrellas: true, scatter: [['palm_a|palm_b|palm_c', 70, 'trunk'], ['tree_a|tree_b', 60, 'trunk'], ['bush_a', 90, false], ['rock_0|rock_1|rock_2', 40, 'box']] },
+    build: [['Vilas, porto e farol', (P, rnd) => W.buildFuria(P, rnd)]],
+  };
+  W.MAPS.savana = {
+    name: 'Savana Seca', desc: 'Terra vermelha, acácias e campo aberto', color: '#d2702e',
+    landR: 200, playR: 222, show: 'POVOADO', trees: 0,
+    look: { g1: 0xa8863e, g2: 0xc09a52, g3: 0x8a6a30, dirt: 0xa4502a, field: 0xb8a04a, s1: 0xd2a676, s2: 0xc08d5e, skyTop: 0x2c6ab4, skyMid: 0x7fa8d4, skyHor: 0xf2d9ae, fog: 0xe8cfa2, sun: 0xffe2b4, sunI: 3.1, hemiSky: 0xfff0d6, hemiGround: 0x8a5a32 },
+    areas: [
+      { name: 'POVOADO', x: 0, z: 10, r: 32, flat: true, vila: 8 },
+      { name: 'FAZENDA', x: 96, z: 70, r: 34, flat: true, vila: 4, fields: [0, 18, 20] },
+      { name: 'ARMAZÉM', x: -110, z: -40, r: 34, flat: true, porto: true },
+      { name: 'VILA VERMELHA', x: 70, z: -100, r: 28, flat: true, vila: 6 },
+      { name: 'RANCHO', x: -80, z: 110, r: 26, flat: true, vila: 5 },
+      { name: 'POÇO', x: 10, z: 110, r: 14, lake: true },
+      { name: 'PLANALTO', x: -150, z: 60, r: 34, hills: 12 },
+      { name: 'CAMPO ABERTO', x: 150, z: -20, r: 34, hills: 4 },
+    ],
+    paths: [[[0, 10], [96, 70]], [[0, 10], [-110, -40]], [[0, 10], [70, -100]], [[0, 10], [-80, 110]], [[70, -100], [-110, -40]], [[96, 70], [-80, 110]]],
+    fu: { coast: 50, coastProp: ['rock_0', 'rock_1', 'bush_dry'], scatter: [['tree_dry', 120, 'trunk'], ['bush_dry', 140, false], ['rock_0|rock_1|rock_2', 70, 'box']] },
+    build: [['Povoados e fazendas', (P, rnd) => W.buildFuria(P, rnd)]],
+  };
+  W.MAPS.por_do_sol = {
+    name: 'Arquipélago Pôr do Sol', desc: 'Luz dourada, céu rosado e muitas casas', color: '#ff8a5c',
+    landR: 205, playR: 228, show: 'ILHA DO MEIO', trees: 20,
+    look: { g1: 0x6e8a34, g2: 0x8e9a44, g3: 0x52702a, s1: 0xf0c49a, s2: 0xdcaa82, skyTop: 0x2a2350, skyMid: 0x9a4c7c, skyHor: 0xffb27c, fog: 0xf2a888, sun: 0xffa868, sunI: 2.5, hemiSky: 0xffc4a6, hemiGround: 0x5a4a52 },
+    areas: [
+      { name: 'ILHA DO MEIO', x: 0, z: 0, r: 34, flat: true, vila: 9 },
+      { name: 'ILHA NORTE', x: 20, z: -120, r: 32, flat: true, vila: 8 },
+      { name: 'ILHA SUL', x: -10, z: 124, r: 32, flat: true, vila: 8 },
+      { name: 'ILHA LESTE', x: 124, z: 10, r: 30, flat: true, vila: 7 },
+      { name: 'CAIS', x: -124, z: -20, r: 32, flat: true, porto: true, sandy: 0.6 },
+      { name: 'FAROL', x: 150, z: -110, r: 14, flat: true, farol: true, lift: 3 },
+      // canais de água entre as ilhas (lagos encadeados) e pontes de madeira
+      { name: 'CANAL NORTE A', x: -40, z: -62, r: 22, lake: true }, { name: 'CANAL NORTE B', x: 40, z: -62, r: 22, lake: true },
+      { name: 'CANAL SUL A', x: -40, z: 64, r: 22, lake: true }, { name: 'CANAL SUL B', x: 40, z: 64, r: 22, lake: true },
+      { name: 'CANAL LESTE', x: 66, z: 40, r: 18, lake: true },
+      { name: 'PONTE NORTE', x: 0, z: -62, r: 6, ponte: [5, 40] }, { name: 'PONTE SUL', x: 0, z: 64, r: 6, ponte: [5, 40] },
+    ],
+    paths: [[[0, 0], [0, -62], [20, -120]], [[0, 0], [0, 64], [-10, 124]], [[0, 0], [124, 10]], [[0, 0], [-124, -20]], [[124, 10], [150, -110]]],
+    fu: { coast: 100, umbrellas: true, scatter: [['palm_a|palm_b|palm_c', 90, 'trunk'], ['tree_a|tree_b', 30, 'trunk'], ['bush_a', 70, false], ['rock_0|rock_1|rock_2', 30, 'box']] },
+    build: [['Ilhas e vilas', (P, rnd) => W.buildFuria(P, rnd)]],
+  };
+  W.MAP_LIST = ['tropical', 'savana', 'por_do_sol', 'megacidade', 'metropole', 'ilha', 'triangulo'];
 })();

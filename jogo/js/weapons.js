@@ -65,6 +65,24 @@ WPN.load = async function () {
     try { WPN.modelsLod = await WPN.loadFile('assets/guns_lod.bin'); } catch (e) { WPN.modelsLod = null; }
     // cidade da Kenney (CC0): prédios, ruas, calçadas, fonte e árvores
     try { WPN.city = await WPN.loadFile('assets/city.bin'); } catch (e) { WPN.city = null; }
+    // peças do Fúria Tropical (casas, hangar, farol, coqueiros, árvores, pedras...)
+    try { WPN.furia = await WPN.loadFile('assets/furia.bin'); } catch (e) { WPN.furia = null; }
+    // coqueiros, árvores e arbustos vinham com textura: onde ficou branco, pinta pela altura (tronco embaixo, folhas em cima)
+    if (WPN.furia) {
+      const PAINT = { palm_a: [0x3f8f3a, 0x8a6a45, 0.62], palm_b: [0x3f8f3a, 0x8a6a45, 0.62], palm_c: [0x48963c, 0x8a6a45, 0.55], tree_a: [0x4a8a36, 0x6e5034, 0.3], tree_b: [0x3d7d34, 0x6e5034, 0.3],
+        tree_dry: [0x8f8a40, 0x6e5034, 0.35], bush_a: [0x4f8f3a, 0x4f8f3a, 0], bush_dry: [0xa08a50, 0xa08a50, 0], umbrella: [0xff6b4a, 0xe8e8e8, 0.7] };
+      const top = new THREE.Color(), bot = new THREE.Color();
+      for (const k in PAINT) {
+        const g = WPN.furia[k]; if (!g) continue;
+        const c = g.attributes.color, P = g.attributes.position, bb = g.boundingBox, H = bb.max.y - bb.min.y;
+        top.setHex(PAINT[k][0]); bot.setHex(PAINT[k][1]);
+        for (let i = 0; i < c.count; i++) {
+          if (Math.min(c.getX(i), c.getY(i), c.getZ(i)) < 0.75) continue;
+          const up = (P.getY(i) - bb.min.y) / H >= PAINT[k][2], q = up ? top : bot;
+          c.setXYZ(i, q.r, q.g, q.b);
+        }
+      }
+    }
     // mapa feito no Godot (godot_mapas/ › exportar_mapa.gd)
     try { const r = await fetch(CH.url('assets/mapa_cidade.json')); WPN.cityMap = r.ok ? await r.json() : null; } catch (e) { WPN.cityMap = null; }
     try { const r = await fetch(CH.url('assets/mapa_megacidade.json')); WPN.megaMap = r.ok ? await r.json() : null; } catch (e) { WPN.megaMap = null; }

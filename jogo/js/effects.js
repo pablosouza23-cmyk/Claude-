@@ -215,14 +215,42 @@ SND.init = function () {
     SND.noise = SND.ctx.createBuffer(1, len, SND.ctx.sampleRate);
     const d = SND.noise.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    SND.loadSamples();
   } catch (e) { SND.ctx = null; }
 };
+// sons gravados (do Fúria Tropical): carregam em segundo plano; enquanto não chegam, vale o som sintetizado
+SND.FILES = ['shot_rifle', 'shot_smg', 'shot_sniper', 'shot_shotgun', 'shot_pistol', 'explosion', 'hit', 'headshot', 'kill', 'pickup', 'heal', 'reload', 'empty', 'ui_click', 'step0', 'step1', 'step2', 'chute', 'pump', 'victory', 'defeat', 'zone', 'lobby_music', 'beep', 'beep_go', 'plane', 'engine', 'wind'];
+SND.samples = {};
+SND.loadSamples = function () {
+  for (const n of SND.FILES) {
+    fetch(typeof CH !== 'undefined' ? CH.url('assets/sfx/' + n + '.mp3') : 'assets/sfx/' + n + '.mp3').then(r => r.ok ? r.arrayBuffer() : null)
+      .then(ab => ab && SND.ctx.decodeAudioData(ab)).then(b => { if (b) SND.samples[n] = b; }).catch(() => {});
+  }
+};
+// toca um som gravado; devolve false se ainda não carregou
+SND.sample = function (n, vol, rate, loop) {
+  const c = SND.ctx, b = SND.samples[n];
+  if (!c || !b || !SND.on) return false;
+  const s = c.createBufferSource(), g = c.createGain();
+  s.buffer = b; s.playbackRate.value = rate || 1; s.loop = !!loop;
+  g.gain.value = (vol === undefined ? 1 : vol) * (SND.vol === undefined ? 1 : SND.vol);
+  s.connect(g); g.connect(c.destination); s.start();
+  return s;
+};
+SND.MAP = { shot: 'shot_rifle', smg: 'shot_smg', sniper: 'shot_sniper', shotgun: 'shot_shotgun', pistol: 'shot_pistol', laser: 'shot_smg', shotFar: 'shot_rifle', boom: 'explosion',
+  hit: 'hit', head: 'headshot', kill: 'kill', pick: 'pickup', heal: 'heal', reload: 'reload', click: 'empty', ui: 'ui_click', step: 'step', chute: 'chute' };
 // por padrão só os tiros e as explosões fazem barulho; o resto (cliques, passos, acertos...) liga nas configurações
 SND.SHOTS = { shot: 1, smg: 1, sniper: 1, shotgun: 1, pistol: 1, laser: 1, shotFar: 1, boom: 1 };
 SND.play = function (type, vol) {
   const c = SND.ctx;
   if (!c || !SND.on) return;
   if (!SND.SHOTS[type] && !(typeof G !== 'undefined' && G.settings && G.settings.sfx === 'todos')) return;
+  // gravação, se já carregou (tiro de longe: mais baixo e mais grave)
+  const sm = SND.MAP[type];
+  if (sm) {
+    const n = sm === 'step' ? 'step' + Math.floor(Math.random() * 3) : sm, far = type === 'shotFar';
+    if (SND.sample(n, (vol === undefined ? 1 : vol) * (far ? 0.35 : type === 'step' ? 0.5 : 0.8), (far ? 0.8 : 1) * (0.96 + Math.random() * 0.08))) return;
+  }
   try {
     const t = c.currentTime;
     vol = (vol === undefined ? 1 : vol) * (SND.vol === undefined ? 1 : SND.vol);

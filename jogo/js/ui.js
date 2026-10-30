@@ -861,15 +861,15 @@ function endMatch() {
   G.state = 'end';
   if (document.exitPointerLock) document.exitPointerLock();
   const p = G.player, win = p.alive;
-  $('resTitle').textContent = win ? 'VITÓRIA' : 'DERROTA';
+  $('resTitle').textContent = win ? 'VITÓRIA' : 'DERROTA'; SND.sample(win ? 'victory' : 'defeat', 0.8);
   $('resultCard').className = 'resCard ' + (win ? 'win' : 'lose');
   if (G.mode === 'cs' && G.cs) {
     const me = p.team, won = G.cs.winner === me;
-    $('resTitle').textContent = won ? 'VITÓRIA' : 'DERROTA';
+    $('resTitle').textContent = won ? 'VITÓRIA' : 'DERROTA'; SND.sample(won ? 'victory' : 'defeat', 0.8);
     $('resultCard').className = 'resCard ' + (won ? 'win' : 'lose');
     $('resPlace').innerHTML = G.cs.score[me] + ' <small>x</small> ' + G.cs.score[1 - me] + '<small> · CONTRA SQUAD ' + G.cs.n + 'x' + G.cs.n + '</small>';
   } else if (TEAM.on()) {
-    $('resTitle').textContent = G.place === 1 ? 'VITÓRIA' : 'DERROTA';
+    $('resTitle').textContent = G.place === 1 ? 'VITÓRIA' : 'DERROTA'; SND.sample(G.place === 1 ? 'victory' : 'defeat', 0.8);
     $('resultCard').className = 'resCard ' + (G.place === 1 ? 'win' : 'lose');
     $('resPlace').innerHTML = '#' + G.place + '<small>/' + G.teamCount + ' · ' + TEAM.label(G.teamSize) + '</small>';
   } else $('resPlace').innerHTML = '#' + G.place + '<small>/' + G.actors.length + '</small>';
@@ -1215,7 +1215,12 @@ function applySettings() {
 // música ambiente simples do menu (acordes suaves)
 SND.music = function (on) {
   on = on && G.settings.music && G.settings.sound;
-  if (!on) { if (SND.musicIv) { clearInterval(SND.musicIv); SND.musicIv = 0; } return; }
+  if (!on) { if (SND.musicIv) { clearInterval(SND.musicIv); SND.musicIv = 0; } if (SND.lobbySrc) { try { SND.lobbySrc.stop(); } catch (e) { /* ok */ } SND.lobbySrc = null; } return; }
+  // música do lobby gravada (em loop); se ainda não carregou, tenta de novo daqui a pouco
+  if (SND.lobbySrc) return;
+  if (SND.samples && SND.samples.lobby_music) { SND.lobbySrc = SND.sample('lobby_music', 0.45, 1, true); return; }
+  if (SND.ctx && !SND.musicRetry) { SND.musicRetry = setTimeout(() => { SND.musicRetry = 0; if (G.state === 'menu' || G.state === 'lobby') SND.music(true); }, 1500); }
+  if (SND.ctx) return;
   if (SND.musicIv || !SND.ctx) return;
   const chords = [[220, 277, 330], [196, 247, 294], [174.6, 220, 262], [196, 247, 330]];
   let i = 0;

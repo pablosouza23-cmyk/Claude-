@@ -118,6 +118,16 @@ W.sand = function (x, z) {
 const _gc = { g1: new THREE.Color(0x4f7a26), g2: new THREE.Color(0x7a943a), g3: new THREE.Color(0x355f1f), s1: new THREE.Color(0xdcc89e), s2: new THREE.Color(0xc9ae80),
   wet: new THREE.Color(0xa38c66), rock: new THREE.Color(0x7d7b72), field: new THREE.Color(0x8c9b3c), dirt: new THREE.Color(0x86684a), c: new THREE.Color(), cs: new THREE.Color(),
   rice: new THREE.Color(0x86c23c), paddy: new THREE.Color(0x5d8079), asphalt: new THREE.Color(0x3c3f42), paint: new THREE.Color(0xe8e6dc) };
+// visual de cada mapa (map.look): cores do chão, céu, névoa e luz do sol; sem look volta ao padrão
+const _gcDef = {}; for (const k of ['g1', 'g2', 'g3', 's1', 's2', 'dirt', 'field']) _gcDef[k] = _gc[k].getHex();
+W.applyLook = function () {
+  const L = (W.MAP && W.MAP.look) || {};
+  for (const k in _gcDef) _gc[k].setHex(L[k] !== undefined ? L[k] : _gcDef[k]);
+  if (W.sky) { const u = W.sky.material.uniforms; u.top.value.setHex(L.skyTop || 0x1a56ad); u.mid.value.setHex(L.skyMid || 0x4a8bd6); u.hor.value.setHex(L.skyHor || 0xbcd5ea); }
+  if (typeof scene !== 'undefined' && scene && scene.fog) scene.fog.color.setHex(L.fog || 0xb9d0e3);
+  if (typeof sun !== 'undefined' && sun) { sun.color.setHex(L.sun || 0xfff0d8); sun.intensity = L.sunI || 2.9; }
+  if (typeof hemi !== 'undefined' && hemi) { hemi.color.setHex(L.hemiSky || 0xdcecff); hemi.groundColor.setHex(L.hemiGround || 0x5d6b3e); }
+};
 W.groundColor = function (x, z, y, out) {
   const v = U.fbm(x * 0.05, z * 0.05);
   const c = out || _gc.c;
@@ -382,7 +392,7 @@ W.buildSteps = function (scene, quality, mapId) {
   W.grassCenter = { x: 1e9, z: 1e9 };
   const steps = [];
   if (!W.sky) steps.push(['Céu e nuvens', () => { W.buildSky(scene); W.buildClouds(scene, rnd); if (typeof renderer !== 'undefined') W.buildEnv(renderer, scene); }]);
-  steps.push(['Terreno', () => W.buildTerrain(R)]);
+  steps.push(['Terreno', () => { W.applyLook(); W.buildTerrain(R); }]);
   if (!W.seaMat) steps.push(['Mar', () => W.buildSea(scene)]); else steps.push(['Mar', () => W.updateSeaDepth()]);
   W.MAP.build.forEach((b, i) => steps.push([b[0], () => b[1](P, rnd)]));
   steps.push(['Pedras e caixas', () => { W.buildRocks(P, rnd); W.buildCrates(P, rnd); W.solidMesh(R, P, 0.04); }]);

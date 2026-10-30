@@ -1691,6 +1691,7 @@ function updatePlayer(dt) {
     return;
   }
   G.pitch = U.clamp(G.pitch, -0.95, 0.8);
+  if (p.car) { CARS.drive(p, mv, dt); return; }
   if (CS.frozen()) {
     // escolha da arma: dá para olhar em volta, mas não andar nem atirar
     p.vel.set(0, 0, 0); p.speed = 0;
@@ -1733,7 +1734,8 @@ function updatePlayer(dt) {
   updateGelAim(p);
   if (consume('heal', 'Digit5')) startHeal(p);
   if (consume('use', 'KeyE') || consume('pick', 'KeyF')) {
-    if (canOpenAirdrop()) openAirdrop(p); else playerPickup();
+    const car = !G.wait && CARS.near(p);
+    if (canOpenAirdrop()) openAirdrop(p); else if (car && !nearestWeaponLoot(p, 2.2)) CARS.enter(p, car); else playerPickup();
   }
   if (consume('reload', 'KeyR')) startReload(p);
   if (consume('inspect', 'KeyI')) { if (p.inspect) p.inspect = false; else startInspect(p); }
@@ -2092,3 +2094,77 @@ function setupTraining() {
   bigText('TREINAMENTO');
   notify('info', 'Treinamento: atire nos alvos, troque de arma no chão e teste o deslize (correr + agachar). Pause para sair.');
 }
+
+// ------------------------------------------------------------------ carros (dirigir pela ilha)
+// E/F perto do carro entra; W/S acelera e freia, A/D vira; E ou Espaço sai. Atropelar machuca os inimigos.
+const CARS = { list: [], COLORS: [0xf2f4f7, 0xd8222c, 0x1d5fd6, 0x161a20, 0xf5b915, 0x2fa35a] };
+const _cp = new V3();
+CARS.mesh = function (col) {
+  const g = new THREE.Group();
+  const paint = new THREE.MeshStandardMaterial({ color: col, metalness: 0.55, roughness: 0.28, envMapIntensity: 1.2 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x14171d, metalness: 0.3, roughness: 0.6 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x1b2633, metalness: 0.8, roughness: 0.08 });
+  const lightF = new THREE.MeshBasicMaterial({ color: 0xfff6d8 }), lightB = new THREE.MeshBasicMaterial({ color: 0xff2030 });
+  const box = (w, h, d, m, x, y, z, rx) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); if (rx) o.rotation.x = rx; o.castShadow = true; g.add(o); return o; };
+  box(1.9, 0.5, 4.4, paint, 0, 0.6, 0);            // carroceria
+  box(1.86, 0.18, 1.3, paint, 0, 0.9, 1.45, -0.12); // capô
+  box(1.6, 0.5, 2.0, glass, 0, 1.08, -0.25);       // cabine (vidros)
+  box(1.62, 0.08, 1.7, paint, 0, 1.36, -0.3);      // teto
+  box(1.95, 0.22, 0.25, dark, 0, 0.45, 2.22);      // para-choque
+  box(1.95, 0.22, 0.25, dark, 0, 0.45, -2.22);
+  box(0.45, 0.12, 0.05, lightF, 0.62, 0.7, 2.21); box(0.45, 0.12, 0.05, lightF, -0.62, 0.7, 2.21);
+  box(0.5, 0.12, 0.05, lightB, 0.6, 0.72, -2.21); box(0.5, 0.12, 0.05, lightB, -0.6, 0.72, -2.21);
+  const wg = new THREE.CylinderGeometry(0.38, 0.38, 0.3, 16).rotateZ(Math.PI / 2), wheels = [];
+  for (const [x, z] of [[0.86, 1.38], [-0.86, 1.38], [0.86, -1.38], [-0.86, -1.38]]) { const w = new THREE.Mesh(wg, dark); w.position.set(x, 0.38, z); w.castShadow = true; g.add(w); wheels.push(w); }
+  g.userData.wheels = wheels;
+  return g;
+};
+CARS.spawn = function (rnd) {
+  CARS.clear();
+  if (G.mode === 'cs') return;
+  rnd = rnd || Math.random;
+  for (let k = 0; k < 10; k++) {
+    let xz = null;
+    for (let i = 0; i < 30 && !xz; i++) { const c = W.randLand(rnd, 20); if (!W.inHouse(c[0], c[1]) && W.isFree(c[0], c[1], 4, W.occupied)) xz = c; }
+    if (!xz) continue;
+    const m = CARS.mesh(CARS.COLORS[k % CARS.COLORS.length]);
+    const c = { m: m, pos: new V3(xz[0], W.groundAt(xz[0], xz[1], 80), xz[1]), yaw: rnd() * 6.28, pitch: 0, speed: 0, driver: null };
+    CARS.place(c); scene.add(m); CARS.list.push(c);
+  }
+};
+CARS.clear = function () { for (const c of CARS.list) scene.remove(c.m); CARS.list = []; if (G.player) G.player.car = null; };
+CARS.place = function (c) { c.m.position.copy(c.pos); c.m.rotation.set(c.pitch, c.yaw, 0, 'YXZ'); };
+CARS.near = function (p) { let best = null, bd = 3.4; for (const c of CARS.list) { const d = Math.hypot(c.pos.x - p.pos.x, c.pos.z - p.pos.z); if (!c.driver && d < bd) { bd = d; best = c; } } return best; };
+CARS.enter = function (p, c) { c.driver = p; p.car = c; p.aimOn = false; p.emote = null; p.ch.root.visible = false; SND.play('pick'); };
+CARS.exit = function (p) {
+  const c = p.car; if (!c) return;
+  c.driver = null; p.car = null; c.speed = 0;
+  const sx = c.pos.x + Math.cos(c.yaw) * 1.8, sz = c.pos.z - Math.sin(c.yaw) * 1.8;
+  p.pos.set(sx, W.groundAt(sx, sz, c.pos.y + 2), sz); p.vel.set(0, 0, 0); p.ch.root.visible = true; p.ch.root.position.copy(p.pos);
+};
+CARS.drive = function (p, mv, dt) {
+  const c = p.car;
+  if (consume('use', 'KeyE') || consume('jump', 'Space')) { CARS.exit(p); return; }
+  const thr = mv.my;
+  if (Math.abs(thr) > 0.1) c.speed += thr * (thr * c.speed >= 0 ? 13 : 24) * dt; else c.speed *= Math.pow(0.4, dt);
+  c.speed = U.clamp(c.speed, -9, 27);
+  c.yaw += -mv.mx * U.clamp(Math.abs(c.speed) / 7, 0, 1) * 1.7 * Math.sign(c.speed || 1) * dt;
+  const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+  const nx = c.pos.x + fx * c.speed * dt, nz = c.pos.z + fz * c.speed * dt;
+  if (W.height(nx, nz) < 0.15) c.speed = 0;
+  else { _cp.set(nx, c.pos.y, nz); if (W.collide(_cp, 1.3, c.pos.y + 0.25, 1.2)) c.speed *= -0.25; c.pos.x = _cp.x; c.pos.z = _cp.z; }
+  c.pos.y = W.groundAt(c.pos.x, c.pos.z, c.pos.y + 1.2);
+  const hf = W.height(c.pos.x + fx * 1.6, c.pos.z + fz * 1.6), hb = W.height(c.pos.x - fx * 1.6, c.pos.z - fz * 1.6);
+  c.pitch = U.lerp(c.pitch, -Math.atan2(hf - hb, 3.2), Math.min(1, dt * 8));
+  CARS.place(c);
+  for (const w of c.m.userData.wheels) w.rotation.x += c.speed * dt / 0.38;
+  // atropelar
+  if (Math.abs(c.speed) > 5) for (const a of G.actors) {
+    if (a === p || !a.alive || a.phase !== 'ground' || (TEAM.on() && a.team === p.team)) continue;
+    if (Math.hypot(a.pos.x - c.pos.x, a.pos.z - c.pos.z) < 2.1 && G.time - (a.runT || -9) > 0.6) { a.runT = G.time; damageActor(a, Math.abs(c.speed) * 5, p, false, 'Carro'); c.speed *= 0.7; }
+  }
+  p.pos.set(c.pos.x, c.pos.y + 0.4, c.pos.z); p.vel.set(0, 0, 0); p.onGround = true; p.speed = 0; p.face = c.yaw;
+  p.ch.root.visible = false; p.ch.root.position.copy(p.pos);
+  // câmera vem para trás do carro quando você não está girando
+  if (G.time - (G.lookT || -9) > 0.8) { G.yaw = U.dampAngle(G.yaw, c.yaw + Math.PI, 3, dt); G.pitch = U.damp(G.pitch, -0.3, 3, dt); }
+};

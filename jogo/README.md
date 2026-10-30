@@ -506,4 +506,8 @@ A licença MIT pede que o aviso de copyright vá junto com o jogo. Deixe esta ta
 | `assets/props.bin` | Granada, mochila, kit, munição, colete, capacete, gel e caixa (modelados no Blender) |
 | `assets/chars/` | Personagens (malha + texturas) e animações, em formato binário compacto |
 | `assets/guns.bin` | Os 10 modelos de arma e o bipé |
-| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |
+| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v4.9
+
+- Carros na ilha (10 por partida): E/F perto do carro para dirigir, W/S acelera e freia, A/D vira, E ou Espaço sai. Atropelar machuca os inimigos.
+
+

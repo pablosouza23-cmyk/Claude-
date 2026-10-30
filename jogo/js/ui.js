@@ -230,7 +230,8 @@ function updateCamera(dt) {
     // inspecionando: câmera chega perto da arma
     G.inspK = U.damp(G.inspK || 0, p.inspect ? 1 : 0, 5, dt);
     if (G.inspK > 0.01) { dist = U.lerp(dist, 1.45, G.inspK); sh = U.lerp(sh, 0.42, G.inspK); fov -= 8 * G.inspK; }
-    const head = _m.set(p.pos.x, p.pos.y + (p.crouch ? 1.15 : 1.6) - 0.22 * (G.inspK || 0), p.pos.z);
+    if (p.car) { dist = 7.2; sh = 0; }
+    const head = _m.set(p.pos.x, p.pos.y + (p.car ? 2.3 : p.crouch ? 1.15 : 1.6) - 0.22 * (G.inspK || 0), p.pos.z);
     const hs = W.raycast(head, _r, sh + 0.25, true);
     if (hs) sh = Math.max(0, hs.t - 0.25);
     const pivot = _o.copy(head).addScaledVector(_r, sh);
@@ -477,7 +478,8 @@ function updateHUD(dt) {
   let use = '', useCol = '';
   if (p.phase === 'ground' && p.alive) {
     if (canOpenAirdrop()) { use = 'ABRIR SUPRIMENTO'; useCol = '#ffb21e'; }
-    else { const it = nearestWeaponLoot(p, 2.2); if (it) { use = 'PEGAR ' + lootLabel(it).toUpperCase(); useCol = WPN.RARITY[WEAPONS[it.type.slice(2)].rarity].color; } }
+    else if (p.car) { use = 'SAIR DO CARRO'; useCol = '#5cc8ff'; }
+    else { const it = nearestWeaponLoot(p, 2.2); if (it) { use = 'PEGAR ' + lootLabel(it).toUpperCase(); useCol = WPN.RARITY[WEAPONS[it.type.slice(2)].rarity].color; } else if (!G.wait && CARS.near(p)) { use = 'DIRIGIR'; useCol = '#5cc8ff'; } }
   }
   // pular a janela
   setClass(H.vaultBtn, 'vb', 'hidden', !(G.nearWin && p.alive && !p.vault));
@@ -813,6 +815,7 @@ function startMatch(msg) {
     scatterLoot();
     TEAM.assign([p], G.bots, G.settings.brTeam);
   }
+  CARS.spawn(msg ? U.rng(msg.seed + 23) : Math.random);
   G.airdrop = { state: 'none' };
   initZone();
   // sala de espera antes do avião
@@ -1425,6 +1428,7 @@ function initScreens() {
 
 // ------------------------------------------------------------------ partida
 function clearMatch() {
+  CARS.clear();
   G.wait = null;
   if (H.waitBox) H.waitBox.classList.add('hidden');
   if ($('csBuy')) $('csBuy').classList.add('hidden');

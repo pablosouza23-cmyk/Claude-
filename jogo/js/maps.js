@@ -621,6 +621,13 @@
     }
     W.cityList = {};
   };
+  // todo prédio do kit da Kenney vira um prédio de entrar (portas, escada e andares) do mesmo tamanho
+  const KFLOORS = { 'building-small-a': 2, 'building-small-b': 3, 'building-small-c': 3, 'building-small-d': 2, 'building-garage': 1 };
+  const KCOLS = [0xd9cfbf, 0xc9b79c, 0xb8c4cc, 0xe0d6c2, 0x9fc7e0, 0xe8b7a6, 0xb9d9a8, 0xd8c2e8], KTRIMS = [0x8a5a33, 0x5b6268, 0x3f4a57, 0x7a3b2e];
+  W.kHouse = function (P, name, x, z, rot, base, rnd, size) {
+    const hw = (size || 3.2), fl = KFLOORS[name] || 2;
+    W.building(P, x, z, rot, base, hw, hw * 0.92, fl, KCOLS[Math.floor(rnd() * KCOLS.length)], KTRIMS[Math.floor(rnd() * KTRIMS.length)]);
+  };
   // distrito de cidade: grade de 9 x 9 quadras de 9 m; ruas a cada 4 quadras, quarteirões de 3 x 3 entre elas
   W.buildDowntown = function (P, name, rnd) {
     const a = W.A[name], base = a.h - 0.05, T = 9, y = base + 0.03;
@@ -642,7 +649,7 @@
       // casas e prédios virados para a rua mais perto; às vezes um jardim
       if (rnd() < 0.18) { W.cityPut(rnd() < 0.5 ? 'grass-trees' : 'grass', x, y, z, 0, T); continue; }
       const face = bi === 1 ? -Math.PI / 2 : bi === 3 ? Math.PI / 2 : bj === 1 ? Math.PI : 0;
-      W.cityPut(blds[Math.floor(rnd() * blds.length)], x, y, z, face, T * 0.98, true);
+      W.kHouse(P, blds[Math.floor(rnd() * blds.length)], x, z, face, base, rnd);
     }
     W.occupied.push([a.x, a.z, a.r]);
   };
@@ -652,11 +659,15 @@
     if (!a || !M || !WPN.city) return;
     const T = M.quadra || 9, base = a.h - 0.05, y = base + 0.03;
     const cols = [0xd9cfbf, 0xc9b79c, 0xb8c4cc, 0xe0d6c2], trims = [0x8a5a33, 0x5b6268, 0x3f4a57];
+    const tw = W.A['TORRE DO RELÓGIO'];
     for (const p of M.pecas) {
       const x = a.x + p.x * T, z = a.z + p.z * T;
-      if (p.m === 'predio') { W.building(P, x, z, Math.floor(rnd() * 4) * Math.PI / 2, base, 4.2, 4.2, p.andares || 3, cols[Math.floor(rnd() * cols.length)], trims[Math.floor(rnd() * trims.length)]); continue; }
-      const solid = /^building|fountain$/.test(p.m);
-      W.cityPut(p.m, x, y, z, p.r || 0, T * (p.s || 1) * (solid ? 0.98 : 1), solid);
+      // em volta da torre do relógio ficam as casinhas da praça: nada da cidade em cima delas
+      if (tw && !/^road|^pavement$/.test(p.m) && Math.abs(x - tw.x) < 31 && Math.abs(z - tw.z) < 31) continue;
+      if (p.m === 'predio') { W.building(P, x, z, Math.floor(rnd() * 4) * Math.PI / 2, base, 3.2, 3.2, p.andares || 3, cols[Math.floor(rnd() * cols.length)], trims[Math.floor(rnd() * trims.length)]); continue; }
+      if (/^building/.test(p.m)) { W.kHouse(P, p.m, x, z, p.r || 0, base, rnd); continue; }
+      const solid = /fountain$/.test(p.m);
+      W.cityPut(p.m, x, y, z, p.r || 0, T * (p.s || 1), solid);
     }
     W.occupied.push([a.x, a.z, a.r]);
   };
@@ -704,7 +715,7 @@
     for (const p of M.pecas) {
       const h = W.height(p.x, p.z) - 0.05;
       if (p.m === 'loot') { W.lootSpots.push([p.x, p.z, h + p.y]); continue; }
-      if (p.m === 'predio') { W.building(P, p.x, p.z, p.r || 0, h + p.y, p.lx || 4.2, p.lz || 4.2, p.andares || 2, cols[Math.floor(rnd() * cols.length)], trims[Math.floor(rnd() * trims.length)]); continue; }
+      if (p.m === 'predio') { W.building(P, p.x, p.z, p.r || 0, h + p.y, Math.min(p.lx || 4.2, 3.3), Math.min(p.lz || 4.2, 3.3), p.andares || 2, cols[Math.floor(rnd() * cols.length)], trims[Math.floor(rnd() * trims.length)]); continue; }
       if (p.m === 'caixa' || p.m === 'cilindro') {
         const col = parseInt(String(p.cor || '#aaaaaa').slice(1), 16), y = h + p.y;
         if (p.q) q.set(p.q[0], p.q[1], p.q[2], p.q[3]); else q.setFromAxisAngle(UP3, p.r || 0);
@@ -719,8 +730,8 @@
         }
         continue;
       }
-      const solid = /^building|fountain$/.test(p.m);
-      W.cityPut(p.m, p.x, h + p.y + 0.03, p.z, p.r || 0, (p.s || 9) * (solid ? 0.98 : 1), solid);
+      if (/^building/.test(p.m)) { W.kHouse(P, p.m, p.x, p.z, p.r || 0, h + p.y, rnd, 3.5 * (p.s || 9) / 9); continue; }
+      W.cityPut(p.m, p.x, h + p.y + 0.03, p.z, p.r || 0, (p.s || 9), /fountain$/.test(p.m));
     }
     for (const a of W.areaDefs) if (a.flat) W.occupied.push([a.x, a.z, a.r]);
   };
@@ -779,7 +790,8 @@
       // porto: hangar, fileiras de contêineres, barris e caixas
       if (a.porto) {
         const face = Math.atan2(-a.x, -a.z);
-        W.fuPut('hangar', a.x, a.z, face, 'box');
+        W.shed(P, a.x, a.z, face, W.height(a.x, a.z) - 0.05, 7, 8, 5.5, 0x9aa4ab, 0x5b6268, 'metal', 'metal');
+        W.lootSpots.push([a.x, a.z, W.height(a.x, a.z)]);
         for (let i = 0; i < 6; i++) { const off = (i - 2.5) * 3.2; W.fuPut('container', a.x + Math.cos(face) * off + Math.sin(face) * 14, a.z - Math.sin(face) * off + Math.cos(face) * 14, face, 'box'); }
         for (let i = 0; i < 6; i++) W.fuPut(i % 2 ? 'barrel' : 'crate', a.x - Math.sin(face) * 12 + (rnd() - 0.5) * 10, a.z - Math.cos(face) * 12 + (rnd() - 0.5) * 10, rnd() * 6, 'box');
         W.lootSpots.push([a.x, a.z, W.height(a.x, a.z)]);

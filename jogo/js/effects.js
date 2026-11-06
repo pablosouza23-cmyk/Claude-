@@ -229,7 +229,7 @@ SND.loadSamples = function () {
 };
 // toca um som gravado; devolve false se ainda não carregou
 SND.voices = 0; SND.lastT = {};
-SND.sample = function (n, vol, rate, loop) {
+SND.sample = function (n, vol, rate, loop, music, pos) {
   const c = SND.ctx, b = SND.samples[n];
   if (!c || !b || !SND.on) return false;
   // no máximo 10 sons ao mesmo tempo (6 no celular) e o mesmo som não repete em menos de 45 ms: evita o som embolado e estourado
@@ -239,9 +239,16 @@ SND.sample = function (n, vol, rate, loop) {
   if (!SND.bus) { SND.bus = c.createDynamicsCompressor(); SND.bus.threshold.value = -16; SND.bus.ratio.value = 6; SND.bus.connect(c.destination); }
   const s = c.createBufferSource(), g = c.createGain();
   if (!loop) { SND.voices++; s.onended = () => { SND.voices--; }; }
+  if (loop) s.gainNode = g;
   s.buffer = b; s.playbackRate.value = rate || 1; s.loop = !!loop;
-  g.gain.value = (vol === undefined ? 1 : vol) * (SND.vol === undefined ? 1 : SND.vol);
-  s.connect(g); g.connect(SND.bus); s.start();
+  g.gain.value = (vol === undefined ? 1 : vol) * (SND.vol === undefined ? 1 : SND.vol) * (music ? 1 : (SND.sfxVol === undefined ? 1 : SND.sfxVol));
+  // som posicionado no mundo: vem da direção certa e cai com a distância (fone esquerdo/direito)
+  if (pos) {
+    const pn = c.createPanner(); pn.panningModel = typeof isTouch !== 'undefined' && isTouch ? 'equalpower' : 'HRTF'; pn.distanceModel = 'inverse'; pn.refDistance = 8; pn.rolloffFactor = 1.1; pn.maxDistance = 220;
+    if (pn.positionX) { pn.positionX.value = pos.x; pn.positionY.value = pos.y; pn.positionZ.value = pos.z; } else pn.setPosition(pos.x, pos.y, pos.z);
+    s.connect(g); g.connect(pn); pn.connect(SND.bus);
+  } else s.connect(g), g.connect(SND.bus);
+  s.start();
   return s;
 };
 SND.MAP = { shot: 'shot_rifle', smg: 'shot_smg', sniper: 'shot_sniper', shotgun: 'shot_shotgun', pistol: 'shot_pistol', laser: 'shot_smg', shotFar: 'shot_rifle', boom: 'explosion',
@@ -517,4 +524,18 @@ SND.pickJamal = function () {
     notify('info', 'Música do Passinho do Jamal salva neste aparelho!');
   };
   inp.click();
+};
+
+// som de uma arma (ou outro tipo do SND.MAP) num ponto do mapa; sem a gravação, cai no tiro distante sintetizado
+SND.at = function (type, vol, pos) {
+  const n = SND.MAP[type];
+  if (n && SND.sample(n, vol, 0.95 + Math.random() * 0.1, false, false, pos)) return;
+  SND.play('shotFar', vol * 0.6);
+};
+// o ouvinte acompanha a câmera (para o som 3D)
+SND.listen = function (cam) {
+  const c = SND.ctx; if (!c || !cam) return;
+  const L = c.listener, e = cam.matrixWorld.elements, p = cam.position;
+  if (L.positionX) { L.positionX.value = p.x; L.positionY.value = p.y; L.positionZ.value = p.z; L.forwardX.value = -e[8]; L.forwardY.value = -e[9]; L.forwardZ.value = -e[10]; L.upX.value = e[4]; L.upY.value = e[5]; L.upZ.value = e[6]; }
+  else { L.setPosition(p.x, p.y, p.z); L.setOrientation(-e[8], -e[9], -e[10], e[4], e[5], e[6]); }
 };

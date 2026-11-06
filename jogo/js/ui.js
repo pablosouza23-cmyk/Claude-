@@ -231,7 +231,8 @@ function updateCamera(dt) {
     G.inspK = U.damp(G.inspK || 0, p.inspect ? 1 : 0, 5, dt);
     if (G.inspK > 0.01) { dist = U.lerp(dist, 1.45, G.inspK); sh = U.lerp(sh, 0.42, G.inspK); fov -= 8 * G.inspK; }
     if (p.car) { dist = 7.2; sh = 0; }
-    const head = _m.set(p.pos.x, p.pos.y + (p.car ? 2.3 : p.crouch ? 1.15 : 1.6) - 0.22 * (G.inspK || 0), p.pos.z);
+    G.landDip = U.damp(G.landDip || 0, 0, 7, dt);
+    const head = _m.set(p.pos.x, p.pos.y + (p.car ? 2.3 : p.crouch ? 1.15 : 1.6) - 0.22 * (G.inspK || 0) - (G.landDip || 0), p.pos.z);
     const hs = W.raycast(head, _r, sh + 0.25, true);
     if (hs) sh = Math.max(0, hs.t - 0.25);
     const pivot = _o.copy(head).addScaledVector(_r, sh);
@@ -265,7 +266,7 @@ function updateCamera(dt) {
   if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = U.damp(camera.fov, fov, ads ? 22 : 14, dt); camera.updateProjectionMatrix(); }
   const high = U.clamp((camera.position.y - 30) / 150, 0, 1);
   // qualidade baixa enxerga menos longe: desenha bem menos coisa
-  const fogK = G.settings.quality === 'baixa' ? 0.6 : 1;
+  const fogK = (G.settings.quality === 'baixa' ? 0.6 : 1) * ({ curta: 0.6, normal: 1, longa: 1.45 }[G.settings.dist] || 1);
   scene.fog.near = U.lerp(90, 380, high) * fogK; scene.fog.far = U.lerp(520, 1400, high) * fogK;
   const fc = p.phase === 'ground' ? p.pos : camera.position;
   sun.position.copy(fc).addScaledVector(G.sunDir, 70);
@@ -1073,6 +1074,9 @@ const SETTINGS_UI = {
   graficos: [
     { k: 'quality', label: 'Qualidade gráfica', type: 'seg', opts: [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta'], ['ultra', 'Ultra (PC)']] },
     { k: 'fx', label: 'Estilo da imagem', type: 'seg', opts: [['normal', 'Normal'], ['bodycam', 'Bodycam']] },
+    { k: 'cine', label: 'Filtro cinematográfico (brilho, cor e nitidez; no Ultra fica sempre ligado)', type: 'toggle' },
+    { k: 'shadows', label: 'Sombras', type: 'toggle' },
+    { k: 'dist', label: 'Distância de visão', type: 'seg', opts: [['curta', 'Curta'], ['normal', 'Normal'], ['longa', 'Longa']] },
     { k: 'dynRes', label: 'Resolução automática (evita travar)', type: 'toggle' },
     { k: 'fps', label: 'Mostrar FPS', type: 'toggle' },
   ],
@@ -1089,7 +1093,9 @@ const SETTINGS_UI = {
   audio: [
     { k: 'sound', label: 'Som', type: 'toggle' },
     { k: 'music', label: 'Música', type: 'toggle' },
-    { k: 'vol', label: 'Volume', type: 'range', min: 0, max: 1, step: 0.05, show: v => Math.round(v * 100) },
+    { k: 'vol', label: 'Volume geral', type: 'range', min: 0, max: 1, step: 0.05, show: v => Math.round(v * 100) },
+    { k: 'sfxVol', label: 'Volume dos efeitos', type: 'range', min: 0, max: 1, step: 0.05, show: v => Math.round(v * 100) },
+    { k: 'musVol', label: 'Volume da música', type: 'range', min: 0, max: 1, step: 0.05, show: v => Math.round(v * 100) },
     { k: 'vibra', label: 'Vibração', type: 'toggle' },
     { k: 'sfx', label: 'Efeitos sonoros', type: 'seg', opts: [['tiros', 'Só tiros'], ['todos', 'Todos']] },
   ],
@@ -1205,7 +1211,9 @@ function initHudEditor() {
 
 function applySettings() {
   const S = G.settings;
-  SND.on = S.sound; SND.vol = S.vol;
+  SND.on = S.sound; SND.vol = S.vol; SND.sfxVol = S.sfxVol === undefined ? 1 : S.sfxVol; SND.musVol = S.musVol === undefined ? 0.7 : S.musVol;
+  if (SND.lobbySrc && SND.lobbySrc.gainNode) SND.lobbySrc.gainNode.gain.value = 0.45 * SND.musVol / 0.7 * (SND.vol === undefined ? 1 : SND.vol);
+  if (typeof applyQuality === 'function' && typeof renderer !== 'undefined' && renderer) applyQuality();
   SND.music(S.music && (G.state === 'menu' || G.state === 'lobby'));
   $('fps').classList.toggle('hidden', !S.fps);
   document.documentElement.style.setProperty('--btn', S.btnSize);
@@ -1218,7 +1226,7 @@ SND.music = function (on) {
   if (!on) { if (SND.musicIv) { clearInterval(SND.musicIv); SND.musicIv = 0; } if (SND.lobbySrc) { try { SND.lobbySrc.stop(); } catch (e) { /* ok */ } SND.lobbySrc = null; } return; }
   // música do lobby gravada (em loop); se ainda não carregou, tenta de novo daqui a pouco
   if (SND.lobbySrc) return;
-  if (SND.samples && SND.samples.lobby_music) { SND.lobbySrc = SND.sample('lobby_music', 0.45, 1, true); return; }
+  if (SND.samples && SND.samples.lobby_music) { SND.lobbySrc = SND.sample('lobby_music', 0.45 * (SND.musVol === undefined ? 0.7 : SND.musVol) / 0.7, 1, true, true); return; }
   if (SND.ctx && !SND.musicRetry) { SND.musicRetry = setTimeout(() => { SND.musicRetry = 0; if (G.state === 'menu' || G.state === 'lobby') SND.music(true); }, 1500); }
   if (SND.ctx) return;
   if (SND.musicIv || !SND.ctx) return;
@@ -1521,9 +1529,10 @@ function frame(now) {
   }
   updateCamera(G.state === 'pause' ? 0 : dt);
   if (G.state === 'play') updateHUD(dt);
-  const bodycam = G.settings.fx === 'bodycam', cine = !bodycam && G.settings.quality === 'ultra';
+  const bodycam = G.settings.fx === 'bodycam', cine = !bodycam && (G.settings.quality === 'ultra' || !!G.settings.cine);
   if (bodycam || cine) POST.begin(renderer);
   if (isTouch && renderer.shadowMap.enabled) { PERF.sh = (PERF.sh + 1) % 2; if (!PERF.sh) renderer.shadowMap.needsUpdate = true; }
+  if (SND.ctx && G.state === 'play') SND.listen(camera);
   renderer.render(scene, camera);
   // a arma da mira (1ª pessoa) só aparece dentro da partida
   if (G.ads && fpScene && fpGun.visible && (G.state === 'play' || G.state === 'pause')) {

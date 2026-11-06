@@ -506,7 +506,17 @@ A licença MIT pede que o aviso de copyright vá junto com o jogo. Deixe esta ta
 | `assets/props.bin` | Granada, mochila, kit, munição, colete, capacete, gel e caixa (modelados no Blender) |
 | `assets/chars/` | Personagens (malha + texturas) e animações, em formato binário compacto |
 | `assets/guns.bin` | Os 10 modelos de arma e o bipé |
-| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |## Novidades da v5.9
+| `js/ui.js` | Câmera, HUD, telas, controles, carregamento e laço principal |
+
+## Novidades da v6.0
+
+- Som espacial 3D: tiros, passos e explosões dos outros jogadores vêm da direção certa (fone recomendado).
+- Configurações novas, salvas no aparelho: volume dos efeitos, volume da música, distância de visão (curta/normal/longa), sombras liga/desliga, filtro cinema e qualidade **ultra**.
+- Qualidade ultra (PC): oclusão de ambiente em tela (cantos e contatos mais escuros e realistas), além de bloom e correção de cor.
+- Fumaça saindo do cano depois do tiro, poeira e balanço da câmera ao cair de um pulo.
+- Bots que ficam presos várias vezes no mesmo lugar agora se soltam sozinhos.
+
+## Novidades da v5.9
 
 - Todas as casas e prédios de todos os mapas agora têm interior: os prédios do kit Kenney (Megacidade e Metrópole) viraram prédios de entrar com portas, escada e andares; o hangar do porto virou galpão aberto.
 - Prédios da cidade mais estreitos (passagem entre eles) e nada da cidade em cima das casinhas da torre do relógio.

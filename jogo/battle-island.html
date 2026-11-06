@@ -1080,7 +1080,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <button id="mPlay" class="playBtn"><b>INICIAR</b><small>SOLO · DUPLA · TRIO · SQUAD</small></button>
   </div>
   <div class="dragHint">arraste para girar o personagem</div>
-  <div class="ver">v5.9</div>
+  <div class="ver">v6.0</div>
 </div>
 
 <div id="shopScr" class="screen shop hidden">
@@ -1353,7 +1353,7 @@ body:has(#scope.show) #touch .tbtn { opacity: 1; }
     <div class="loadTrack"><div id="loadBar"></div></div>
     <div id="loadTip" class="ldTip"></div>
   </div>
-  <div class="ldFoot">v5.9 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0) · Cidade Kenney (CC0)</div>
+  <div class="ldFoot">v6.0 · Personagens Microsoft Rocketbox (MIT) · Armas Quaternius (CC0) · Cidade Kenney (CC0)</div>
 </div>
 <div id="dlg" class="hidden" role="dialog" aria-modal="true"></div>
 <div id="rotateHint" class="hidden">Gire o celular para a horizontal</div>
@@ -6190,7 +6190,7 @@ SND.loadSamples = function () {
 };
 // toca um som gravado; devolve false se ainda não carregou
 SND.voices = 0; SND.lastT = {};
-SND.sample = function (n, vol, rate, loop) {
+SND.sample = function (n, vol, rate, loop, music, pos) {
   const c = SND.ctx, b = SND.samples[n];
   if (!c || !b || !SND.on) return false;
   // no máximo 10 sons ao mesmo tempo (6 no celular) e o mesmo som não repete em menos de 45 ms: evita o som embolado e estourado
@@ -6200,9 +6200,16 @@ SND.sample = function (n, vol, rate, loop) {
   if (!SND.bus) { SND.bus = c.createDynamicsCompressor(); SND.bus.threshold.value = -16; SND.bus.ratio.value = 6; SND.bus.connect(c.destination); }
   const s = c.createBufferSource(), g = c.createGain();
   if (!loop) { SND.voices++; s.onended = () => { SND.voices--; }; }
+  if (loop) s.gainNode = g;
   s.buffer = b; s.playbackRate.value = rate || 1; s.loop = !!loop;
-  g.gain.value = (vol === undefined ? 1 : vol) * (SND.vol === undefined ? 1 : SND.vol);
-  s.connect(g); g.connect(SND.bus); s.start();
+  g.gain.value = (vol === undefined ? 1 : vol) * (SND.vol === undefined ? 1 : SND.vol) * (music ? 1 : (SND.sfxVol === undefined ? 1 : SND.sfxVol));
+  // som posicionado no mundo: vem da direção certa e cai com a distância (fone esquerdo/direito)
+  if (pos) {
+    const pn = c.createPanner(); pn.panningModel = typeof isTouch !== 'undefined' && isTouch ? 'equalpower' : 'HRTF'; pn.distanceModel = 'inverse'; pn.refDistance = 8; pn.rolloffFactor = 1.1; pn.maxDistance = 220;
+    if (pn.positionX) { pn.positionX.value = pos.x; pn.positionY.value = pos.y; pn.positionZ.value = pos.z; } else pn.setPosition(pos.x, pos.y, pos.z);
+    s.connect(g); g.connect(pn); pn.connect(SND.bus);
+  } else s.connect(g), g.connect(SND.bus);
+  s.start();
   return s;
 };
 SND.MAP = { shot: 'shot_rifle', smg: 'shot_smg', sniper: 'shot_sniper', shotgun: 'shot_shotgun', pistol: 'shot_pistol', laser: 'shot_smg', shotFar: 'shot_rifle', boom: 'explosion',
@@ -6480,6 +6487,20 @@ SND.pickJamal = function () {
   inp.click();
 };
 
+// som de uma arma (ou outro tipo do SND.MAP) num ponto do mapa; sem a gravação, cai no tiro distante sintetizado
+SND.at = function (type, vol, pos) {
+  const n = SND.MAP[type];
+  if (n && SND.sample(n, vol, 0.95 + Math.random() * 0.1, false, false, pos)) return;
+  SND.play('shotFar', vol * 0.6);
+};
+// o ouvinte acompanha a câmera (para o som 3D)
+SND.listen = function (cam) {
+  const c = SND.ctx; if (!c || !cam) return;
+  const L = c.listener, e = cam.matrixWorld.elements, p = cam.position;
+  if (L.positionX) { L.positionX.value = p.x; L.positionY.value = p.y; L.positionZ.value = p.z; L.forwardX.value = -e[8]; L.forwardY.value = -e[9]; L.forwardZ.value = -e[10]; L.upX.value = e[4]; L.upY.value = e[5]; L.upZ.value = e[6]; }
+  else { L.setPosition(p.x, p.y, p.z); L.setOrientation(-e[8], -e[9], -e[10], e[4], e[5], e[6]); }
+};
+
 </script>
 <script>
 'use strict';
@@ -6490,7 +6511,7 @@ const V3 = THREE.Vector3;
 
 const G = {
   state: 'menu', time: 0, built: false,
-  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'tropical', mode: 'br', csSize: 4, csGun: 'FUZIL', brTeam: 1, sfx: 'tiros', crossStyle: 'cruz', crossCol: 'branco' },
+  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'tropical', mode: 'br', csSize: 4, csGun: 'FUZIL', brTeam: 1, sfx: 'tiros', crossStyle: 'cruz', crossCol: 'branco', sfxVol: 1, musVol: 0.7, dist: 'normal', shadows: true, cine: false },
   actors: [], bots: [], walls: [], loot: [], nades: [], props: [],
 };
 
@@ -6556,7 +6577,7 @@ function qualityDPR(q) {
 }
 // troca a qualidade sem sair do jogo: resolução e sombras mudam na hora; texturas e grama na próxima abertura
 function applyQuality() {
-  const q = G.settings.quality, sh = q !== 'baixa';
+  const q = G.settings.quality, sh = q !== 'baixa' && G.settings.shadows !== false;
   G.baseDPR = qualityDPR(q);
   renderer.setPixelRatio(G.baseDPR * (G.dprScale || 1));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -6786,13 +6807,15 @@ function fireGun(a, o, d, spread) {
   }
   if (near) {
     FX.muzzle(_mz, w.type === 'shotgun' || w.type === 'sniper' || w.type === 'lmg', skFx || w.glow || 0xffffff);
+    // fumaça do cano (menos nas armas rápidas e na qualidade baixa)
+    if (G.settings.quality !== 'baixa' && Math.random() < (w.type === 'smg' || w.type === 'rifle' || w.type === 'lmg' ? 0.25 : 0.8)) FX.sprite(_mz, 0xcfcac2, w.type === 'shotgun' || w.type === 'sniper' ? 0.5 : 0.28, 0.9, { x: (Math.random() - 0.5) * 0.3, y: 0.5 + Math.random() * 0.4, z: (Math.random() - 0.5) * 0.3 }, 1.8, 0.35);
     if (w.type !== 'blaster' && w.type !== 'shotgun' || Math.random() < 0.5) {
       a.ch.eject.getWorldPosition(_ej);
       FX.casing(_ej, _nrm.set(-Math.cos(a.face), 0, Math.sin(a.face)));
     }
   }
   if (a.isPlayer) { SND.play(SHOT_SND[w.type] || 'shot'); if (navigator.vibrate && G.settings.vibra && w.type !== 'smg') try { navigator.vibrate(12); } catch (e) { /* ok */ } }
-  else if (pd < 90) SND.play('shotFar', U.clamp(1 - pd / 90, 0.05, 0.6));
+  else if (pd < 140) SND.at(SHOT_SND[w.type] || 'shot', 0.9, _mz);
 }
 
 function punch(a) {
@@ -7961,7 +7984,7 @@ function moveActor(a, wantX, wantZ, maxSpeed, dt, jump) {
   if (jump && a.onGround) { a.vy = 6.4; a.onGround = false; a.crouch = false; }
   a.vy -= 19 * dt;
   a.pos.y += a.vy * dt;
-  if (a.pos.y <= ground) { if (!a.onGround && a.vy < -4.5) a.ch.landT = 0.25; a.pos.y = ground; a.vy = 0; a.onGround = true; }
+  if (a.pos.y <= ground) { if (!a.onGround && a.vy < -4.5) { a.ch.landT = 0.25; if (a.isPlayer) { G.landDip = U.clamp(-a.vy / 22, 0.08, 0.45); if (a.vy < -8 && G.settings.quality !== 'baixa') for (let i = 0; i < 6; i++) FX.footDust(a.pos, 0xb9a57e); } } a.pos.y = ground; a.vy = 0; a.onGround = true; }
   else if (a.onGround && a.pos.y - ground < 0.45 && a.vy <= 0) { a.pos.y = ground; a.vy = 0; }
   else a.onGround = false;
   if (a.pos.y < W.SEA_Y - 0.9) { a.pos.y = W.SEA_Y - 0.9; a.vy = 0; a.onGround = true; }
@@ -8461,6 +8484,7 @@ function botAirControl(b, dt) {
   updateAir(b, dt, { mx: -turn, my: my, open: b.phase === 'fall' && (f ? f.open : d < 35), release: false });
 }
 
+const _cp2 = new V3();
 function updateBot(b, dt) {
   if (b.remote) { updatePuppet(b, dt); return; }
   // treinamento: alvo abatido volta em 2,5 s
@@ -8535,7 +8559,14 @@ function updateBot(b, dt) {
   }
   ai.stuckT += dt;
   if (ai.stuckT > 2) {
-    if (Math.hypot(b.pos.x - ai.last.x, b.pos.z - ai.last.z) < 1.2 && (wx || wz)) { ai.wp = null; ai.strafe = -ai.strafe; ai.jump = true; }
+    if (Math.hypot(b.pos.x - ai.last.x, b.pos.z - ai.last.z) < 1.2 && (wx || wz)) {
+      ai.wp = null; ai.strafe = -ai.strafe; ai.jump = true; ai.stuckN = (ai.stuckN || 0) + 1;
+      // preso de novo e de novo (canto de casa, objeto): procura um ponto livre por perto e sai dali
+      if (ai.stuckN >= 3) {
+        for (let k = 0; k < 8; k++) { const an = Math.random() * 6.28, d = 1.6 + Math.random() * 1.6; _cp2.set(b.pos.x + Math.cos(an) * d, 0, b.pos.z + Math.sin(an) * d); if (!W.collide(_cp2, 0.45, b.pos.y + 0.05, 1.7)) { b.pos.x = _cp2.x; b.pos.z = _cp2.z; b.pos.y = W.groundAt(b.pos.x, b.pos.z, b.pos.y + 1); break; } }
+        ai.stuckN = 0;
+      }
+    } else ai.stuckN = 0;
     ai.last.copy(b.pos); ai.stuckT = 0;
   }
   if (b.emote) { wx = 0; wz = 0; }
@@ -9687,12 +9718,17 @@ const POST = { rt: null, quad: null, scene: null, cam: null, mat: null };
 
 POST.ensure = function (renderer) {
   const w = renderer.domElement.width, h = renderer.domElement.height;
+  // no Ultra a cena guarda a profundidade (para o sombreado de contato); troca o alvo quando a qualidade muda
+  const key = G.settings.quality;
+  if (POST.rt && POST.key !== key) { POST.rt.dispose(); POST.rt = null; if (POST.mat) POST.mat.dispose(); POST.mat = null; POST.cineMat = null; POST.scene = null; }
+  POST.key = key;
   if (!POST.rt) {
-    const gl2 = renderer.capabilities.isWebGL2;
+    const gl2 = renderer.capabilities.isWebGL2, ao = key === 'ultra';
     POST.rt = new THREE.WebGLRenderTarget(w, h, {
       type: gl2 && renderer.extensions.has('EXT_color_buffer_float') ? THREE.HalfFloatType : THREE.UnsignedByteType,
-      samples: gl2 && (G.settings.quality === 'alta' || G.settings.quality === 'ultra') ? 4 : 0,
+      samples: !ao && gl2 && key === 'alta' ? 4 : 0,
       depthBuffer: true,
+      depthTexture: ao ? new THREE.DepthTexture(w, h) : undefined,
     });
     POST.mat = new THREE.ShaderMaterial({
       depthTest: false, depthWrite: false,
@@ -9742,7 +9778,7 @@ POST.begin = function (renderer) { POST.ensure(renderer); renderer.setRenderTarg
 POST.end = function (renderer, t, cine) {
   renderer.setRenderTarget(null);
   POST.mat.uniforms.time.value = t;
-  if (cine) { POST.cineMat = POST.cineMat || POST.makeCine(); POST.cineMat.uniforms.res.value.copy(POST.mat.uniforms.res.value); POST.quad.material = POST.cineMat; } else POST.quad.material = POST.mat;
+  if (cine) { POST.cineMat = POST.cineMat || POST.makeCine(); const u = POST.cineMat.uniforms; u.res.value.copy(POST.mat.uniforms.res.value); if (typeof camera !== 'undefined' && camera) { u.cn.value = camera.near; u.cf.value = camera.far; } POST.quad.material = POST.cineMat; } else POST.quad.material = POST.mat;
   renderer.render(POST.scene, POST.cam);
 };
 
@@ -9750,10 +9786,11 @@ POST.end = function (renderer, t, cine) {
 POST.makeCine = function () {
   return new THREE.ShaderMaterial({
     depthTest: false, depthWrite: false,
-    uniforms: { tDiffuse: { value: POST.rt.texture }, res: { value: new THREE.Vector2(1, 1) } },
+    uniforms: { tDiffuse: { value: POST.rt.texture }, tDepth: { value: POST.rt.depthTexture || null }, ao: { value: POST.rt.depthTexture ? 1 : 0 }, cn: { value: 0.08 }, cf: { value: 1500 }, res: { value: new THREE.Vector2(1, 1) } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
     fragmentShader: [
-      'uniform sampler2D tDiffuse; uniform vec2 res; varying vec2 vUv;',
+      'uniform sampler2D tDiffuse; uniform sampler2D tDepth; uniform float ao; uniform float cn; uniform float cf; uniform vec2 res; varying vec2 vUv;',
+      'float lin(vec2 uv){ float d = texture2D(tDepth, uv).x; return (cn * cf) / (cf - d * (cf - cn)); }',
       'vec3 tap(vec2 o){ vec3 c = texture2D(tDiffuse, vUv + o).rgb; return max(c - 0.9, 0.0); }',
       'void main(){',
       ' vec2 px = 1.0 / res;',
@@ -9765,6 +9802,10 @@ POST.makeCine = function () {
       ' vec3 b = vec3(0.0);',
       ' for (int i = 0; i < 8; i++) { float a = float(i) * 0.785398; vec2 d = vec2(cos(a), sin(a)); b += tap(d * px * 6.0) + tap(d * px * 14.0) * 0.6; }',
       ' col += b * 0.07;',
+      // sombreado de contato (AO em tela): cantos, frestas e o encontro de paredes e chão ficam mais escuros
+      ' if (ao > 0.5) { float d0 = lin(vUv); if (d0 < cf * 0.5) { float r = clamp(22.0 / d0, 1.5, 16.0); float oc = 0.0;',
+      '   for (int i = 0; i < 8; i++) { float a = float(i) * 0.785398 + 0.39; vec2 o = vec2(cos(a), sin(a)) * px * r * (i < 4 ? 1.0 : 0.55); float df = d0 - lin(vUv + o); oc += smoothstep(0.04, 0.5, df) * (1.0 - smoothstep(0.9, 2.4, df)); }',
+      '   col *= 1.0 - oc / 8.0 * 0.55; } }',
       ' gl_FragColor = vec4(col, 1.0);',
       '#include <tonemapping_fragment>',
       '#include <colorspace_fragment>',
@@ -12404,7 +12445,8 @@ function updateCamera(dt) {
     G.inspK = U.damp(G.inspK || 0, p.inspect ? 1 : 0, 5, dt);
     if (G.inspK > 0.01) { dist = U.lerp(dist, 1.45, G.inspK); sh = U.lerp(sh, 0.42, G.inspK); fov -= 8 * G.inspK; }
     if (p.car) { dist = 7.2; sh = 0; }
-    const head = _m.set(p.pos.x, p.pos.y + (p.car ? 2.3 : p.crouch ? 1.15 : 1.6) - 0.22 * (G.inspK || 0), p.pos.z);
+    G.landDip = U.damp(G.landDip || 0, 0, 7, dt);
+    const head = _m.set(p.pos.x, p.pos.y + (p.car ? 2.3 : p.crouch ? 1.15 : 1.6) - 0.22 * (G.inspK || 0) - (G.landDip || 0), p.pos.z);
     const hs = W.raycast(head, _r, sh + 0.25, true);
     if (hs) sh = Math.max(0, hs.t - 0.25);
     const pivot = _o.copy(head).addScaledVector(_r, sh);
@@ -12438,7 +12480,7 @@ function updateCamera(dt) {
   if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = U.damp(camera.fov, fov, ads ? 22 : 14, dt); camera.updateProjectionMatrix(); }
   const high = U.clamp((camera.position.y - 30) / 150, 0, 1);
   // qualidade baixa enxerga menos longe: desenha bem menos coisa
-  const fogK = G.settings.quality === 'baixa' ? 0.6 : 1;
+  const fogK = (G.settings.quality === 'baixa' ? 0.6 : 1) * ({ curta: 0.6, normal: 1, longa: 1.45 }[G.settings.dist] || 1);
   scene.fog.near = U.lerp(90, 380, high) * fogK; scene.fog.far = U.lerp(520, 1400, high) * fogK;
   const fc = p.phase === 'ground' ? p.pos : camera.position;
   sun.position.copy(fc).addScaledVector(G.sunDir, 70);
@@ -13246,6 +13288,9 @@ const SETTINGS_UI = {
   graficos: [
     { k: 'quality', label: 'Qualidade gráfica', type: 'seg', opts: [['baixa', 'Baixa'], ['media', 'Média'], ['alta', 'Alta'], ['ultra', 'Ultra (PC)']] },
     { k: 'fx', label: 'Estilo da imagem', type: 'seg', opts: [['normal', 'Normal'], ['bodycam', 'Bodycam']] },
+    { k: 'cine', label: 'Filtro cinematográfico (brilho, cor e nitidez; no Ultra fica sempre ligado)', type: 'toggle' },
+    { k: 'shadows', label: 'Sombras', type: 'toggle' },
+    { k: 'dist', label: 'Distância de visão', type: 'seg', opts: [['curta', 'Curta'], ['normal', 'Normal'], ['longa', 'Longa']] },
     { k: 'dynRes', label: 'Resolução automática (evita travar)', type: 'toggle' },
     { k: 'fps', label: 'Mostrar FPS', type: 'toggle' },
   ],
@@ -13262,7 +13307,9 @@ const SETTINGS_UI = {
   audio: [
     { k: 'sound', label: 'Som', type: 'toggle' },
     { k: 'music', label: 'Música', type: 'toggle' },
-    { k: 'vol', label: 'Volume', type: 'range', min: 0, max: 1, step: 0.05, show: v => Math.round(v * 100) },
+    { k: 'vol', label: 'Volume geral', type: 'range', min: 0, max: 1, step: 0.05, show: v => Math.round(v * 100) },
+    { k: 'sfxVol', label: 'Volume dos efeitos', type: 'range', min: 0, max: 1, step: 0.05, show: v => Math.round(v * 100) },
+    { k: 'musVol', label: 'Volume da música', type: 'range', min: 0, max: 1, step: 0.05, show: v => Math.round(v * 100) },
     { k: 'vibra', label: 'Vibração', type: 'toggle' },
     { k: 'sfx', label: 'Efeitos sonoros', type: 'seg', opts: [['tiros', 'Só tiros'], ['todos', 'Todos']] },
   ],
@@ -13378,7 +13425,9 @@ function initHudEditor() {
 
 function applySettings() {
   const S = G.settings;
-  SND.on = S.sound; SND.vol = S.vol;
+  SND.on = S.sound; SND.vol = S.vol; SND.sfxVol = S.sfxVol === undefined ? 1 : S.sfxVol; SND.musVol = S.musVol === undefined ? 0.7 : S.musVol;
+  if (SND.lobbySrc && SND.lobbySrc.gainNode) SND.lobbySrc.gainNode.gain.value = 0.45 * SND.musVol / 0.7 * (SND.vol === undefined ? 1 : SND.vol);
+  if (typeof applyQuality === 'function' && typeof renderer !== 'undefined' && renderer) applyQuality();
   SND.music(S.music && (G.state === 'menu' || G.state === 'lobby'));
   $('fps').classList.toggle('hidden', !S.fps);
   document.documentElement.style.setProperty('--btn', S.btnSize);
@@ -13391,7 +13440,7 @@ SND.music = function (on) {
   if (!on) { if (SND.musicIv) { clearInterval(SND.musicIv); SND.musicIv = 0; } if (SND.lobbySrc) { try { SND.lobbySrc.stop(); } catch (e) { /* ok */ } SND.lobbySrc = null; } return; }
   // música do lobby gravada (em loop); se ainda não carregou, tenta de novo daqui a pouco
   if (SND.lobbySrc) return;
-  if (SND.samples && SND.samples.lobby_music) { SND.lobbySrc = SND.sample('lobby_music', 0.45, 1, true); return; }
+  if (SND.samples && SND.samples.lobby_music) { SND.lobbySrc = SND.sample('lobby_music', 0.45 * (SND.musVol === undefined ? 0.7 : SND.musVol) / 0.7, 1, true, true); return; }
   if (SND.ctx && !SND.musicRetry) { SND.musicRetry = setTimeout(() => { SND.musicRetry = 0; if (G.state === 'menu' || G.state === 'lobby') SND.music(true); }, 1500); }
   if (SND.ctx) return;
   if (SND.musicIv || !SND.ctx) return;
@@ -13694,9 +13743,10 @@ function frame(now) {
   }
   updateCamera(G.state === 'pause' ? 0 : dt);
   if (G.state === 'play') updateHUD(dt);
-  const bodycam = G.settings.fx === 'bodycam', cine = !bodycam && G.settings.quality === 'ultra';
+  const bodycam = G.settings.fx === 'bodycam', cine = !bodycam && (G.settings.quality === 'ultra' || !!G.settings.cine);
   if (bodycam || cine) POST.begin(renderer);
   if (isTouch && renderer.shadowMap.enabled) { PERF.sh = (PERF.sh + 1) % 2; if (!PERF.sh) renderer.shadowMap.needsUpdate = true; }
+  if (SND.ctx && G.state === 'play') SND.listen(camera);
   renderer.render(scene, camera);
   // a arma da mira (1ª pessoa) só aparece dentro da partida
   if (G.ads && fpScene && fpGun.visible && (G.state === 'play' || G.state === 'pause')) {

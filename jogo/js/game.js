@@ -6,7 +6,7 @@ const V3 = THREE.Vector3;
 
 const G = {
   state: 'menu', time: 0, built: false,
-  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'tropical', mode: 'br', csSize: 4, csGun: 'FUZIL', brTeam: 1, sfx: 'tiros', crossStyle: 'cruz', crossCol: 'branco' },
+  settings: { quality: 'media', sens: 1, adsSens: 1, name: 'Jogador', sound: true, music: true, vibra: true, vol: 0.8, fps: false, btnSize: 1, btnAlpha: 0.85, aimAssist: true, dynRes: true, qualityChosen: false, sensDot: 1, sens2x: 1, sens4x: 1, look: 'tp', fx: 'normal', hud: null, map: 'tropical', mode: 'br', csSize: 4, csGun: 'FUZIL', brTeam: 1, sfx: 'tiros', crossStyle: 'cruz', crossCol: 'branco', sfxVol: 1, musVol: 0.7, dist: 'normal', shadows: true, cine: false },
   actors: [], bots: [], walls: [], loot: [], nades: [], props: [],
 };
 
@@ -72,7 +72,7 @@ function qualityDPR(q) {
 }
 // troca a qualidade sem sair do jogo: resolução e sombras mudam na hora; texturas e grama na próxima abertura
 function applyQuality() {
-  const q = G.settings.quality, sh = q !== 'baixa';
+  const q = G.settings.quality, sh = q !== 'baixa' && G.settings.shadows !== false;
   G.baseDPR = qualityDPR(q);
   renderer.setPixelRatio(G.baseDPR * (G.dprScale || 1));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -302,13 +302,15 @@ function fireGun(a, o, d, spread) {
   }
   if (near) {
     FX.muzzle(_mz, w.type === 'shotgun' || w.type === 'sniper' || w.type === 'lmg', skFx || w.glow || 0xffffff);
+    // fumaça do cano (menos nas armas rápidas e na qualidade baixa)
+    if (G.settings.quality !== 'baixa' && Math.random() < (w.type === 'smg' || w.type === 'rifle' || w.type === 'lmg' ? 0.25 : 0.8)) FX.sprite(_mz, 0xcfcac2, w.type === 'shotgun' || w.type === 'sniper' ? 0.5 : 0.28, 0.9, { x: (Math.random() - 0.5) * 0.3, y: 0.5 + Math.random() * 0.4, z: (Math.random() - 0.5) * 0.3 }, 1.8, 0.35);
     if (w.type !== 'blaster' && w.type !== 'shotgun' || Math.random() < 0.5) {
       a.ch.eject.getWorldPosition(_ej);
       FX.casing(_ej, _nrm.set(-Math.cos(a.face), 0, Math.sin(a.face)));
     }
   }
   if (a.isPlayer) { SND.play(SHOT_SND[w.type] || 'shot'); if (navigator.vibrate && G.settings.vibra && w.type !== 'smg') try { navigator.vibrate(12); } catch (e) { /* ok */ } }
-  else if (pd < 90) SND.play('shotFar', U.clamp(1 - pd / 90, 0.05, 0.6));
+  else if (pd < 140) SND.at(SHOT_SND[w.type] || 'shot', 0.9, _mz);
 }
 
 function punch(a) {
@@ -1477,7 +1479,7 @@ function moveActor(a, wantX, wantZ, maxSpeed, dt, jump) {
   if (jump && a.onGround) { a.vy = 6.4; a.onGround = false; a.crouch = false; }
   a.vy -= 19 * dt;
   a.pos.y += a.vy * dt;
-  if (a.pos.y <= ground) { if (!a.onGround && a.vy < -4.5) a.ch.landT = 0.25; a.pos.y = ground; a.vy = 0; a.onGround = true; }
+  if (a.pos.y <= ground) { if (!a.onGround && a.vy < -4.5) { a.ch.landT = 0.25; if (a.isPlayer) { G.landDip = U.clamp(-a.vy / 22, 0.08, 0.45); if (a.vy < -8 && G.settings.quality !== 'baixa') for (let i = 0; i < 6; i++) FX.footDust(a.pos, 0xb9a57e); } } a.pos.y = ground; a.vy = 0; a.onGround = true; }
   else if (a.onGround && a.pos.y - ground < 0.45 && a.vy <= 0) { a.pos.y = ground; a.vy = 0; }
   else a.onGround = false;
   if (a.pos.y < W.SEA_Y - 0.9) { a.pos.y = W.SEA_Y - 0.9; a.vy = 0; a.onGround = true; }
@@ -1977,6 +1979,7 @@ function botAirControl(b, dt) {
   updateAir(b, dt, { mx: -turn, my: my, open: b.phase === 'fall' && (f ? f.open : d < 35), release: false });
 }
 
+const _cp2 = new V3();
 function updateBot(b, dt) {
   if (b.remote) { updatePuppet(b, dt); return; }
   // treinamento: alvo abatido volta em 2,5 s
@@ -2051,7 +2054,14 @@ function updateBot(b, dt) {
   }
   ai.stuckT += dt;
   if (ai.stuckT > 2) {
-    if (Math.hypot(b.pos.x - ai.last.x, b.pos.z - ai.last.z) < 1.2 && (wx || wz)) { ai.wp = null; ai.strafe = -ai.strafe; ai.jump = true; }
+    if (Math.hypot(b.pos.x - ai.last.x, b.pos.z - ai.last.z) < 1.2 && (wx || wz)) {
+      ai.wp = null; ai.strafe = -ai.strafe; ai.jump = true; ai.stuckN = (ai.stuckN || 0) + 1;
+      // preso de novo e de novo (canto de casa, objeto): procura um ponto livre por perto e sai dali
+      if (ai.stuckN >= 3) {
+        for (let k = 0; k < 8; k++) { const an = Math.random() * 6.28, d = 1.6 + Math.random() * 1.6; _cp2.set(b.pos.x + Math.cos(an) * d, 0, b.pos.z + Math.sin(an) * d); if (!W.collide(_cp2, 0.45, b.pos.y + 0.05, 1.7)) { b.pos.x = _cp2.x; b.pos.z = _cp2.z; b.pos.y = W.groundAt(b.pos.x, b.pos.z, b.pos.y + 1); break; } }
+        ai.stuckN = 0;
+      }
+    } else ai.stuckN = 0;
     ai.last.copy(b.pos); ai.stuckT = 0;
   }
   if (b.emote) { wx = 0; wz = 0; }

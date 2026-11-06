@@ -5,12 +5,17 @@ const POST = { rt: null, quad: null, scene: null, cam: null, mat: null };
 
 POST.ensure = function (renderer) {
   const w = renderer.domElement.width, h = renderer.domElement.height;
+  // no Ultra a cena guarda a profundidade (para o sombreado de contato); troca o alvo quando a qualidade muda
+  const key = G.settings.quality;
+  if (POST.rt && POST.key !== key) { POST.rt.dispose(); POST.rt = null; if (POST.mat) POST.mat.dispose(); POST.mat = null; POST.cineMat = null; POST.scene = null; }
+  POST.key = key;
   if (!POST.rt) {
-    const gl2 = renderer.capabilities.isWebGL2;
+    const gl2 = renderer.capabilities.isWebGL2, ao = key === 'ultra';
     POST.rt = new THREE.WebGLRenderTarget(w, h, {
       type: gl2 && renderer.extensions.has('EXT_color_buffer_float') ? THREE.HalfFloatType : THREE.UnsignedByteType,
-      samples: gl2 && (G.settings.quality === 'alta' || G.settings.quality === 'ultra') ? 4 : 0,
+      samples: !ao && gl2 && key === 'alta' ? 4 : 0,
       depthBuffer: true,
+      depthTexture: ao ? new THREE.DepthTexture(w, h) : undefined,
     });
     POST.mat = new THREE.ShaderMaterial({
       depthTest: false, depthWrite: false,
@@ -60,7 +65,7 @@ POST.begin = function (renderer) { POST.ensure(renderer); renderer.setRenderTarg
 POST.end = function (renderer, t, cine) {
   renderer.setRenderTarget(null);
   POST.mat.uniforms.time.value = t;
-  if (cine) { POST.cineMat = POST.cineMat || POST.makeCine(); POST.cineMat.uniforms.res.value.copy(POST.mat.uniforms.res.value); POST.quad.material = POST.cineMat; } else POST.quad.material = POST.mat;
+  if (cine) { POST.cineMat = POST.cineMat || POST.makeCine(); const u = POST.cineMat.uniforms; u.res.value.copy(POST.mat.uniforms.res.value); if (typeof camera !== 'undefined' && camera) { u.cn.value = camera.near; u.cf.value = camera.far; } POST.quad.material = POST.cineMat; } else POST.quad.material = POST.mat;
   renderer.render(POST.scene, POST.cam);
 };
 
@@ -68,10 +73,11 @@ POST.end = function (renderer, t, cine) {
 POST.makeCine = function () {
   return new THREE.ShaderMaterial({
     depthTest: false, depthWrite: false,
-    uniforms: { tDiffuse: { value: POST.rt.texture }, res: { value: new THREE.Vector2(1, 1) } },
+    uniforms: { tDiffuse: { value: POST.rt.texture }, tDepth: { value: POST.rt.depthTexture || null }, ao: { value: POST.rt.depthTexture ? 1 : 0 }, cn: { value: 0.08 }, cf: { value: 1500 }, res: { value: new THREE.Vector2(1, 1) } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
     fragmentShader: [
-      'uniform sampler2D tDiffuse; uniform vec2 res; varying vec2 vUv;',
+      'uniform sampler2D tDiffuse; uniform sampler2D tDepth; uniform float ao; uniform float cn; uniform float cf; uniform vec2 res; varying vec2 vUv;',
+      'float lin(vec2 uv){ float d = texture2D(tDepth, uv).x; return (cn * cf) / (cf - d * (cf - cn)); }',
       'vec3 tap(vec2 o){ vec3 c = texture2D(tDiffuse, vUv + o).rgb; return max(c - 0.9, 0.0); }',
       'void main(){',
       ' vec2 px = 1.0 / res;',
@@ -83,6 +89,10 @@ POST.makeCine = function () {
       ' vec3 b = vec3(0.0);',
       ' for (int i = 0; i < 8; i++) { float a = float(i) * 0.785398; vec2 d = vec2(cos(a), sin(a)); b += tap(d * px * 6.0) + tap(d * px * 14.0) * 0.6; }',
       ' col += b * 0.07;',
+      // sombreado de contato (AO em tela): cantos, frestas e o encontro de paredes e chão ficam mais escuros
+      ' if (ao > 0.5) { float d0 = lin(vUv); if (d0 < cf * 0.5) { float r = clamp(22.0 / d0, 1.5, 16.0); float oc = 0.0;',
+      '   for (int i = 0; i < 8; i++) { float a = float(i) * 0.785398 + 0.39; vec2 o = vec2(cos(a), sin(a)) * px * r * (i < 4 ? 1.0 : 0.55); float df = d0 - lin(vUv + o); oc += smoothstep(0.04, 0.5, df) * (1.0 - smoothstep(0.9, 2.4, df)); }',
+      '   col *= 1.0 - oc / 8.0 * 0.55; } }',
       ' gl_FragColor = vec4(col, 1.0);',
       '#include <tonemapping_fragment>',
       '#include <colorspace_fragment>',

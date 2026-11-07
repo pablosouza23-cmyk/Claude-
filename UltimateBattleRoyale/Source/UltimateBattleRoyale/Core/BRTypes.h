@@ -40,6 +40,20 @@ enum class EBRQualityTier : uint8 { Low, Medium, High };
 UENUM(BlueprintType)
 enum class EBRContainerKind : uint8 { Floor, Chest, AmmoBox, SupplyDrop, Llama };
 
+// Every sound effect in the game. Synthesised procedurally by UBRProceduralAudio unless an
+// authored sound (e.g. a MetaSound) is assigned in UBRSettings::SoundOverrides.
+UENUM(BlueprintType)
+enum class EBRSfx : uint8
+{
+	GunPistol, GunSMG, GunRifle, GunSniper, GunShotgun, GunLMG, GunRocket, GunEnergy, Throw,
+	Explosion, Reload, Equip, PickaxeSwing, HarvestWood, HarvestStone, HarvestMetal,
+	Footstep, Land, Pickup, ChestOpen, Build, BuildBreak, Door, Heal, LaunchPad, Refuel,
+	Horn, Crash, HitBody, HitHead, Ping, UIClick, UIConfirm, VictoryMusic,
+	// Loops
+	EngineLoop, BusEngineLoop, StormLoop, RainLoop, WindLoop, LobbyMusicLoop,
+	Count UMETA(Hidden)
+};
+
 UENUM(BlueprintType)
 enum class EBRSpecialItem : uint8 { None, LaunchPad, Backpack };
 

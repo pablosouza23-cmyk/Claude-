@@ -72,6 +72,7 @@ private:
 	TWeakObjectPtr<AActor> HeldWeapon;
 	FPose Current;
 	float WalkPhase = 0.f;
+	int32 LastStepIndex = 0;
 	float BlinkTimer = 3.f;
 	float ElimTime = -1.f;
 	FName PreviewEmote;

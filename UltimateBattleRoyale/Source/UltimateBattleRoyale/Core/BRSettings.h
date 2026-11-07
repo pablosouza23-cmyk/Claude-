@@ -65,6 +65,10 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "VFX")
 	TSoftObjectPtr<UNiagaraSystem> RainFX;
 
+	// Optional authored sounds (MetaSound Sources or Sound Waves) replacing the procedural synth.
+	UPROPERTY(Config, EditAnywhere, Category = "Audio")
+	TMap<EBRSfx, TSoftObjectPtr<USoundBase>> SoundOverrides;
+
 	UPROPERTY(Config, EditAnywhere, Category = "AI")
 	TSoftObjectPtr<UBehaviorTree> BotBehaviorTree;
 

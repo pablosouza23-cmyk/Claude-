@@ -1,5 +1,6 @@
 #include "Characters/BRProceduralBodyComponent.h"
 
+#include "Audio/BRProceduralAudio.h"
 #include "Building/BRBuildComponent.h"
 #include "Characters/BRCharacter.h"
 #include "Characters/BRCharacterMovementComponent.h"
@@ -384,6 +385,13 @@ void UBRProceduralBodyComponent::ComputePose(float DeltaTime, FPose& P)
 	// Locomotion: phase advances with distance travelled (stride 150 cm per cycle) => no foot sliding.
 	const bool bGround = Move->IsMovingOnGround();
 	if (bGround) { WalkPhase += Speed * DeltaTime / 150.f * 2.f * PI; }
+	// Footsteps on each foot contact (spatialised: enemies can be located by sound).
+	const int32 StepIndex = int32(WalkPhase / PI);
+	if (bGround && Speed > 60.f && StepIndex != LastStepIndex && !Move->IsCrouching())
+	{
+		UBRProceduralAudio::PlaySfx(C, EBRSfx::Footstep, C->GetActorLocation() - FVector(0, 0, 90.f), Move->IsSprinting() ? 0.9f : 0.6f);
+	}
+	LastStepIndex = StepIndex;
 	const float Sprint = Move->IsSprinting() ? 1.25f : 1.f;
 	const float Amp = SpeedN * 34.f * Sprint;
 	const float SinP = FMath::Sin(WalkPhase), CosP = FMath::Cos(WalkPhase);

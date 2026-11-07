@@ -31,7 +31,7 @@ struct ULTIMATEBATTLEROYALE_API FBRModeRules
 	UPROPERTY(BlueprintReadOnly) bool bCreativeTools = false;
 	UPROPERTY(BlueprintReadOnly) bool bInvulnerable = false;
 
-	static FBRModeRules ForMode(EBRGameModeType Mode);
+	static FBRModeRules ForMode(EBRGameModeType InMode);
 	static EBRGameModeType ParseMode(const FString& Name);
-	static FString ModeToString(EBRGameModeType Mode);
+	static FString ModeToString(EBRGameModeType InMode);
 };

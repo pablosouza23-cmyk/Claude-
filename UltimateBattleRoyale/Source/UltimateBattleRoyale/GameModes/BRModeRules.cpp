@@ -1,10 +1,10 @@
 #include "GameModes/BRModeRules.h"
 
-FBRModeRules FBRModeRules::ForMode(EBRGameModeType Mode)
+FBRModeRules FBRModeRules::ForMode(EBRGameModeType InMode)
 {
 	FBRModeRules R;
-	R.Mode = Mode;
-	switch (Mode)
+	R.Mode = InMode;
+	switch (InMode)
 	{
 	case EBRGameModeType::Duos:
 		R.TeamSize = 2; R.bDownButNotOut = true; break;
@@ -42,9 +42,9 @@ EBRGameModeType FBRModeRules::ParseMode(const FString& Name)
 	return EBRGameModeType::Solo;
 }
 
-FString FBRModeRules::ModeToString(EBRGameModeType Mode)
+FString FBRModeRules::ModeToString(EBRGameModeType InMode)
 {
-	switch (Mode)
+	switch (InMode)
 	{
 	case EBRGameModeType::Duos: return TEXT("Duos");
 	case EBRGameModeType::Squads: return TEXT("Squads");

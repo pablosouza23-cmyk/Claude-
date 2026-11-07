@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Core/BRTypes.h"
+#include "Rules/BRWorldRules.h"
 #include "BRWorldGenerator.generated.h"
 
 class UProceduralMeshComponent;
@@ -23,6 +24,9 @@ struct FBRVehicleSpawn
 	GENERATED_BODY()
 	UPROPERTY() FTransform Transform;
 	UPROPERTY() EBRVehicleSpawnType Type = EBRVehicleSpawnType::SportsCar;
+
+	FBRVehicleSpawn() = default;
+	FBRVehicleSpawn(const FTransform& InTransform, EBRVehicleSpawnType InType) : Transform(InTransform), Type(InType) {}
 };
 
 DECLARE_MULTICAST_DELEGATE(FBRWorldGenerated);

@@ -97,11 +97,11 @@ void ABRCharacter::BeginPlay()
 
 	// Authored skeletal mesh + Anim Blueprint (parent class UBRAnimInstance) replace the procedural body.
 	const UBRSettings* Settings = UBRSettings::Get();
-	USkeletalMesh* Mesh = Settings->CharacterMesh.IsNull() ? nullptr : Settings->CharacterMesh.LoadSynchronous();
+	USkeletalMesh* SkelMesh = Settings->CharacterMesh.IsNull() ? nullptr : Settings->CharacterMesh.LoadSynchronous();
 	UClass* AnimClass = Settings->CharacterAnimClass.IsNull() ? nullptr : Settings->CharacterAnimClass.LoadSynchronous();
-	if (Mesh && AnimClass)
+	if (SkelMesh && AnimClass)
 	{
-		GetMesh()->SetSkeletalMesh(Mesh);
+		GetMesh()->SetSkeletalMesh(SkelMesh);
 		GetMesh()->SetAnimInstanceClass(AnimClass);
 		Body->SetUseSkeletalMesh(true);
 	}

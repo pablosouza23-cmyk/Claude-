@@ -1,0 +1,22 @@
+name: Ultimate Battle Royale - gameplay rules
+
+on:
+  push:
+    paths:
+      - 'UltimateBattleRoyale/Source/UltimateBattleRoyale/Rules/**'
+      - 'UltimateBattleRoyale/Tests/RulesTests/**'
+      - '.github/workflows/battle-royale-rules.yml'
+  pull_request:
+    paths:
+      - 'UltimateBattleRoyale/**'
+
+jobs:
+  rules-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cxx: [g++, clang++]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run rule tests (${{ matrix.cxx }})
+        run: CXX=${{ matrix.cxx }} UltimateBattleRoyale/Tests/RulesTests/run_tests.sh

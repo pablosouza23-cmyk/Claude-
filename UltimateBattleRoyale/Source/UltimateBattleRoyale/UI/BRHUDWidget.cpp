@@ -39,33 +39,33 @@ namespace
 {
 	const FSlateBrush* White() { return FCoreStyle::Get().GetBrush("WhiteBrush"); }
 
-	void Rect(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2D Pos, FVector2D Size, const FLinearColor& C)
+	void HudRect(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2D Pos, FVector2D Size, const FLinearColor& C)
 	{
 		FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(Size, FSlateLayoutTransform(Pos)), White(), ESlateDrawEffect::None, C);
 	}
 
-	FVector2D Measure(const FString& S, const FSlateFontInfo& F)
+	FVector2D HudMeasure(const FString& S, const FSlateFontInfo& F)
 	{
 		return FSlateApplication::IsInitialized() ? FVector2D(FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(S, F)) : FVector2D(S.Len() * F.Size * 0.6f, F.Size);
 	}
 
 	// Anchor: 0 = left, 1 = centre, 2 = right.
-	void Text(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2D Pos, const FString& S, int32 Size, const FLinearColor& C, int32 Anchor = 0)
+	void HudText(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2D Pos, const FString& S, int32 Size, const FLinearColor& C, int32 Anchor = 0)
 	{
 		const FSlateFontInfo F = FCoreStyle::GetDefaultFontStyle("Bold", Size);
-		const FVector2D M = Measure(S, F);
+		const FVector2D M = HudMeasure(S, F);
 		if (Anchor == 1) { Pos.X -= M.X * 0.5f; }
 		else if (Anchor == 2) { Pos.X -= M.X; }
 		FSlateDrawElement::MakeText(Out, Layer, G.ToPaintGeometry(M, FSlateLayoutTransform(Pos + FVector2D(1.5f, 1.5f))), S, F, ESlateDrawEffect::None, FLinearColor(0, 0, 0, C.A * 0.7f));
 		FSlateDrawElement::MakeText(Out, Layer + 1, G.ToPaintGeometry(M, FSlateLayoutTransform(Pos)), S, F, ESlateDrawEffect::None, C);
 	}
 
-	void Lines(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, const TArray<FVector2D>& Pts, const FLinearColor& C, float Thickness)
+	void HudLines(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, const TArray<FVector2D>& Pts, const FLinearColor& C, float Thickness)
 	{
 		FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), Pts, ESlateDrawEffect::None, C, true, Thickness);
 	}
 
-	void Circle(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2D Center, float Radius, const FLinearColor& C, float Thickness, int32 Segments = 48)
+	void HudCircle(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2D Center, float Radius, const FLinearColor& C, float Thickness, int32 Segments = 48)
 	{
 		TArray<FVector2D> Pts;
 		for (int32 I = 0; I <= Segments; ++I)
@@ -73,7 +73,7 @@ namespace
 			const float A = 2.f * PI * I / Segments;
 			Pts.Add(Center + FVector2D(FMath::Cos(A), FMath::Sin(A)) * Radius);
 		}
-		Lines(Out, Layer, G, Pts, C, Thickness);
+		HudLines(Out, Layer, G, Pts, C, Thickness);
 	}
 
 	FString TimeString(float Seconds)
@@ -244,11 +244,11 @@ void UBRHUDWidget::RebuildMenu()
 	{
 		AddTo(MenuContent, MakeButton(LOCTEXT("Back3", "Voltar"), [Page]() { Page(0); }, FLinearColor(0.3f, 0.3f, 0.35f)));
 		AddTo(MenuContent, MakeText(LOCTEXT("CreativeHelp", "Construa livremente (materiais infinitos) e salve sua ilha."), 14, FLinearColor::White, false));
-		for (int32 Slot = 1; Slot <= 3; ++Slot)
+		for (int32 Island = 1; Island <= 3; ++Island)
 		{
-			const FString Name = FString::Printf(TEXT("ilha%d"), Slot);
+			const FString Name = FString::Printf(TEXT("ilha%d"), Island);
 			UHorizontalBox* Row = MakeRow();
-			AddTo(Row, MakeText(FText::FromString(FString::Printf(TEXT("Ilha %d"), Slot)), 16), 4.f, true);
+			AddTo(Row, MakeText(FText::FromString(FString::Printf(TEXT("Ilha %d"), Island)), 16), 4.f, true);
 			AddTo(Row, MakeButton(LOCTEXT("Save", "Salvar"), [PC, Name]() { PC->CreativeCommand(TEXT("save"), Name); }, FLinearColor(0.2f, 0.45f, 0.3f), 14));
 			AddTo(Row, MakeButton(LOCTEXT("Load", "Carregar"), [PC, Name]() { PC->CreativeCommand(TEXT("load"), Name); }, FLinearColor(0.2f, 0.3f, 0.5f), 14));
 			AddTo(MenuContent, Row);
@@ -293,7 +293,7 @@ int32 UBRHUDWidget::NativePaint(const FPaintArgs& Args, const FGeometry& G, cons
 	if (PC->IsMapOpen())
 	{
 		const float Big = Size.Y * 0.8f;
-		Rect(Out, L, G, FVector2D::ZeroVector, Size, FLinearColor(0, 0, 0, 0.5f));
+		HudRect(Out, L, G, FVector2D::ZeroVector, Size, FLinearColor(0, 0, 0, 0.5f));
 		PaintMap(Out, L + 3, G, FVector2D((Size.X - Big) * 0.5f, (Size.Y - Big) * 0.5f), Big, true);
 	}
 	PaintInfo(Out, L, G, C);
@@ -315,18 +315,18 @@ void UBRHUDWidget::PaintBars(FSlateWindowElementList& Out, int32 L, const FGeome
 	const FVector2D Base(Size.X * 0.5f - W * 0.5f, Size.Y - 120.f);
 	if (H->IsDowned())
 	{
-		Rect(Out, L, G, Base, FVector2D(W, 18.f), FLinearColor(0, 0, 0, 0.5f));
-		Rect(Out, L + 1, G, Base, FVector2D(W * H->GetDownedHealth() / H->MaxDownedHealth, 18.f), FLinearColor(0.85f, 0.15f, 0.1f));
-		Text(Out, L + 2, G, Base + FVector2D(W * 0.5f, -32.f), LOCTEXT("Downed", "Derrubado! Aguarde um companheiro reanimar").ToString(), 16, FLinearColor(1.f, 0.4f, 0.3f), 1);
+		HudRect(Out, L, G, Base, FVector2D(W, 18.f), FLinearColor(0, 0, 0, 0.5f));
+		HudRect(Out, L + 1, G, Base, FVector2D(W * H->GetDownedHealth() / H->MaxDownedHealth, 18.f), FLinearColor(0.85f, 0.15f, 0.1f));
+		HudText(Out, L + 2, G, Base + FVector2D(W * 0.5f, -32.f), LOCTEXT("Downed", "Derrubado! Aguarde um companheiro reanimar").ToString(), 16, FLinearColor(1.f, 0.4f, 0.3f), 1);
 		return;
 	}
 	// Shield above health.
-	Rect(Out, L, G, Base - FVector2D(0, 20.f), FVector2D(W, 14.f), FLinearColor(0, 0, 0, 0.5f));
-	Rect(Out, L + 1, G, Base - FVector2D(0, 20.f), FVector2D(W * H->GetShield() / H->GetMaxShield(), 14.f), FLinearColor(0.2f, 0.55f, 1.f));
-	Rect(Out, L, G, Base, FVector2D(W, 18.f), FLinearColor(0, 0, 0, 0.5f));
-	Rect(Out, L + 1, G, Base, FVector2D(W * H->GetHealth() / H->GetMaxHealth(), 18.f), FLinearColor(0.25f, 0.85f, 0.3f));
-	Text(Out, L + 2, G, Base + FVector2D(-10.f, -22.f), FString::Printf(TEXT("%d"), FMath::RoundToInt(H->GetShield())), 14, FLinearColor(0.6f, 0.8f, 1.f), 2);
-	Text(Out, L + 2, G, Base + FVector2D(-10.f, -1.f), FString::Printf(TEXT("%d"), FMath::RoundToInt(H->GetHealth())), 16, FLinearColor::White, 2);
+	HudRect(Out, L, G, Base - FVector2D(0, 20.f), FVector2D(W, 14.f), FLinearColor(0, 0, 0, 0.5f));
+	HudRect(Out, L + 1, G, Base - FVector2D(0, 20.f), FVector2D(W * H->GetShield() / H->GetMaxShield(), 14.f), FLinearColor(0.2f, 0.55f, 1.f));
+	HudRect(Out, L, G, Base, FVector2D(W, 18.f), FLinearColor(0, 0, 0, 0.5f));
+	HudRect(Out, L + 1, G, Base, FVector2D(W * H->GetHealth() / H->GetMaxHealth(), 18.f), FLinearColor(0.25f, 0.85f, 0.3f));
+	HudText(Out, L + 2, G, Base + FVector2D(-10.f, -22.f), FString::Printf(TEXT("%d"), FMath::RoundToInt(H->GetShield())), 14, FLinearColor(0.6f, 0.8f, 1.f), 2);
+	HudText(Out, L + 2, G, Base + FVector2D(-10.f, -1.f), FString::Printf(TEXT("%d"), FMath::RoundToInt(H->GetHealth())), 16, FLinearColor::White, 2);
 
 	// Using a consumable / interacting progress.
 	float Progress = C->GetInventory()->GetUseProgress();
@@ -334,19 +334,19 @@ void UBRHUDWidget::PaintBars(FSlateWindowElementList& Out, int32 L, const FGeome
 	if (Progress > 0.f)
 	{
 		const FVector2D P(Size.X * 0.5f - 100.f, Size.Y * 0.62f);
-		Rect(Out, L, G, P, FVector2D(200.f, 10.f), FLinearColor(0, 0, 0, 0.5f));
-		Rect(Out, L + 1, G, P, FVector2D(200.f * Progress, 10.f), FLinearColor(1.f, 0.85f, 0.2f));
+		HudRect(Out, L, G, P, FVector2D(200.f, 10.f), FLinearColor(0, 0, 0, 0.5f));
+		HudRect(Out, L + 1, G, P, FVector2D(200.f * Progress, 10.f), FLinearColor(1.f, 0.85f, 0.2f));
 	}
 
 	if (const ABRVehicle* V = C->GetVehicle())
 	{
 		const FVector2D P(Size.X * 0.5f - 140.f, Size.Y - 190.f);
-		Text(Out, L + 2, G, P, FString::Printf(TEXT("%d km/h"), FMath::RoundToInt(V->GetSpeedKmh())), 22, FLinearColor::White);
-		Text(Out, L + 2, G, P + FVector2D(150.f, 4.f), LOCTEXT("Fuel", "Combustível").ToString(), 12, FLinearColor(0.9f, 0.9f, 0.6f));
-		Rect(Out, L, G, P + FVector2D(150.f, 24.f), FVector2D(130.f, 8.f), FLinearColor(0, 0, 0, 0.5f));
-		Rect(Out, L + 1, G, P + FVector2D(150.f, 24.f), FVector2D(130.f * V->GetFuelFraction(), 8.f), FLinearColor(1.f, 0.7f, 0.1f));
-		Rect(Out, L, G, P + FVector2D(150.f, 36.f), FVector2D(130.f, 8.f), FLinearColor(0, 0, 0, 0.5f));
-		Rect(Out, L + 1, G, P + FVector2D(150.f, 36.f), FVector2D(130.f * V->GetHealthFraction(), 8.f), FLinearColor(0.9f, 0.3f, 0.2f));
+		HudText(Out, L + 2, G, P, FString::Printf(TEXT("%d km/h"), FMath::RoundToInt(V->GetSpeedKmh())), 22, FLinearColor::White);
+		HudText(Out, L + 2, G, P + FVector2D(150.f, 4.f), LOCTEXT("Fuel", "Combustível").ToString(), 12, FLinearColor(0.9f, 0.9f, 0.6f));
+		HudRect(Out, L, G, P + FVector2D(150.f, 24.f), FVector2D(130.f, 8.f), FLinearColor(0, 0, 0, 0.5f));
+		HudRect(Out, L + 1, G, P + FVector2D(150.f, 24.f), FVector2D(130.f * V->GetFuelFraction(), 8.f), FLinearColor(1.f, 0.7f, 0.1f));
+		HudRect(Out, L, G, P + FVector2D(150.f, 36.f), FVector2D(130.f, 8.f), FLinearColor(0, 0, 0, 0.5f));
+		HudRect(Out, L + 1, G, P + FVector2D(150.f, 36.f), FVector2D(130.f * V->GetHealthFraction(), 8.f), FLinearColor(0.9f, 0.3f, 0.2f));
 	}
 }
 
@@ -356,33 +356,33 @@ void UBRHUDWidget::PaintSlots(FSlateWindowElementList& Out, int32 L, const FGeom
 	const UBRInventoryComponent* Inv = C->GetInventory();
 	const UBRItemRegistry* Reg = UBRItemRegistry::Get();
 	const UBRBuildComponent* B = C->GetBuild();
-	const float Slot = 66.f, Gap = 6.f;
-	const FVector2D Base(Size.X - (Slot + Gap) * 6.f - 20.f, Size.Y - Slot - 24.f);
+	const float SlotSize = 66.f, Gap = 6.f;
+	const FVector2D Base(Size.X - (SlotSize + Gap) * 6.f - 20.f, Size.Y - SlotSize - 24.f);
 
 	for (int32 I = -1; I < UBRInventoryComponent::NumSlots; ++I)
 	{
-		const FVector2D P = Base + FVector2D((I + 1) * (Slot + Gap), 0.f);
+		const FVector2D P = Base + FVector2D((I + 1) * (SlotSize + Gap), 0.f);
 		const bool bActive = Inv->GetActiveSlot() == I && !B->IsBuildMode();
-		Rect(Out, L, G, P - FVector2D(2.f), FVector2D(Slot + 4.f), bActive ? FLinearColor(1.f, 1.f, 1.f, 0.9f) : FLinearColor(0, 0, 0, 0.35f));
+		HudRect(Out, L, G, P - FVector2D(2.f), FVector2D(SlotSize + 4.f), bActive ? FLinearColor(1.f, 1.f, 1.f, 0.9f) : FLinearColor(0, 0, 0, 0.35f));
 		if (I < 0)
 		{
-			Rect(Out, L + 1, G, P, FVector2D(Slot), FLinearColor(0.15f, 0.15f, 0.18f, 0.85f));
-			Text(Out, L + 2, G, P + FVector2D(Slot * 0.5f, 22.f), TEXT("Picareta"), 11, FLinearColor::White, 1);
+			HudRect(Out, L + 1, G, P, FVector2D(SlotSize), FLinearColor(0.15f, 0.15f, 0.18f, 0.85f));
+			HudText(Out, L + 2, G, P + FVector2D(SlotSize * 0.5f, 22.f), TEXT("Picareta"), 11, FLinearColor::White, 1);
 			continue;
 		}
 		const FBRItemStack& S = Inv->GetSlot(I);
 		const UBRItemDefinition* Def = Reg->Find(S.ItemId);
 		const FLinearColor Bg = Def ? BRTypes::RarityColor(Def->Rarity) * 0.55f : FLinearColor(0.1f, 0.1f, 0.12f);
-		Rect(Out, L + 1, G, P, FVector2D(Slot), FLinearColor(Bg.R, Bg.G, Bg.B, 0.85f));
-		Text(Out, L + 2, G, P + FVector2D(4.f, 2.f), FString::FromInt(I + 1), 11, FLinearColor(1, 1, 1, 0.7f));
+		HudRect(Out, L + 1, G, P, FVector2D(SlotSize), FLinearColor(Bg.R, Bg.G, Bg.B, 0.85f));
+		HudText(Out, L + 2, G, P + FVector2D(4.f, 2.f), FString::FromInt(I + 1), 11, FLinearColor(1, 1, 1, 0.7f));
 		if (Def)
 		{
 			FString Short = Def->DisplayName.ToString();
 			int32 Space; if (Short.FindLastChar(TEXT(' '), Space)) { Short = Short.RightChop(Space + 1); }
-			Text(Out, L + 2, G, P + FVector2D(Slot * 0.5f, 24.f), Short.Left(9), 11, FLinearColor::White, 1);
+			HudText(Out, L + 2, G, P + FVector2D(SlotSize * 0.5f, 24.f), Short.Left(9), 11, FLinearColor::White, 1);
 			const UBRWeaponDefinition* W = Cast<UBRWeaponDefinition>(Def);
 			const FString Count = (W && !W->bThrowable) ? FString::FromInt(bActive && C->GetCurrentWeapon() ? C->GetCurrentWeapon()->GetAmmoInMag() : FMath::Max(0, S.AmmoInMag)) : FString::Printf(TEXT("x%d"), S.Count);
-			Text(Out, L + 2, G, P + FVector2D(Slot - 4.f, Slot - 18.f), Count, 12, FLinearColor::White, 2);
+			HudText(Out, L + 2, G, P + FVector2D(SlotSize - 4.f, SlotSize - 18.f), Count, 12, FLinearColor::White, 2);
 		}
 	}
 
@@ -392,11 +392,11 @@ void UBRHUDWidget::PaintSlots(FSlateWindowElementList& Out, int32 L, const FGeom
 		if (const UBRWeaponDefinition* D = W->GetDefinition())
 		{
 			const FString Ammo = D->bThrowable ? FString() : FString::Printf(TEXT("%d / %d"), W->GetAmmoInMag(), Inv->IsInfinite() ? 999 : Inv->GetAmmo(D->AmmoType));
-			Text(Out, L + 2, G, FVector2D(Size.X - 30.f, Base.Y - 64.f), Ammo, 26, FLinearColor::White, 2);
-			Text(Out, L + 2, G, FVector2D(Size.X - 30.f, Base.Y - 32.f), D->DisplayName.ToString(), 14, BRTypes::RarityColor(D->Rarity), 2);
+			HudText(Out, L + 2, G, FVector2D(Size.X - 30.f, Base.Y - 64.f), Ammo, 26, FLinearColor::White, 2);
+			HudText(Out, L + 2, G, FVector2D(Size.X - 30.f, Base.Y - 32.f), D->DisplayName.ToString(), 14, BRTypes::RarityColor(D->Rarity), 2);
 			if (W->IsReloading())
 			{
-				Text(Out, L + 2, G, FVector2D(Size.X * 0.5f, Size.Y * 0.58f), LOCTEXT("Reloading", "Recarregando...").ToString(), 16, FLinearColor(1.f, 0.85f, 0.3f), 1);
+				HudText(Out, L + 2, G, FVector2D(Size.X * 0.5f, Size.Y * 0.58f), LOCTEXT("Reloading", "Recarregando...").ToString(), 16, FLinearColor(1.f, 0.85f, 0.3f), 1);
 			}
 		}
 	}
@@ -407,17 +407,17 @@ void UBRHUDWidget::PaintSlots(FSlateWindowElementList& Out, int32 L, const FGeom
 	{
 		const FVector2D P(Size.X - 110.f, Base.Y - 180.f + M * 28.f);
 		const bool bSel = B->IsBuildMode() && int32(B->GetSelectedMaterial()) == M;
-		Rect(Out, L, G, P, FVector2D(90.f, 24.f), bSel ? FLinearColor(1.f, 0.85f, 0.2f, 0.8f) : FLinearColor(0, 0, 0, 0.4f));
-		Rect(Out, L + 1, G, P + FVector2D(4.f, 4.f), FVector2D(16.f, 16.f), BRTypes::BuildMaterialColor(EBRBuildMaterial(M)));
-		Text(Out, L + 2, G, P + FVector2D(26.f, 2.f), FString::FromInt(Inv->GetMaterial(EBRBuildMaterial(M))), 14, FLinearColor::White);
-		if (bSel) { Text(Out, L + 2, G, P + FVector2D(-8.f, 2.f), MatNames[M], 12, FLinearColor::White, 2); }
+		HudRect(Out, L, G, P, FVector2D(90.f, 24.f), bSel ? FLinearColor(1.f, 0.85f, 0.2f, 0.8f) : FLinearColor(0, 0, 0, 0.4f));
+		HudRect(Out, L + 1, G, P + FVector2D(4.f, 4.f), FVector2D(16.f, 16.f), BRTypes::BuildMaterialColor(EBRBuildMaterial(M)));
+		HudText(Out, L + 2, G, P + FVector2D(26.f, 2.f), FString::FromInt(Inv->GetMaterial(EBRBuildMaterial(M))), 14, FLinearColor::White);
+		if (bSel) { HudText(Out, L + 2, G, P + FVector2D(-8.f, 2.f), MatNames[M], 12, FLinearColor::White, 2); }
 	}
 	if (B->IsBuildMode() || B->IsEditMode())
 	{
 		const TCHAR* Pieces[] = { TEXT("Parede"), TEXT("Piso"), TEXT("Rampa"), TEXT("Telhado") };
 		const FString Mode = B->IsEditMode() ? FString(TEXT("EDIÇÃO — toque nos blocos, G confirma, R restaura"))
 			: FString::Printf(TEXT("CONSTRUÇÃO — %s (%s)  1-4 peça, R gira, X material"), Pieces[uint8(B->GetSelectedPiece())], MatNames[uint8(B->GetSelectedMaterial())]);
-		Text(Out, L + 2, G, FVector2D(Size.X * 0.5f, Size.Y - 170.f), Mode, 14, FLinearColor(0.6f, 0.85f, 1.f), 1);
+		HudText(Out, L + 2, G, FVector2D(Size.X * 0.5f, Size.Y - 170.f), Mode, 14, FLinearColor(0.6f, 0.85f, 1.f), 1);
 	}
 }
 
@@ -432,26 +432,26 @@ void UBRHUDWidget::PaintCrosshair(FSlateWindowElementList& Out, int32 L, const F
 	const FLinearColor Cross(1.f, 1.f, 1.f, 0.9f);
 	if (C->GetBuild()->IsBuildMode())
 	{
-		Circle(Out, L, G, Center, 6.f, FLinearColor(0.4f, 0.8f, 1.f), 2.f, 16);
+		HudCircle(Out, L, G, Center, 6.f, FLinearColor(0.4f, 0.8f, 1.f), 2.f, 16);
 	}
 	else if (W && !(W->GetDefinition() && W->GetDefinition()->bHasScope && C->IsAiming()))
 	{
 		for (const FVector2D& D : { FVector2D(1, 0), FVector2D(-1, 0), FVector2D(0, 1), FVector2D(0, -1) })
 		{
-			Lines(Out, L, G, { Center + D * Gap, Center + D * (Gap + 9.f) }, Cross, 2.f);
+			HudLines(Out, L, G, { Center + D * Gap, Center + D * (Gap + 9.f) }, Cross, 2.f);
 		}
 	}
 	else if (W)
 	{
 		// Scope overlay.
 		const FVector2D S = G.GetLocalSize();
-		Circle(Out, L, G, Center, S.Y * 0.42f, FLinearColor(0, 0, 0, 0.9f), 6.f, 64);
-		Lines(Out, L, G, { FVector2D(Center.X - S.Y * 0.42f, Center.Y), FVector2D(Center.X + S.Y * 0.42f, Center.Y) }, FLinearColor(0, 0, 0, 0.8f), 1.5f);
-		Lines(Out, L, G, { FVector2D(Center.X, Center.Y - S.Y * 0.42f), FVector2D(Center.X, Center.Y + S.Y * 0.42f) }, FLinearColor(0, 0, 0, 0.8f), 1.5f);
+		HudCircle(Out, L, G, Center, S.Y * 0.42f, FLinearColor(0, 0, 0, 0.9f), 6.f, 64);
+		HudLines(Out, L, G, { FVector2D(Center.X - S.Y * 0.42f, Center.Y), FVector2D(Center.X + S.Y * 0.42f, Center.Y) }, FLinearColor(0, 0, 0, 0.8f), 1.5f);
+		HudLines(Out, L, G, { FVector2D(Center.X, Center.Y - S.Y * 0.42f), FVector2D(Center.X, Center.Y + S.Y * 0.42f) }, FLinearColor(0, 0, 0, 0.8f), 1.5f);
 	}
 	else
 	{
-		Rect(Out, L, G, Center - FVector2D(2.f), FVector2D(4.f), Cross);
+		HudRect(Out, L, G, Center - FVector2D(2.f), FVector2D(4.f), Cross);
 	}
 
 	// Hit markers at the crosshair + floating damage numbers at the hit location.
@@ -464,14 +464,14 @@ void UBRHUDWidget::PaintCrosshair(FSlateWindowElementList& Out, int32 L, const F
 		{
 			for (const FVector2D& D : { FVector2D(1, 1), FVector2D(-1, 1), FVector2D(1, -1), FVector2D(-1, -1) })
 			{
-				Lines(Out, L + 1, G, { Center + D * 6.f, Center + D * 13.f }, Col, 2.5f);
+				HudLines(Out, L + 1, G, { Center + D * 6.f, Center + D * 13.f }, Col, 2.5f);
 			}
 		}
 		FVector2D P;
 		if (WorldToLocal(M.World, P))
 		{
 			const FLinearColor NumCol = M.bHead ? FLinearColor(1.f, 0.85f, 0.2f) : (M.bShield ? FLinearColor(0.5f, 0.75f, 1.f) : FLinearColor::White);
-			Text(Out, L + 2, G, P - FVector2D(0, Age * 60.f), FString::FromInt(FMath::RoundToInt(M.Damage)), M.bHead ? 22 : 18, NumCol * FLinearColor(1, 1, 1, 1.f - Age), 1);
+			HudText(Out, L + 2, G, P - FVector2D(0, Age * 60.f), FString::FromInt(FMath::RoundToInt(M.Damage)), M.bHead ? 22 : 18, NumCol * FLinearColor(1, 1, 1, 1.f - Age), 1);
 		}
 	}
 
@@ -487,7 +487,7 @@ void UBRHUDWidget::PaintCrosshair(FSlateWindowElementList& Out, int32 L, const F
 			const float A = FMath::Clamp(1.f - (Now - D.Time) / 1.5f, 0.f, 1.f);
 			const FVector2D Tip = Center + Dir * 120.f;
 			const FVector2D Side(-Dir.Y, Dir.X);
-			Lines(Out, L + 1, G, { Tip - Side * 26.f - Dir * 10.f, Tip, Tip + Side * 26.f - Dir * 10.f }, FLinearColor(1.f, 0.15f, 0.1f, A), 5.f);
+			HudLines(Out, L + 1, G, { Tip - Side * 26.f - Dir * 10.f, Tip, Tip + Side * 26.f - Dir * 10.f }, FLinearColor(1.f, 0.15f, 0.1f, A), 5.f);
 		}
 	}
 }
@@ -499,18 +499,18 @@ void UBRHUDWidget::PaintCompass(FSlateWindowElementList& Out, int32 L, const FGe
 	const FVector2D Size = G.GetLocalSize();
 	const float W = 460.f, Y = 18.f;
 	const float Heading = HeadingFromYaw(PC->GetControlRotation().Yaw);
-	Rect(Out, L, G, FVector2D(Size.X * 0.5f - W * 0.5f, Y), FVector2D(W, 30.f), FLinearColor(0, 0, 0, 0.35f));
+	HudRect(Out, L, G, FVector2D(Size.X * 0.5f - W * 0.5f, Y), FVector2D(W, 30.f), FLinearColor(0, 0, 0, 0.35f));
 	const TCHAR* Names[] = { TEXT("N"), TEXT("NE"), TEXT("L"), TEXT("SE"), TEXT("S"), TEXT("SO"), TEXT("O"), TEXT("NO") };
 	for (int32 Deg = 0; Deg < 360; Deg += 15)
 	{
 		const float Rel = FRotator::NormalizeAxis(Deg - Heading);
 		if (FMath::Abs(Rel) > 90.f) { continue; }
 		const float X = Size.X * 0.5f + Rel / 90.f * W * 0.5f;
-		if (Deg % 45 == 0) { Text(Out, L + 1, G, FVector2D(X, Y + 5.f), Names[Deg / 45], 15, Deg == 0 ? FLinearColor(1.f, 0.4f, 0.3f) : FLinearColor::White, 1); }
-		else { Rect(Out, L + 1, G, FVector2D(X - 1.f, Y + 20.f), FVector2D(2.f, 8.f), FLinearColor(1, 1, 1, 0.6f)); }
+		if (Deg % 45 == 0) { HudText(Out, L + 1, G, FVector2D(X, Y + 5.f), Names[Deg / 45], 15, Deg == 0 ? FLinearColor(1.f, 0.4f, 0.3f) : FLinearColor::White, 1); }
+		else { HudRect(Out, L + 1, G, FVector2D(X - 1.f, Y + 20.f), FVector2D(2.f, 8.f), FLinearColor(1, 1, 1, 0.6f)); }
 	}
-	Rect(Out, L + 2, G, FVector2D(Size.X * 0.5f - 1.f, Y + 26.f), FVector2D(2.f, 10.f), FLinearColor(1.f, 0.85f, 0.2f));
-	Text(Out, L + 1, G, FVector2D(Size.X * 0.5f, Y + 36.f), FString::FromInt(FMath::RoundToInt(Heading) % 360), 12, FLinearColor(1, 1, 1, 0.8f), 1);
+	HudRect(Out, L + 2, G, FVector2D(Size.X * 0.5f - 1.f, Y + 26.f), FVector2D(2.f, 10.f), FLinearColor(1.f, 0.85f, 0.2f));
+	HudText(Out, L + 1, G, FVector2D(Size.X * 0.5f, Y + 36.f), FString::FromInt(FMath::RoundToInt(Heading) % 360), 12, FLinearColor(1, 1, 1, 0.8f), 1);
 
 	// Team pings on the compass.
 	const ABRGameState* GS = GetWorld()->GetGameState<ABRGameState>();
@@ -525,7 +525,7 @@ void UBRHUDWidget::PaintCompass(FSlateWindowElementList& Out, int32 L, const FGe
 			const float Rel = FRotator::NormalizeAxis(HeadingFromYaw(To.Rotation().Yaw) - Heading);
 			if (FMath::Abs(Rel) <= 90.f)
 			{
-				Rect(Out, L + 2, G, FVector2D(Size.X * 0.5f + Rel / 90.f * W * 0.5f - 4.f, Y - 6.f), FVector2D(8.f, 8.f), FLinearColor(1.f, 0.85f, 0.2f));
+				HudRect(Out, L + 2, G, FVector2D(Size.X * 0.5f + Rel / 90.f * W * 0.5f - 4.f, Y - 6.f), FVector2D(8.f, 8.f), FLinearColor(1.f, 0.85f, 0.2f));
 			}
 		}
 	}
@@ -540,7 +540,7 @@ void UBRHUDWidget::PaintMap(FSlateWindowElementList& Out, int32 L, const FGeomet
 	const float H = WS->GetHalfSize();
 	auto ToMap = [&](float X, float Y) { return Pos + FVector2D((X + H) / (2.f * H), (H - Y) / (2.f * H)) * Size; };
 
-	Rect(Out, L, G, Pos - FVector2D(3.f), FVector2D(Size + 6.f), FLinearColor(0, 0, 0, 0.6f));
+	HudRect(Out, L, G, Pos - FVector2D(3.f), FVector2D(Size + 6.f), FLinearColor(0, 0, 0, 0.6f));
 	if (const ABRWorldGenerator* Gen = WS->GetGenerator())
 	{
 		if (UTexture2D* Tex = Gen->GetMinimapTexture())
@@ -555,7 +555,7 @@ void UBRHUDWidget::PaintMap(FSlateWindowElementList& Out, int32 L, const FGeomet
 	{
 		for (const FBRNamedLocation& N : WS->GetNamedLocations())
 		{
-			Text(Out, L + 3, G, ToMap(N.Location.X, N.Location.Y), N.Name.ToString(), 13, FLinearColor::White, 1);
+			HudText(Out, L + 3, G, ToMap(N.Location.X, N.Location.Y), N.Name.ToString(), 13, FLinearColor::White, 1);
 		}
 	}
 
@@ -564,15 +564,15 @@ void UBRHUDWidget::PaintMap(FSlateWindowElementList& Out, int32 L, const FGeomet
 	{
 		FVector2D C; float R;
 		GS->GetStorm()->GetCurrentCircle(C, R);
-		Circle(Out, L + 2, G, ToMap(C.X, C.Y), R / (2.f * H) * Size, FLinearColor(0.75f, 0.3f, 1.f), 2.f);
+		HudCircle(Out, L + 2, G, ToMap(C.X, C.Y), R / (2.f * H) * Size, FLinearColor(0.75f, 0.3f, 1.f), 2.f);
 		GS->GetStorm()->GetNextCircle(C, R);
-		Circle(Out, L + 2, G, ToMap(C.X, C.Y), R / (2.f * H) * Size, FLinearColor(1.f, 1.f, 1.f, 0.9f), 1.5f);
+		HudCircle(Out, L + 2, G, ToMap(C.X, C.Y), R / (2.f * H) * Size, FLinearColor(1.f, 1.f, 1.f, 0.9f), 1.5f);
 	}
 	// Bus path.
 	if (GS && GS->GetBus() && GS->GetMatchPhase() == EBRMatchPhase::BusFlight)
 	{
 		const FVector B = GS->GetBus()->GetActorLocation();
-		Rect(Out, L + 3, G, ToMap(B.X, B.Y) - FVector2D(5.f), FVector2D(10.f), FLinearColor(0.2f, 0.6f, 1.f));
+		HudRect(Out, L + 3, G, ToMap(B.X, B.Y) - FVector2D(5.f), FVector2D(10.f), FLinearColor(0.2f, 0.6f, 1.f));
 	}
 	// Teammates and pings.
 	const ABRPlayerState* MyPS = PC->GetPlayerState<ABRPlayerState>();
@@ -583,11 +583,11 @@ void UBRHUDWidget::PaintMap(FSlateWindowElementList& Out, int32 L, const FGeomet
 			const ABRPlayerState* BP = Cast<ABRPlayerState>(P);
 			const APawn* Mate = BP ? BP->GetPawn() : nullptr;
 			if (!Mate || BP == MyPS || BP->GetTeamId() != MyPS->GetTeamId()) { continue; }
-			Rect(Out, L + 3, G, ToMap(Mate->GetActorLocation().X, Mate->GetActorLocation().Y) - FVector2D(4.f), FVector2D(8.f), FLinearColor(0.2f, 1.f, 0.4f));
+			HudRect(Out, L + 3, G, ToMap(Mate->GetActorLocation().X, Mate->GetActorLocation().Y) - FVector2D(4.f), FVector2D(8.f), FLinearColor(0.2f, 1.f, 0.4f));
 		}
 		for (const FBRPingMarker& P : GS->GetPings())
 		{
-			if (P.TeamId == MyPS->GetTeamId()) { Rect(Out, L + 3, G, ToMap(P.Location.X, P.Location.Y) - FVector2D(4.f), FVector2D(8.f), FLinearColor(1.f, 0.85f, 0.2f)); }
+			if (P.TeamId == MyPS->GetTeamId()) { HudRect(Out, L + 3, G, ToMap(P.Location.X, P.Location.Y) - FVector2D(4.f), FVector2D(8.f), FLinearColor(1.f, 0.85f, 0.2f)); }
 		}
 	}
 	// Player arrow.
@@ -597,10 +597,10 @@ void UBRHUDWidget::PaintMap(FSlateWindowElementList& Out, int32 L, const FGeomet
 		const FVector2D P = ToMap(ViewTarget->GetActorLocation().X, ViewTarget->GetActorLocation().Y);
 		const float Head = FMath::DegreesToRadians(HeadingFromYaw(PC->GetControlRotation().Yaw));
 		const FVector2D Fwd(FMath::Sin(Head), -FMath::Cos(Head)), Side(-Fwd.Y, Fwd.X);
-		Lines(Out, L + 4, G, { P + Fwd * 9.f, P - Fwd * 5.f + Side * 6.f, P - Fwd * 5.f - Side * 6.f, P + Fwd * 9.f }, FLinearColor(1.f, 0.95f, 0.3f), 2.5f);
+		HudLines(Out, L + 4, G, { P + Fwd * 9.f, P - Fwd * 5.f + Side * 6.f, P - Fwd * 5.f - Side * 6.f, P + Fwd * 9.f }, FLinearColor(1.f, 0.95f, 0.3f), 2.5f);
 		if (!bBig)
 		{
-			Text(Out, L + 3, G, Pos + FVector2D(Size * 0.5f, Size + 6.f), WS->GetLocationName(ViewTarget->GetActorLocation()).ToString(), 13, FLinearColor::White, 1);
+			HudText(Out, L + 3, G, Pos + FVector2D(Size * 0.5f, Size + 6.f), WS->GetLocationName(ViewTarget->GetActorLocation()).ToString(), 13, FLinearColor::White, 1);
 		}
 	}
 }
@@ -618,8 +618,8 @@ void UBRHUDWidget::PaintWorldMarkers(FSlateWindowElementList& Out, int32 L, cons
 		FVector2D S;
 		if (!WorldToLocal(P.Location, S)) { continue; }
 		const FLinearColor Col = P.Kind == 1 ? FLinearColor(1.f, 0.25f, 0.2f) : (P.Kind == 2 ? FLinearColor(0.3f, 1.f, 0.4f) : FLinearColor(1.f, 0.85f, 0.2f));
-		Lines(Out, L, G, { S + FVector2D(0, -10), S + FVector2D(10, 0), S + FVector2D(0, 10), S + FVector2D(-10, 0), S + FVector2D(0, -10) }, Col, 3.f);
-		Text(Out, L + 1, G, S + FVector2D(0, 12.f), FString::Printf(TEXT("%s %dm"), *P.Owner, FMath::RoundToInt(FVector::Dist(P.Location, View->GetActorLocation()) / 100.f)), 12, Col, 1);
+		HudLines(Out, L, G, { S + FVector2D(0, -10), S + FVector2D(10, 0), S + FVector2D(0, 10), S + FVector2D(-10, 0), S + FVector2D(0, -10) }, Col, 3.f);
+		HudText(Out, L + 1, G, S + FVector2D(0, 12.f), FString::Printf(TEXT("%s %dm"), *P.Owner, FMath::RoundToInt(FVector::Dist(P.Location, View->GetActorLocation()) / 100.f)), 12, Col, 1);
 	}
 	// Teammate name tags.
 	for (APlayerState* P : GS->PlayerArray)
@@ -630,7 +630,7 @@ void UBRHUDWidget::PaintWorldMarkers(FSlateWindowElementList& Out, int32 L, cons
 		FVector2D S;
 		if (WorldToLocal(Mate->GetActorLocation() + FVector(0, 0, 120.f), S))
 		{
-			Text(Out, L + 1, G, S, BP->GetPlayerName(), 13, Mate->IsDowned() ? FLinearColor(1.f, 0.3f, 0.2f) : FLinearColor(0.3f, 1.f, 0.5f), 1);
+			HudText(Out, L + 1, G, S, BP->GetPlayerName(), 13, Mate->IsDowned() ? FLinearColor(1.f, 0.3f, 0.2f) : FLinearColor(0.3f, 1.f, 0.5f), 1);
 		}
 	}
 }
@@ -645,15 +645,15 @@ void UBRHUDWidget::PaintInfo(FSlateWindowElementList& Out, int32 L, const FGeome
 
 	// Top-left: match info.
 	FVector2D P(20.f, 20.f);
-	Text(Out, L, G, P, FString::Printf(TEXT("Vivos: %d   Equipes: %d   Eliminações: %d"), GS->GetPlayersAlive(), GS->GetTeamsAlive(), PS->GetKills()), 16, FLinearColor::White);
+	HudText(Out, L, G, P, FString::Printf(TEXT("Vivos: %d   Equipes: %d   Eliminações: %d"), GS->GetPlayersAlive(), GS->GetTeamsAlive(), PS->GetKills()), 16, FLinearColor::White);
 	P.Y += 24.f;
 	switch (GS->GetMatchPhase())
 	{
 	case EBRMatchPhase::WaitingForPlayers:
-		Text(Out, L, G, P, FString::Printf(TEXT("Aquecimento — aguardando jogadores (%d)  %s"), GS->PlayerArray.Num(), *TimeString(GS->GetPhaseSecondsRemaining())), 15, FLinearColor(1.f, 0.85f, 0.3f));
+		HudText(Out, L, G, P, FString::Printf(TEXT("Aquecimento — aguardando jogadores (%d)  %s"), GS->PlayerArray.Num(), *TimeString(GS->GetPhaseSecondsRemaining())), 15, FLinearColor(1.f, 0.85f, 0.3f));
 		break;
 	case EBRMatchPhase::BusFlight:
-		Text(Out, L, G, P, FString::Printf(TEXT("Ônibus — salte quando quiser  %s"), *TimeString(GS->GetPhaseSecondsRemaining())), 15, FLinearColor(0.4f, 0.8f, 1.f));
+		HudText(Out, L, G, P, FString::Printf(TEXT("Ônibus — salte quando quiser  %s"), *TimeString(GS->GetPhaseSecondsRemaining())), 15, FLinearColor(0.4f, 0.8f, 1.f));
 		break;
 	default:
 		if (const ABRStormController* Storm = GS->GetStorm())
@@ -662,10 +662,10 @@ void UBRHUDWidget::PaintInfo(FSlateWindowElementList& Out, int32 L, const FGeome
 			{
 				const FString Msg = Storm->GetState().bShrinking ? FString::Printf(TEXT("A zona está encolhendo  %s"), *TimeString(Storm->GetSecondsRemaining()))
 					: FString::Printf(TEXT("Tempestade se fecha em %s"), *TimeString(Storm->GetSecondsRemaining()));
-				Text(Out, L, G, P, FString::Printf(TEXT("Fase %d — %s"), Storm->GetState().Phase + 1, *Msg), 15, FLinearColor(0.85f, 0.55f, 1.f));
+				HudText(Out, L, G, P, FString::Printf(TEXT("Fase %d — %s"), Storm->GetState().Phase + 1, *Msg), 15, FLinearColor(0.85f, 0.55f, 1.f));
 				if (C && Storm->IsOutside(C->GetActorLocation()))
 				{
-					Text(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y * 0.25f), LOCTEXT("InStorm", "VOCÊ ESTÁ NA TEMPESTADE! Vá para a zona segura.").ToString(), 20, FLinearColor(0.85f, 0.4f, 1.f), 1);
+					HudText(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y * 0.25f), LOCTEXT("InStorm", "VOCÊ ESTÁ NA TEMPESTADE! Vá para a zona segura.").ToString(), 20, FLinearColor(0.85f, 0.4f, 1.f), 1);
 				}
 			}
 		}
@@ -681,7 +681,7 @@ void UBRHUDWidget::PaintInfo(FSlateWindowElementList& Out, int32 L, const FGeome
 			Net += FString::Printf(TEXT("   FPS: %d  (res %d%%)"), FMath::RoundToInt(Perf->GetAverageFps()), FMath::RoundToInt(Perf->GetResolutionScale()));
 		}
 	}
-	Text(Out, L, G, P, Net, 13, FLinearColor(1, 1, 1, 0.7f));
+	HudText(Out, L, G, P, Net, 13, FLinearColor(1, 1, 1, 0.7f));
 
 	// Kill feed under the minimap.
 	FVector2D K(Size.X - 20.f, 290.f);
@@ -691,7 +691,7 @@ void UBRHUDWidget::PaintInfo(FSlateWindowElementList& Out, int32 L, const FGeome
 		FString Line = E.Killer.IsEmpty() ? FString::Printf(TEXT("%s foi eliminado"), *E.Victim)
 			: FString::Printf(TEXT("%s %s %s%s"), *E.Killer, E.bDowned ? TEXT("derrubou") : TEXT("eliminou"), *E.Victim, E.bHeadshot ? TEXT(" (na cabeça)") : TEXT(""));
 		if (!E.Weapon.IsEmpty()) { Line += FString::Printf(TEXT(" [%s]"), *E.Weapon); }
-		Text(Out, L, G, K, Line, 13, E.Victim == PS->GetPlayerName() ? FLinearColor(1.f, 0.4f, 0.3f) : FLinearColor::White, 2);
+		HudText(Out, L, G, K, Line, 13, E.Victim == PS->GetPlayerName() ? FLinearColor(1.f, 0.4f, 0.3f) : FLinearColor::White, 2);
 		K.Y += 20.f;
 	}
 
@@ -701,7 +701,7 @@ void UBRHUDWidget::PaintInfo(FSlateWindowElementList& Out, int32 L, const FGeome
 		FVector2D Ch(20.f, Size.Y - 260.f - PC->GetChatLines().Num() * 20.f);
 		for (const FBRChatLine& Line : PC->GetChatLines())
 		{
-			Text(Out, L, G, Ch, FString::Printf(TEXT("%s%s: %s"), Line.bTeam ? TEXT("[Equipe] ") : TEXT(""), *Line.Sender, *Line.Message), 13, Line.bTeam ? FLinearColor(0.5f, 1.f, 0.6f) : FLinearColor::White);
+			HudText(Out, L, G, Ch, FString::Printf(TEXT("%s%s: %s"), Line.bTeam ? TEXT("[Equipe] ") : TEXT(""), *Line.Sender, *Line.Message), 13, Line.bTeam ? FLinearColor(0.5f, 1.f, 0.6f) : FLinearColor::White);
 			Ch.Y += 20.f;
 		}
 	}
@@ -709,7 +709,7 @@ void UBRHUDWidget::PaintInfo(FSlateWindowElementList& Out, int32 L, const FGeome
 	// Announcements.
 	if (Now - AnnouncementTime < 4.f)
 	{
-		Text(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y * 0.18f), Announcement.ToString(), 22, FLinearColor(1.f, 0.9f, 0.4f, FMath::Clamp(4.f - (Now - AnnouncementTime), 0.f, 1.f)), 1);
+		HudText(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y * 0.18f), Announcement.ToString(), 22, FLinearColor(1.f, 0.9f, 0.4f, FMath::Clamp(4.f - (Now - AnnouncementTime), 0.f, 1.f)), 1);
 	}
 
 	// Interaction prompt.
@@ -717,24 +717,24 @@ void UBRHUDWidget::PaintInfo(FSlateWindowElementList& Out, int32 L, const FGeome
 	{
 		if (const IBRInteractable* I = Cast<IBRInteractable>(C->GetLocalInteractTarget()))
 		{
-			Text(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y * 0.66f), FString::Printf(TEXT("[E] %s"), *I->GetInteractPrompt(C).ToString()), 18, FLinearColor::White, 1);
+			HudText(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y * 0.66f), FString::Printf(TEXT("[E] %s"), *I->GetInteractPrompt(C).ToString()), 18, FLinearColor::White, 1);
 		}
-		if (C->IsInVehicle()) { Text(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y * 0.66f), LOCTEXT("Exit", "[E] Sair do veículo").ToString(), 16, FLinearColor::White, 1); }
+		if (C->IsInVehicle()) { HudText(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y * 0.66f), LOCTEXT("Exit", "[E] Sair do veículo").ToString(), 16, FLinearColor::White, 1); }
 		const UBRCharacterMovementComponent* M = C->GetBRMovement();
-		if (M->IsSkydiving()) { Text(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y * 0.72f), LOCTEXT("Glide", "[Pular] Abrir planador").ToString(), 16, FLinearColor(0.6f, 0.85f, 1.f), 1); }
+		if (M->IsSkydiving()) { HudText(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y * 0.72f), LOCTEXT("Glide", "[Pular] Abrir planador").ToString(), 16, FLinearColor(0.6f, 0.85f, 1.f), 1); }
 		if (M->IsInAirborneCustomMode())
 		{
 			const float Alt = C->GetActorLocation().Z - GetWorld()->GetSubsystem<UBRWorldSubsystem>()->GetTerrainHeight(C->GetActorLocation().X, C->GetActorLocation().Y);
-			Text(Out, L, G, FVector2D(Size.X * 0.5f + 160.f, Size.Y * 0.5f), FString::Printf(TEXT("%d m"), FMath::RoundToInt(Alt / 100.f)), 18, FLinearColor::White);
+			HudText(Out, L, G, FVector2D(Size.X * 0.5f + 160.f, Size.Y * 0.5f), FString::Printf(TEXT("%d m"), FMath::RoundToInt(Alt / 100.f)), 18, FLinearColor::White);
 		}
 	}
 	else if (PS->IsOnBus())
 	{
-		Text(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y * 0.7f), LOCTEXT("Jump", "Pressione PULAR para saltar do ônibus").ToString(), 22, FLinearColor::White, 1);
+		HudText(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y * 0.7f), LOCTEXT("Jump", "Pressione PULAR para saltar do ônibus").ToString(), 22, FLinearColor::White, 1);
 	}
 	else if (const APlayerState* Spec = PC ? PC->GetSpectatedPlayer() : nullptr)
 	{
-		Text(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y - 80.f), FString::Printf(TEXT("Assistindo: %s  (Atirar = próximo)"), *Spec->GetPlayerName()), 18, FLinearColor::White, 1);
+		HudText(Out, L, G, FVector2D(Size.X * 0.5f, Size.Y - 80.f), FString::Printf(TEXT("Assistindo: %s  (Atirar = próximo)"), *Spec->GetPlayerName()), 18, FLinearColor::White, 1);
 	}
 }
 
@@ -746,14 +746,14 @@ void UBRHUDWidget::PaintResult(FSlateWindowElementList& Out, int32 L, const FGeo
 	const FVector2D Size = G.GetLocalSize();
 	const FVector2D Panel(520.f, 260.f);
 	const FVector2D Pos = (Size - Panel) * 0.5f - FVector2D(0, 80.f);
-	Rect(Out, L, G, Pos, Panel, FLinearColor(0.02f, 0.03f, 0.1f, 0.85f));
+	HudRect(Out, L, G, Pos, Panel, FLinearColor(0.02f, 0.03f, 0.1f, 0.85f));
 	const bool bWin = R.Placement == 1;
-	Text(Out, L + 1, G, Pos + FVector2D(Panel.X * 0.5f, 20.f), bWin ? TEXT("VITÓRIA REAL!") : FString::Printf(TEXT("Você ficou em #%d"), R.Placement), 34, bWin ? FLinearColor(1.f, 0.85f, 0.2f) : FLinearColor::White, 1);
-	Text(Out, L + 1, G, Pos + FVector2D(Panel.X * 0.5f, 80.f), FString::Printf(TEXT("Eliminações: %d   Dano: %d   Reanimações: %d"), R.Eliminations, R.DamageDealt, R.Revives), 16, FLinearColor::White, 1);
-	Text(Out, L + 1, G, Pos + FVector2D(Panel.X * 0.5f, 110.f), FString::Printf(TEXT("Tempo vivo: %s   Baús: %d"), *TimeString(R.SecondsSurvived), R.ChestsOpened), 16, FLinearColor::White, 1);
-	Text(Out, L + 1, G, Pos + FVector2D(Panel.X * 0.5f, 150.f), FString::Printf(TEXT("+%d XP   +%d Moedas"), R.XpEarned, R.CoinsEarned), 22, FLinearColor(0.5f, 1.f, 0.6f), 1);
-	if (!R.bCountsForProgression) { Text(Out, L + 1, G, Pos + FVector2D(Panel.X * 0.5f, 190.f), TEXT("Modo de treino: progresso reduzido"), 13, FLinearColor(1, 1, 1, 0.7f), 1); }
-	Text(Out, L + 1, G, Pos + FVector2D(Panel.X * 0.5f, 220.f), TEXT("Menu > Sair da partida para voltar ao lobby"), 13, FLinearColor(1, 1, 1, 0.7f), 1);
+	HudText(Out, L + 1, G, Pos + FVector2D(Panel.X * 0.5f, 20.f), bWin ? TEXT("VITÓRIA REAL!") : FString::Printf(TEXT("Você ficou em #%d"), R.Placement), 34, bWin ? FLinearColor(1.f, 0.85f, 0.2f) : FLinearColor::White, 1);
+	HudText(Out, L + 1, G, Pos + FVector2D(Panel.X * 0.5f, 80.f), FString::Printf(TEXT("Eliminações: %d   Dano: %d   Reanimações: %d"), R.Eliminations, R.DamageDealt, R.Revives), 16, FLinearColor::White, 1);
+	HudText(Out, L + 1, G, Pos + FVector2D(Panel.X * 0.5f, 110.f), FString::Printf(TEXT("Tempo vivo: %s   Baús: %d"), *TimeString(R.SecondsSurvived), R.ChestsOpened), 16, FLinearColor::White, 1);
+	HudText(Out, L + 1, G, Pos + FVector2D(Panel.X * 0.5f, 150.f), FString::Printf(TEXT("+%d XP   +%d Moedas"), R.XpEarned, R.CoinsEarned), 22, FLinearColor(0.5f, 1.f, 0.6f), 1);
+	if (!R.bCountsForProgression) { HudText(Out, L + 1, G, Pos + FVector2D(Panel.X * 0.5f, 190.f), TEXT("Modo de treino: progresso reduzido"), 13, FLinearColor(1, 1, 1, 0.7f), 1); }
+	HudText(Out, L + 1, G, Pos + FVector2D(Panel.X * 0.5f, 220.f), TEXT("Menu > Sair da partida para voltar ao lobby"), 13, FLinearColor(1, 1, 1, 0.7f), 1);
 }
 
 #undef LOCTEXT_NAMESPACE

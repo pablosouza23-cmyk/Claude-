@@ -392,8 +392,8 @@ int32 UBRTouchControlsWidget::NativePaint(const FPaintArgs& Args, const FGeometr
 		if (C.Id == TEXT("Aim") && Ch && Ch->IsAiming()) { Label = TEXT("SOLTAR"); }
 		if (C.Id.ToString().StartsWith(TEXT("Slot")) && Ch)
 		{
-			const int32 Slot = FCString::Atoi(*C.Id.ToString().RightChop(4)) - 1;
-			if (Ch->GetInventory()->GetActiveSlot() == Slot) { PaintCircle(Out, L + 1, G, P, R + 3.f, FLinearColor(1.f, 0.85f, 0.2f), 3.f); }
+			const int32 SlotIndex = FCString::Atoi(*C.Id.ToString().RightChop(4)) - 1;
+			if (Ch->GetInventory()->GetActiveSlot() == SlotIndex) { PaintCircle(Out, L + 1, G, P, R + 3.f, FLinearColor(1.f, 0.85f, 0.2f), 3.f); }
 		}
 		PaintLabel(Out, L + 2, G, P, Label, FMath::Clamp(int32(R * 0.32f), 9, 18), FLinearColor::White);
 	}

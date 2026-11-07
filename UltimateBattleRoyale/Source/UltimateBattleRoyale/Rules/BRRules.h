@@ -13,3 +13,4 @@
 #include "BRMatchRules.h"
 #include "BRQualityRules.h"
 #include "BRAimAssistRules.h"
+#include "BRWorldRules.h"

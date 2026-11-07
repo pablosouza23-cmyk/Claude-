@@ -273,9 +273,9 @@ void UBRMainMenuWidget::BuildCharacter()
 			if (Types[T] == EBRCosmeticType::Emote)
 			{
 				AddTo(Row, MakeButton(LOCTEXT("Preview", "Ver"), [Self, Id]() { if (Self.IsValid()) { if (ABRLobbyScene* Lobby = Self->GetLobby()) { Lobby->PlayEmote(Id); } } }, FLinearColor(0.25f, 0.25f, 0.35f), 14));
-				for (int32 Slot = 0; Slot < 3; ++Slot)
+				for (int32 EmoteSlot = 0; EmoteSlot < 3; ++EmoteSlot)
 				{
-					AddTo(Row, MakeButton(FText::Format(LOCTEXT("EmoteSlot", "Slot {0}"), FText::AsNumber(Slot + 1)), [Prog, Id, Slot, Self]() { Prog->Equip(Id, Slot); if (Self.IsValid()) { Self->ShowTab(2); } }, FLinearColor(0.15f, 0.35f, 0.55f), 13));
+					AddTo(Row, MakeButton(FText::Format(LOCTEXT("EmoteSlot", "Slot {0}"), FText::AsNumber(EmoteSlot + 1)), [Prog, Id, EmoteSlot, Self]() { Prog->Equip(Id, EmoteSlot); if (Self.IsValid()) { Self->ShowTab(2); } }, FLinearColor(0.15f, 0.35f, 0.55f), 13));
 				}
 			}
 			else

@@ -66,7 +66,7 @@ public:
 	FVector GetExitLocation(int32 Seat) const;
 	void OnOccupantExited(ABRCharacter* Character);
 	void SetDriverInput(float Throttle, float Steer, bool bHandbrake);
-	void SetLocalDriveInput(float Throttle, float Steer) { VisualSteer = Steer; }
+	void SetLocalDriveInput(float InThrottle, float InSteer) { VisualSteer = InSteer; }
 	void Refuel(float Fraction);
 
 	float GetFuelFraction() const { return Config.FuelCapacity > 0.f ? Fuel / Config.FuelCapacity : 0.f; }

@@ -61,7 +61,7 @@ public:
 protected:
 	UFUNCTION(Server, Reliable) void ServerFire(const FBRShotRequest& Request);
 	UFUNCTION(Server, Reliable) void ServerReload();
-	UFUNCTION(NetMulticast, Unreliable) void MulticastShotFX(FVector_NetQuantize Muzzle, const TArray<FVector_NetQuantize>& Ends);
+	UFUNCTION(NetMulticast, Unreliable) void MulticastShotFX(FVector_NetQuantize InMuzzle, const TArray<FVector_NetQuantize>& Ends);
 	UFUNCTION(Client, Unreliable) void ClientRejectShot();
 
 	UFUNCTION() void OnRep_ItemId();
@@ -74,7 +74,7 @@ private:
 	bool ValidateHit(const FBRShotRequest& Req, const FBRShotHit& Hit, const UBRWeaponDefinition* Def, float& OutDamage, bool& bOutHeadshot) const;
 	void FinishReload();
 	void BuildVisual();
-	void PlayShotFX(const FVector& Muzzle, const TArray<FVector>& Ends, bool bLocal);
+	void PlayShotFX(const FVector& InMuzzle, const TArray<FVector>& Ends, bool bLocal);
 	FVector GetMuzzleLocation() const;
 
 	UPROPERTY(ReplicatedUsing = OnRep_ItemId) FName ItemId;

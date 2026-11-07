@@ -405,7 +405,9 @@ void ABRGameMode::ServerTick()
 		}
 		const int32 Humans = GetNumPlayers();
 		const int32 Total = Humans + Rules.BotCount;
-		const bool bReady = BRRules::ShouldStartMatch(Total, Rules.MinPlayersToStart, Rules.MaxPlayers, Now - WaitStartTime, UBRSettings::Get()->LobbyWaitSeconds);
+		// Offline/local sessions don't wait for a lobby to fill.
+		const float WaitSeconds = GetNetMode() == NM_Standalone ? 10.f : UBRSettings::Get()->LobbyWaitSeconds;
+		const bool bReady = BRRules::ShouldStartMatch(Total, Rules.MinPlayersToStart, Rules.MaxPlayers, Now - WaitStartTime, WaitSeconds);
 		if (bReady && !bCountdownStarted)
 		{
 			bCountdownStarted = true;

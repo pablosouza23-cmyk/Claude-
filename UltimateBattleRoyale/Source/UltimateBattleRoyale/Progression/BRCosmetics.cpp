@@ -120,10 +120,11 @@ void UBRCosmeticCatalog::GetDailyShop(const FDateTime& UtcNow, TArray<const FBRC
 {
 	TArray<const FBRCosmeticDef*> Pool;
 	for (const FBRCosmeticDef& D : All()) { if (D.bShopItem) { Pool.Add(&D); } }
-	const uint32 DaySeed = uint32(UtcNow.GetYear() * 10000 + UtcNow.GetMonth() * 100 + UtcNow.GetDay());
-	BRRules::Rng Rng(BRRules::HashCombine(DaySeed, 0xC0FFEEu));
-	for (int32 I = Pool.Num() - 1; I > 0; --I) { Pool.Swap(I, Rng.RangeInt(0, I)); }
-	for (int32 I = 0; I < FMath::Min(Count, Pool.Num()); ++I) { Out.Add(Pool[I]); }
+	TArray<int> Order;
+	for (int32 I = 0; I < Pool.Num(); ++I) { Order.Add(I); }
+	// Same algorithm as the backend (Backend/brbackend/rules.py) so offline and online shops agree.
+	BRRules::ShuffleShop(BRRules::DailyShopSeed(UtcNow.GetYear(), UtcNow.GetMonth(), UtcNow.GetDay()), Order.Num(), Order.GetData());
+	for (int32 I = 0; I < FMath::Min(Count, Order.Num()); ++I) { Out.Add(Pool[Order[I]]); }
 }
 
 const TArray<FBRSeasonReward>& UBRCosmeticCatalog::SeasonRewards()

@@ -17,7 +17,7 @@ public class UltimateBattleRoyale : ModuleRules
 			"Niagara", "AudioMixer",
 			"ProceduralMeshComponent",
 			"OnlineSubsystem", "OnlineSubsystemUtils",
-			"Json", "JsonUtilities"
+			"Json", "JsonUtilities", "HTTP"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "ApplicationCore", "RenderCore", "RHI" });

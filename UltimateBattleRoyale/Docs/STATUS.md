@@ -11,6 +11,7 @@ de trabalho que não é possível fazer sem o editor Unreal, artistas ou infraes
 | Layout do mapa (mini-mapa ASCII gerado pelas regras) | ✅ ilha, rio, lago, montanhas, cidades e praia nos lugares certos |
 | Código UE5 (C++ / UHT) | ⚠️ **não compilado** — o ambiente de desenvolvimento não tinha Unreal Engine. Revisado manualmente e com checagem automática de includes/símbolos; espere ajustes no primeiro build. |
 | Testes de automação UE (`Tests/BRAutomationTests.cpp`) | ⚠️ escritos, não executados (precisam do editor) |
+| Backend de perfil (`Backend/`) | ✅ 23 testes; regras verificadas contra o C++ (XP, moedas, desafios, loja); imagem Docker construída e testada (resultado assinado, compra, passe, rejeição de resultado forjado) |
 | Desempenho em celulares | ⚠️ arquitetura e ajustes implementados, **não medidos em aparelhos** |
 
 ## Por seção do pedido
@@ -32,12 +33,12 @@ de trabalho que não é possível fazer sem o editor Unreal, artistas ou infraes
 | 13 | Multiplayer | ✅ server-authoritative, sessões/matchmaking, servidor dedicado, partida privada, grupos, amigos, convites, chat de texto, pings, reconexão. ⚠️ Online real exige configurar EOS (credenciais) e hospedar servidores; voz depende do VoIP do OSS/EOS. Ver `ONLINE.md`. Bots nunca são apresentados como jogadores (nome "[BOT]", só no Treinamento ou com `?Bots=`). |
 | 14 | IA | ✅ percepção (visão, audição, dano), lootear, curar, construir cobertura, lutar, recuar, reanimar, respeitar a tempestade; nós de BT + teste EQS. ⚠️ O mundo procedural não tem NavMeshBoundsVolume: bots usam direção direta com desvio de obstáculos quando não há navmesh. |
 | 15 | Interface | ✅ menu (Jogar, Modos, Personagem, Loja, Passe, Inventário, Amigos, Configurações), lobby 3D, HUD completo. |
-| 16 | Loja e progressão | ✅ loja diária, passe (grátis + premium), desafios diários/semanais, XP, níveis, estatísticas. ⚠️ Perfil salvo localmente; moedas só são ganhas jogando — **compras com dinheiro real não implementadas** (exigem backend + lojas Google/Apple). |
+| 16 | Loja e progressão | ✅ loja diária, passe (grátis + premium), desafios diários/semanais, XP, níveis, estatísticas, com **backend autoritativo** (`Backend/`) quando configurado; offline usa perfil local. ⚠️ Moedas só são ganhas jogando — **compras com dinheiro real não implementadas** (exigem credenciais e validação de recibos Google/Apple). |
 | 17 | Visual | ✅ céu dinâmico, dia/noite, clima, sombras dinâmicas, água, vegetação, explosões. ⚠️ Materiais PBR/texturas de alta resolução dependem de arte autoral. |
 | 18 | Áudio | ✅ sintetizado e espacializado (todas as categorias pedidas, inclusive músicas de lobby e vitória). Substituível por MetaSounds. |
 | 19 | Otimização mobile | ✅ detecção de aparelho + benchmark, níveis Baixa/Média/Alta, metas 30/45/60 FPS, resolução dinâmica, rebaixamento automático por throttling, LOD/culling (HISM), instancing, distância de desenho por nível, partículas reduzidas, sombras limitadas, pool de texturas, ASTC, LOD de IA e animação, dormência de rede. ⚠️ Não medido em aparelhos. |
 | 20 | Controles mobile | ✅ joystick flutuante, câmera por arraste, todos os botões, layout editável e redimensionável, sensibilidade, assistência de mira, giroscópio, vibração. |
-| 21 | Anti-cheat | ✅ validação de tiro, dano, cadência, distância de construção, movimento/teleporte, rate limit de RPCs, inventário só no servidor, anti-duplicação, log de partida, denúncias. |
+| 21 | Anti-cheat | ✅ validação de tiro, dano, cadência, distância de construção, movimento/teleporte, rate limit de RPCs, inventário só no servidor, anti-duplicação, log de partida, denúncias; economia e cosméticos validados pelo backend (resultados assinados pelo servidor, idempotentes e com checagem de plausibilidade). |
 | 22 | Testes | ✅ regras testadas e executadas; testes de automação UE escritos; checklist manual em `TESTING.md`. |
 
 ## Próximos passos recomendados (em ordem)
@@ -45,5 +46,5 @@ de trabalho que não é possível fazer sem o editor Unreal, artistas ou infraes
 1. Compilar no UE 5.4 e corrigir eventuais erros de compilação.
 2. Rodar `Automation RunTests BR.` e o checklist de `TESTING.md` no editor (PIE com 2+ clientes).
 3. Medir FPS em 3 aparelhos Android reais (entrada/médio/topo) e um iPhone; ajustar `DefaultDeviceProfiles.ini`.
-4. Configurar EOS e um servidor dedicado de teste (`ONLINE.md`).
+4. Configurar EOS, o backend (`Backend/`, `Deploy/`) e um servidor dedicado de teste (`ONLINE.md`).
 5. Substituir progressivamente os visuais procedurais por arte autoral (`CONTENT_PIPELINE.md`).

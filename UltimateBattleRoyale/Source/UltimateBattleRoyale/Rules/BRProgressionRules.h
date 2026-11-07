@@ -70,4 +70,43 @@ namespace BRRules
 		if (SeasonXp <= 0) { return 0; }
 		return int(Min(double(SeasonPassTiers), double(SeasonXp / XpPerSeasonTier)));
 	}
+
+	// ---- Challenges: deterministic per day / week, shared by the game (offline) and the backend.
+	constexpr int ChallengeTemplateCount = 8;
+	constexpr int DailyChallengeCount = 3;
+	constexpr int WeeklyChallengeCount = 5;
+
+	inline uint32_t DailyChallengeSeed(int Year, int Month, int Day) { return HashCombine(uint32_t(Year * 10000 + Month * 100 + Day), 0xDA11u); }
+	inline uint32_t WeeklyChallengeSeed(int Year, int WeekOfYear) { return HashCombine(uint32_t(Year * 100 + WeekOfYear), 0x3EE7u); }
+	inline uint32_t DailyShopSeed(int Year, int Month, int Day) { return HashCombine(uint32_t(Year * 10000 + Month * 100 + Day), 0xC0FFEEu); }
+
+	// Picks Count distinct template indices (order matters) into Out; returns how many were written.
+	inline int PickChallenges(uint32_t Seed, int Count, int* Out)
+	{
+		int Pool[ChallengeTemplateCount];
+		int PoolSize = ChallengeTemplateCount;
+		for (int I = 0; I < PoolSize; ++I) { Pool[I] = I; }
+		Rng R(Seed);
+		int Written = 0;
+		for (int N = 0; N < Count && PoolSize > 0; ++N)
+		{
+			const int Idx = R.RangeInt(0, PoolSize - 1);
+			Out[Written++] = Pool[Idx];
+			for (int J = Idx; J < PoolSize - 1; ++J) { Pool[J] = Pool[J + 1]; }
+			--PoolSize;
+		}
+		return Written;
+	}
+
+	// Daily shop: Fisher-Yates over the shop pool (catalogue order), first Count entries are on sale.
+	inline void ShuffleShop(uint32_t Seed, int PoolSize, int* InOutIndices)
+	{
+		Rng R(Seed);
+		for (int I = PoolSize - 1; I > 0; --I)
+		{
+			const int J = R.RangeInt(0, I);
+			const int T = InOutIndices[I]; InOutIndices[I] = InOutIndices[J]; InOutIndices[J] = T;
+		}
+	}
 }
+

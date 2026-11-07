@@ -86,7 +86,14 @@ void UBRMainMenuWidget::NativeConstruct()
 	TWeakObjectPtr<UBRMainMenuWidget> Self = this;
 	if (UBRProgressionSubsystem* Prog = GetGameInstance()->GetSubsystem<UBRProgressionSubsystem>())
 	{
-		ProfileHandle = Prog->OnProfileChanged.AddWeakLambda(this, [Self]() { if (Self.IsValid()) { Self->RefreshHeader(); } });
+		ProfileHandle = Prog->OnProfileChanged.AddWeakLambda(this, [Self]()
+		{
+			if (!Self.IsValid()) { return; }
+			Self->RefreshHeader();
+			// Server-confirmed changes (purchases, claims) refresh the tab that requested them.
+			if (Self->CurrentTab >= 2 && Self->CurrentTab <= 5) { Self->ShowTab(Self->CurrentTab); }
+		});
+		BackendHandle = Prog->OnBackendMessage.AddWeakLambda(this, [Self](const FText& Message) { if (Self.IsValid()) { Self->SetStatus(Message); } });
 	}
 	if (UBRSessionSubsystem* Sessions = GetGameInstance()->GetSubsystem<UBRSessionSubsystem>())
 	{
@@ -104,7 +111,11 @@ void UBRMainMenuWidget::NativeConstruct()
 
 void UBRMainMenuWidget::NativeDestruct()
 {
-	if (UBRProgressionSubsystem* Prog = GetGameInstance()->GetSubsystem<UBRProgressionSubsystem>()) { Prog->OnProfileChanged.Remove(ProfileHandle); }
+	if (UBRProgressionSubsystem* Prog = GetGameInstance()->GetSubsystem<UBRProgressionSubsystem>())
+	{
+		Prog->OnProfileChanged.Remove(ProfileHandle);
+		Prog->OnBackendMessage.Remove(BackendHandle);
+	}
 	if (UBRSessionSubsystem* Sessions = GetGameInstance()->GetSubsystem<UBRSessionSubsystem>())
 	{
 		Sessions->OnStatusChanged.Remove(StatusHandle);
@@ -313,6 +324,7 @@ void UBRMainMenuWidget::BuildShop()
 			switch (R)
 			{
 			case EBRPurchaseResult::Success: Self->SetStatus(LOCTEXT("Bought", "Compra concluída! Equipe em Personagem.")); break;
+			case EBRPurchaseResult::Pending: Self->SetStatus(LOCTEXT("Pending", "Processando compra no servidor...")); return;
 			case EBRPurchaseResult::NotEnoughCoins: Self->SetStatus(LOCTEXT("NoCoins", "Moedas insuficientes. Jogue partidas para ganhar mais.")); break;
 			case EBRPurchaseResult::AlreadyOwned: Self->SetStatus(LOCTEXT("AlreadyOwned", "Você já possui este item.")); break;
 			default: Self->SetStatus(LOCTEXT("NotForSale", "Item indisponível.")); break;
@@ -336,7 +348,7 @@ void UBRMainMenuWidget::BuildPass()
 		AddTo(Content, MakeButton(FText::Format(LOCTEXT("BuyPass", "Desbloquear trilha premium ({0} moedas)"), FText::AsNumber(UBRProgressionSubsystem::PremiumPassPrice)), [Prog, Self]()
 		{
 			const bool bOk = Prog->BuyPremiumPass();
-			if (Self.IsValid()) { Self->SetStatus(bOk ? LOCTEXT("PassOk", "Passe premium desbloqueado!") : LOCTEXT("PassNo", "Moedas insuficientes.")); Self->ShowTab(4); }
+			if (Self.IsValid() && !Prog->IsBackendAuthoritative()) { Self->SetStatus(bOk ? LOCTEXT("PassOk", "Passe premium desbloqueado!") : LOCTEXT("PassNo", "Moedas insuficientes.")); Self->ShowTab(4); }
 		}, FLinearColor(0.75f, 0.45f, 0.95f), 18));
 	}
 	for (const FBRSeasonReward& R : UBRCosmeticCatalog::SeasonRewards())
@@ -351,7 +363,7 @@ void UBRMainMenuWidget::BuildPass()
 		const bool bCan = Tier <= Prog->GetSeasonTier() && (!bPremium || Prog->HasPremiumPass());
 		AddTo(Row, MakeButton(bClaimed ? LOCTEXT("Claimed", "Resgatado") : (bCan ? LOCTEXT("Claim", "Resgatar") : LOCTEXT("Locked", "Bloqueado")), [Prog, Tier, bPremium, Self]()
 		{
-			if (Prog->ClaimTier(Tier, bPremium) && Self.IsValid()) { Self->SetStatus(LOCTEXT("ClaimOk", "Recompensa resgatada!")); Self->ShowTab(4); }
+			if (Prog->ClaimTier(Tier, bPremium) && Self.IsValid() && !Prog->IsBackendAuthoritative()) { Self->SetStatus(LOCTEXT("ClaimOk", "Recompensa resgatada!")); Self->ShowTab(4); }
 		}, bClaimed ? FLinearColor(0.2f, 0.35f, 0.2f) : (bCan ? FLinearColor(0.95f, 0.6f, 0.1f) : FLinearColor(0.25f, 0.25f, 0.28f)), 13));
 		AddTo(Content, Row, 2.f);
 	}

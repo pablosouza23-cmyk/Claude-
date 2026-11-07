@@ -32,16 +32,23 @@ bMirrorPresenceToEAS=True
    - **Voz**: `bHasVoiceEnabled=true` + EOS RTC/VoIP do OSS; *Apertar para falar* (tecla T) chama
      `StartTalking/StopTalking`. Precisa de permissão de microfone no Android/iOS.
 
-## Backend de perfil (necessário antes de qualquer economia com valor real)
-O perfil hoje é um `SaveGame` local (`UBRProgressionSubsystem`) — adequado para offline, **não seguro**
-para itens pagos. Contrato recomendado (servidor autoritativo):
+## Backend de perfil (implementado em `Backend/`)
+Com `ProfileBackendUrl` vazio o perfil é local (jogo offline). Configurando a URL, o **backend passa a ser a
+única autoridade** sobre XP, moedas, itens, passe, desafios e estatísticas:
 
-| Endpoint | Quem chama | Função |
-|---|---|---|
-| `POST /match/result` | **servidor dedicado** (chave de serviço) | grava XP/moedas/estatísticas calculados no servidor de jogo |
-| `GET /profile` | cliente (token EOS) | nível, moedas, itens, passe |
-| `POST /shop/purchase` | cliente | debita moedas e concede item **no backend** |
-| `POST /iap/verify` | cliente | valida recibo Google Play / App Store antes de creditar |
-| `GET /loadout/{player}` | servidor dedicado | cosméticos realmente possuídos (o servidor hoje só valida contra o catálogo) |
+| Fluxo | Implementação |
+|---|---|
+| Resultado da partida | `ABRGameMode::SendMatchResult` → `UBRBackendClient::PostMatchResults` assinado com HMAC (segredo `BR_SERVER_SECRET`, só no servidor dedicado). O backend recalcula XP/moedas com as mesmas regras do C++ e ignora duplicatas. |
+| Cosméticos na partida | `ABRPlayerController::ServerSetCosmetics` ignora o que o cliente envia e busca `GET /v1/server/loadout` (apenas itens possuídos). |
+| Loja / passe / loadout | `UBRProgressionSubsystem` envia pedidos; o resultado chega do servidor e substitui o cache local. |
+| Autenticação do jogador | Desenvolvimento: `bBackendDevAuth=true` → token `dev:<id>` (backend `BR_AUTH_MODE=dev`). Produção: `bBackendDevAuth=false` → token do subsistema online (EOS), validado no backend (`BR_AUTH_MODE=eos`, `BR_EOS_JWKS_URL`, `BR_EOS_CLIENT_ID`). ⚠️ O emissor/JWKS exatos do token EOS devem ser confirmados no portal da Epic. |
+| Compras com dinheiro real | `POST /v1/iap/verify` responde **501** até haver credenciais do Google Play / App Store e validação de recibos. |
 
-`UBRSettings::ProfileBackendUrl` está reservado para essa integração.
+Subir localmente:
+```
+cd Backend && BR_AUTH_MODE=dev BR_SERVER_SECRET=troque-isto python3 -m brbackend.server --port 8080
+# jogo:     -BRBackend=http://127.0.0.1:8080   (ou ProfileBackendUrl nas configurações do projeto)
+# servidor: BR_SERVER_SECRET=troque-isto UltimateBattleRoyaleServer ... -BRBackend=http://127.0.0.1:8080
+```
+Pilha completa em contêineres: `BR_SERVER_SECRET=... docker compose -f Deploy/docker-compose.yml up --build`
+(o servidor dedicado precisa estar empacotado em `Build/Server/LinuxServer`).

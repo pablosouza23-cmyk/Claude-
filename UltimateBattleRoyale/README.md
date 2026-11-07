@@ -7,14 +7,15 @@ autoral** — e cada parte aceita arte autoral quando ela existir (ver `Docs/CON
 
 > **Status honesto:** o código foi escrito e revisado contra a API do UE 5.4, mas **não foi compilado
 > neste ambiente** (não há Unreal Engine aqui). As regras de jogo puras (`Source/.../Rules`) são
-> compiladas e testadas (37 casos, ~15 mil verificações). Espere uma rodada de ajustes de compilação no
+> compiladas e testadas (38 casos, ~15 mil verificações), e o backend de perfil tem 23 testes. Espere uma rodada de ajustes de compilação no
 > primeiro build. Detalhes em [`Docs/STATUS.md`](Docs/STATUS.md).
 
 ## Começo rápido
 
 ```bash
-# 1. Testes das regras (não precisa do Unreal)
+# 1. Testes das regras e do backend (não precisam do Unreal)
 Tests/RulesTests/run_tests.sh
+(cd Backend && python3 -m unittest discover -s tests -t .)
 
 # 2. Gerar arquivos de projeto e compilar (Windows, UE 5.4 instalado)
 "<UE>/Engine/Build/BatchFiles/Build.bat" UltimateBattleRoyaleEditor Win64 Development -Project="%CD%/UltimateBattleRoyale.uproject"
@@ -43,6 +44,7 @@ Modos pela URL: `Mode=Solo|Duos|Squads|Build|ZeroBuild|Training|Range|Creative`,
 | HUD, menu principal com lobby 3D, loja, passe, desafios, armário, configurações, controles touch | `UI/`, `Progression/` |
 | Desempenho mobile: níveis Baixa/Média/Alta, resolução dinâmica, FPS alvo 30/45/60, LOD de IA e animação | `Settings/` |
 | Anti-cheat e log de partida | `Security/`, `Systems/BRMatchLogger` |
+| Backend autoritativo de perfil/economia (Python, testado, Docker) + cliente HTTP no jogo | `Backend/`, `Multiplayer/BRBackendClient`, `Deploy/` |
 | Áudio sintetizado e espacial (armas, passos, motores, clima, música) | `Audio/` |
 
 Documentação: [`Docs/ARCHITECTURE.md`](Docs/ARCHITECTURE.md) · [`Docs/STATUS.md`](Docs/STATUS.md) ·

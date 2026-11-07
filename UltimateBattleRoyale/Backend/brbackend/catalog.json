@@ -1,0 +1,458 @@
+{
+ "items": [
+  {
+   "id": "Outfit_Recruta",
+   "name": "Recruta",
+   "passTier": 0,
+   "premium": false,
+   "type": "Outfit",
+   "rarity": "Common",
+   "price": 0,
+   "defaultOwned": true,
+   "shop": false
+  },
+  {
+   "id": "Outfit_Recruta2",
+   "name": "Recruta Areia",
+   "passTier": 0,
+   "premium": false,
+   "type": "Outfit",
+   "rarity": "Common",
+   "price": 0,
+   "defaultOwned": true,
+   "shop": false
+  },
+  {
+   "id": "Outfit_RaioAzul",
+   "name": "Raio Azul",
+   "passTier": 0,
+   "premium": false,
+   "type": "Outfit",
+   "rarity": "Uncommon",
+   "price": 800,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Outfit_SentinelaAmbar",
+   "name": "Sentinela Âmbar",
+   "passTier": 0,
+   "premium": false,
+   "type": "Outfit",
+   "rarity": "Rare",
+   "price": 1200,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Outfit_CoralNoturna",
+   "name": "Coral Noturna",
+   "passTier": 0,
+   "premium": false,
+   "type": "Outfit",
+   "rarity": "Rare",
+   "price": 1200,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Outfit_VanguardaTitanio",
+   "name": "Vanguarda Titânio",
+   "passTier": 0,
+   "premium": false,
+   "type": "Outfit",
+   "rarity": "Epic",
+   "price": 1500,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Outfit_RaposaDeserto",
+   "name": "Raposa do Deserto",
+   "passTier": 0,
+   "premium": false,
+   "type": "Outfit",
+   "rarity": "Epic",
+   "price": 1500,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Outfit_NeonPulse",
+   "name": "Neon Pulse",
+   "passTier": 0,
+   "premium": false,
+   "type": "Outfit",
+   "rarity": "Legendary",
+   "price": 2000,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Outfit_GuardiaoJade",
+   "name": "Guardião Jade",
+   "passTier": 0,
+   "premium": false,
+   "type": "Outfit",
+   "rarity": "Legendary",
+   "price": 2000,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Outfit_Eclipse",
+   "name": "Eclipse",
+   "passTier": 0,
+   "premium": false,
+   "type": "Outfit",
+   "rarity": "Mythic",
+   "price": 2500,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Outfit_BrisaTropical",
+   "name": "Brisa Tropical",
+   "passTier": 0,
+   "premium": false,
+   "type": "Outfit",
+   "rarity": "Uncommon",
+   "price": 800,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Outfit_Cacadora",
+   "name": "Caçadora da Mata",
+   "passTier": 0,
+   "premium": false,
+   "type": "Outfit",
+   "rarity": "Rare",
+   "price": 1200,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Back_Basica",
+   "name": "Mochila Básica",
+   "passTier": 0,
+   "premium": false,
+   "type": "Backpack",
+   "rarity": "Common",
+   "price": 0,
+   "defaultOwned": true,
+   "shop": false
+  },
+  {
+   "id": "Back_Bolha",
+   "name": "Bolha Turbo",
+   "passTier": 0,
+   "premium": false,
+   "type": "Backpack",
+   "rarity": "Uncommon",
+   "price": 400,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Back_Tanque",
+   "name": "Tanque de Oxigênio",
+   "passTier": 0,
+   "premium": false,
+   "type": "Backpack",
+   "rarity": "Rare",
+   "price": 600,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Back_Asas",
+   "name": "Asas de Aço",
+   "passTier": 0,
+   "premium": false,
+   "type": "Backpack",
+   "rarity": "Epic",
+   "price": 900,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Pick_Padrao",
+   "name": "Picareta Padrão",
+   "passTier": 0,
+   "premium": false,
+   "type": "Pickaxe",
+   "rarity": "Common",
+   "price": 0,
+   "defaultOwned": true,
+   "shop": false
+  },
+  {
+   "id": "Pick_Machado",
+   "name": "Machado Lenhador",
+   "passTier": 0,
+   "premium": false,
+   "type": "Pickaxe",
+   "rarity": "Uncommon",
+   "price": 500,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Pick_Martelo",
+   "name": "Martelo Trovão",
+   "passTier": 0,
+   "premium": false,
+   "type": "Pickaxe",
+   "rarity": "Epic",
+   "price": 1200,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Pick_Cristal",
+   "name": "Picareta de Cristal",
+   "passTier": 0,
+   "premium": false,
+   "type": "Pickaxe",
+   "rarity": "Legendary",
+   "price": 1500,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Glider_Padrao",
+   "name": "Planador Padrão",
+   "passTier": 0,
+   "premium": false,
+   "type": "Glider",
+   "rarity": "Common",
+   "price": 0,
+   "defaultOwned": true,
+   "shop": false
+  },
+  {
+   "id": "Glider_Asa",
+   "name": "Asa Delta Solar",
+   "passTier": 0,
+   "premium": false,
+   "type": "Glider",
+   "rarity": "Rare",
+   "price": 800,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Glider_Guarda",
+   "name": "Guarda-chuva Neon",
+   "passTier": 0,
+   "premium": false,
+   "type": "Glider",
+   "rarity": "Epic",
+   "price": 1200,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Glider_Aurora",
+   "name": "Aurora Boreal",
+   "passTier": 0,
+   "premium": false,
+   "type": "Glider",
+   "rarity": "Legendary",
+   "price": 1500,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Emote_Aceno",
+   "name": "Aceno",
+   "passTier": 0,
+   "premium": false,
+   "type": "Emote",
+   "rarity": "Common",
+   "price": 0,
+   "defaultOwned": true,
+   "shop": false
+  },
+  {
+   "id": "Emote_Danca",
+   "name": "Dança do Lobby",
+   "passTier": 0,
+   "premium": false,
+   "type": "Emote",
+   "rarity": "Common",
+   "price": 0,
+   "defaultOwned": true,
+   "shop": false
+  },
+  {
+   "id": "Emote_Continencia",
+   "name": "Continência",
+   "passTier": 0,
+   "premium": false,
+   "type": "Emote",
+   "rarity": "Uncommon",
+   "price": 200,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Emote_Pirueta",
+   "name": "Pirueta",
+   "passTier": 0,
+   "premium": false,
+   "type": "Emote",
+   "rarity": "Rare",
+   "price": 500,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Emote_Forca",
+   "name": "Mostrar Força",
+   "passTier": 0,
+   "premium": false,
+   "type": "Emote",
+   "rarity": "Rare",
+   "price": 500,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Emote_Torcida",
+   "name": "Torcida",
+   "passTier": 0,
+   "premium": false,
+   "type": "Emote",
+   "rarity": "Uncommon",
+   "price": 300,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Emote_Robo",
+   "name": "Passo Robô",
+   "passTier": 0,
+   "premium": false,
+   "type": "Emote",
+   "rarity": "Epic",
+   "price": 800,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Emote_Palmas",
+   "name": "Palmas",
+   "passTier": 0,
+   "premium": false,
+   "type": "Emote",
+   "rarity": "Common",
+   "price": 200,
+   "defaultOwned": false,
+   "shop": true
+  },
+  {
+   "id": "Outfit_PassePiloto",
+   "name": "Piloto Estelar",
+   "passTier": 1,
+   "premium": true,
+   "type": "Outfit",
+   "rarity": "Epic",
+   "price": 0,
+   "defaultOwned": false,
+   "shop": false
+  },
+  {
+   "id": "Outfit_PasseLenda",
+   "name": "Lenda da Temporada",
+   "passTier": 50,
+   "premium": true,
+   "type": "Outfit",
+   "rarity": "Legendary",
+   "price": 0,
+   "defaultOwned": false,
+   "shop": false
+  },
+  {
+   "id": "Glider_Passe",
+   "name": "Cometa da Temporada",
+   "passTier": 25,
+   "premium": false,
+   "type": "Glider",
+   "rarity": "Epic",
+   "price": 0,
+   "defaultOwned": false,
+   "shop": false
+  },
+  {
+   "id": "Emote_Vitoria",
+   "name": "Pose da Vitória",
+   "passTier": 10,
+   "premium": false,
+   "type": "Emote",
+   "rarity": "Rare",
+   "price": 0,
+   "defaultOwned": false,
+   "shop": false
+  }
+ ],
+ "challengeTemplates": [
+  {
+   "id": "elim",
+   "stat": "Eliminations",
+   "daily": 3,
+   "weekly": 15,
+   "text": "Elimine {0} adversários"
+  },
+  {
+   "id": "chest",
+   "stat": "ChestsOpened",
+   "daily": 5,
+   "weekly": 25,
+   "text": "Abra {0} baús"
+  },
+  {
+   "id": "matches",
+   "stat": "Matches",
+   "daily": 3,
+   "weekly": 12,
+   "text": "Jogue {0} partidas"
+  },
+  {
+   "id": "top10",
+   "stat": "Top10",
+   "daily": 1,
+   "weekly": 5,
+   "text": "Fique entre os 10 melhores {0} vezes"
+  },
+  {
+   "id": "damage",
+   "stat": "DamageDealt",
+   "daily": 500,
+   "weekly": 3000,
+   "text": "Cause {0} de dano"
+  },
+  {
+   "id": "survive",
+   "stat": "MinutesSurvived",
+   "daily": 30,
+   "weekly": 150,
+   "text": "Sobreviva {0} minutos"
+  },
+  {
+   "id": "revive",
+   "stat": "Revives",
+   "daily": 2,
+   "weekly": 8,
+   "text": "Reanime {0} companheiros"
+  },
+  {
+   "id": "win",
+   "stat": "Wins",
+   "daily": 1,
+   "weekly": 3,
+   "text": "Vença {0} partida(s)"
+  }
+ ]
+}

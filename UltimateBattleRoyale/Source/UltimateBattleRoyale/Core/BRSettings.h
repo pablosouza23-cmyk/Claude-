@@ -72,8 +72,14 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category = "AI")
 	TSoftObjectPtr<UBehaviorTree> BotBehaviorTree;
 
+	// Authoritative profile/economy backend (Backend/). Empty = offline profile stored on the device.
 	UPROPERTY(Config, EditAnywhere, Category = "Online")
 	FString ProfileBackendUrl;
+
+	// Development only: authenticate to the backend with "dev:<player id>" tokens (backend BR_AUTH_MODE=dev).
+	// Production uses the online subsystem's auth token (EOS) and BR_AUTH_MODE=eos on the backend.
+	UPROPERTY(Config, EditAnywhere, Category = "Online")
+	bool bBackendDevAuth = true;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Online")
 	int32 BuildCompatibilityId = 1;

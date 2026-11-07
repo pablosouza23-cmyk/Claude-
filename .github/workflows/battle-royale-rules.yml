@@ -1,10 +1,13 @@
-name: Ultimate Battle Royale - gameplay rules
+name: Ultimate Battle Royale - rules and backend
 
 on:
   push:
     paths:
       - 'UltimateBattleRoyale/Source/UltimateBattleRoyale/Rules/**'
+      - 'UltimateBattleRoyale/Source/UltimateBattleRoyale/Progression/**'
+      - 'UltimateBattleRoyale/Source/UltimateBattleRoyale/Tests/**'
       - 'UltimateBattleRoyale/Tests/RulesTests/**'
+      - 'UltimateBattleRoyale/Backend/**'
       - '.github/workflows/battle-royale-rules.yml'
   pull_request:
     paths:
@@ -20,3 +23,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build and run rule tests (${{ matrix.cxx }})
         run: CXX=${{ matrix.cxx }} UltimateBattleRoyale/Tests/RulesTests/run_tests.sh
+
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install cryptography==43.0.3
+      - name: Backend tests (includes C++ cross-check and catalogue sync)
+        working-directory: UltimateBattleRoyale/Backend
+        run: python -m unittest discover -s tests -t . -v

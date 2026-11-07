@@ -7,16 +7,20 @@
 #include "BRProgressionSubsystem.generated.h"
 
 UENUM(BlueprintType)
-enum class EBRPurchaseResult : uint8 { Success, AlreadyOwned, NotEnoughCoins, NotForSale, Unknown };
+enum class EBRPurchaseResult : uint8 { Success, AlreadyOwned, NotEnoughCoins, NotForSale, Unknown, Pending };
 
 DECLARE_MULTICAST_DELEGATE(FBRProfileChanged);
 DECLARE_MULTICAST_DELEGATE_OneParam(FBRChallengeCompleted, const FBRChallenge&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FBRBackendMessage, const FText&);
+
+class FJsonObject;
 
 // Player profile: XP/levels, soft currency ("Moedas", earned only by playing), locker
 // (owned cosmetics + equipped loadout), item shop with daily rotation, season pass (free and
 // premium tracks), daily/weekly challenges and lifetime statistics.
-// Storage: local SaveGame (offline). See Docs/ONLINE.md for the server-authoritative backend
-// contract required before enabling purchases with real value.
+// Storage: when UBRSettings::ProfileBackendUrl is set, the backend (Backend/) is the authority and
+// the local SaveGame is only a cache; purchases/claims are requests and XP comes from the game
+// server. Without a backend the profile is local (offline play).
 UCLASS()
 class ULTIMATEBATTLEROYALE_API UBRProgressionSubsystem : public UGameInstanceSubsystem
 {
@@ -60,13 +64,19 @@ public:
 	void SetLastServer(const FString& Address);
 
 	void Save();
+	bool IsBackendAuthoritative() const;
+	void RefreshFromBackend();
 	FBRProfileChanged OnProfileChanged;
+	FBRBackendMessage OnBackendMessage;
 	FBRChallengeCompleted OnChallengeCompleted;
 
 private:
 	void EnsureChallenges();
 	void GrantXp(int64 Xp);
 	void Grant(FName CosmeticId);
+	void ApplyBackendProfile(const TSharedPtr<FJsonObject>& Json);
+	void HandleBackendReply(bool bOk, int32 Status, const TSharedPtr<FJsonObject>& Json, const FText& SuccessText);
+	void PushLoadoutToBackend();
 
 	UPROPERTY(Transient) TObjectPtr<UBRProfileSaveGame> Profile;
 	static const FString SlotName;

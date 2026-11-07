@@ -5,6 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Audio/BRProceduralAudio.h"
+#include "Multiplayer/BRBackendClient.h"
 #include "Building/BRBuildingPiece.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -153,6 +154,23 @@ bool FBRBuildGeometryTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Wall has 3x3 tiles"), Tiles.Num(), 9);
 	ABRBuildingPiece::GetTileBoxes(EBRBuildPieceType::Floor, Tiles);
 	TestEqual(TEXT("Floor has 2x2 tiles"), Tiles.Num(), 4);
+	return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBRBackendSignatureTest, "BR.Backend.Signature", BRTestFlags)
+bool FBRBackendSignatureTest::RunTest(const FString& Parameters)
+{
+	// Vector produced by Backend/brbackend/auth.py::sign — both sides must agree byte for byte.
+	const FTCHARToUTF8 Body(TEXT("{\"matchId\":\"m1\"}"));
+	TArray<uint8> Bytes;
+	Bytes.Append(reinterpret_cast<const uint8*>(Body.Get()), Body.Length());
+	TestEqual(TEXT("HMAC matches backend"), UBRBackendClient::SignRequest(TEXT("s3cret"), TEXT("POST"), TEXT("/v1/server/match-result"), TEXT("1767225600"), Bytes), FString(TEXT("fa0f3a208f411fee924cc9addc24d5aafbd1c3ed")));
+	TestEqual(TEXT("Ids sanitised like the backend"), UBRBackendClient::SanitizePlayerId(TEXT("DESKTOP ABC/12#3")), FString(TEXT("DESKTOP_ABC_12_3")));
+	FBRCosmeticLoadout L = UBRCosmeticCatalog::DefaultLoadout();
+	L.HairStyle = 3;
+	const FBRCosmeticLoadout Back = UBRBackendClient::LoadoutFromJson(UBRBackendClient::LoadoutToJson(L));
+	TestTrue(TEXT("Loadout JSON round-trip"), Back.Outfit == L.Outfit && Back.HairStyle == 3 && Back.Emotes == L.Emotes);
 	return true;
 }
 

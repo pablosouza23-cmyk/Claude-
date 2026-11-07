@@ -16,6 +16,9 @@
 #include "UI/BRTouchControlsWidget.h"
 #include "Audio/BRProceduralAudio.h"
 #include "Multiplayer/BRGameInstance.h"
+#include "Multiplayer/BRBackendClient.h"
+#include "Progression/BRCosmetics.h"
+#include "Dom/JsonObject.h"
 
 #define LOCTEXT_NAMESPACE "BRPlayerController"
 
@@ -179,13 +182,26 @@ void ABRPlayerController::ServerJumpFromBus_Implementation()
 
 void ABRPlayerController::ServerSetCosmetics_Implementation(const FBRCosmeticLoadout& Loadout, int32 AccountLevel)
 {
-	if (ABRPlayerState* PS = GetPlayerState<ABRPlayerState>())
+	ABRPlayerState* PS = GetPlayerState<ABRPlayerState>();
+	if (!PS) { return; }
+	UBRBackendClient* Backend = GetGameInstance()->GetSubsystem<UBRBackendClient>();
+	if (Backend && Backend->CanActAsServer() && PS->GetUniqueId().IsValid())
 	{
-		// NOTE: ownership of paid cosmetics must be verified by the profile backend in production
-		// (see Docs/ONLINE.md). Here ids are validated against the catalogue.
-		PS->SetCosmetics(Loadout);
-		PS->SetAccountLevel(AccountLevel);
+		// Never trust the client: show only cosmetics the backend says this player owns.
+		PS->SetCosmetics(UBRCosmeticCatalog::DefaultLoadout());
+		TWeakObjectPtr<ABRPlayerState> WeakPS = PS;
+		Backend->FetchVerifiedLoadout(PS->GetUniqueId()->ToString(), FBRBackendResponse::CreateLambda([WeakPS](bool bOk, int32, TSharedPtr<FJsonObject> Json)
+		{
+			if (!bOk || !Json.IsValid() || !WeakPS.IsValid()) { return; }
+			const TSharedPtr<FJsonObject>* L = nullptr;
+			if (Json->TryGetObjectField(TEXT("loadout"), L)) { WeakPS->SetCosmetics(UBRBackendClient::LoadoutFromJson(*L)); }
+			WeakPS->SetAccountLevel(Json->GetIntegerField(TEXT("level")));
+		}));
+		return;
 	}
+	// Offline / LAN without a backend: ids are validated against the catalogue only.
+	PS->SetCosmetics(Loadout);
+	PS->SetAccountLevel(AccountLevel);
 }
 
 // --------------------------------------------------------------------------------- chat / ping / report

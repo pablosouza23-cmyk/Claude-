@@ -1,6 +1,9 @@
 #include "Progression/BRProgressionSubsystem.h"
 
+#include "Dom/JsonObject.h"
 #include "Kismet/GameplayStatics.h"
+#include "Multiplayer/BRBackendClient.h"
+#include "TimerManager.h"
 
 #define LOCTEXT_NAMESPACE "BRProgression"
 
@@ -23,6 +26,7 @@ namespace
 
 void UBRProgressionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
+	Collection.InitializeDependency<UBRBackendClient>();
 	Super::Initialize(Collection);
 	Profile = Cast<UBRProfileSaveGame>(UGameplayStatics::LoadGameFromSlot(SlotName, 0));
 	if (!Profile)
@@ -37,6 +41,99 @@ void UBRProgressionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Profile->Loadout = UBRCosmeticCatalog::Sanitize(Profile->Loadout);
 	EnsureChallenges();
 	Save();
+	RefreshFromBackend();
+}
+
+bool UBRProgressionSubsystem::IsBackendAuthoritative() const
+{
+	const UBRBackendClient* B = GetGameInstance()->GetSubsystem<UBRBackendClient>();
+	return B && B->IsEnabled();
+}
+
+void UBRProgressionSubsystem::RefreshFromBackend()
+{
+	if (!IsBackendAuthoritative()) { return; }
+	TWeakObjectPtr<UBRProgressionSubsystem> WeakThis = this;
+	GetGameInstance()->GetSubsystem<UBRBackendClient>()->FetchProfile(FBRBackendResponse::CreateLambda([WeakThis](bool bOk, int32 Status, TSharedPtr<FJsonObject> Json)
+	{
+		if (WeakThis.IsValid()) { WeakThis->HandleBackendReply(bOk, Status, Json, FText::GetEmpty()); }
+	}));
+}
+
+void UBRProgressionSubsystem::HandleBackendReply(bool bOk, int32 Status, const TSharedPtr<FJsonObject>& Json, const FText& SuccessText)
+{
+	if (bOk && Json.IsValid())
+	{
+		ApplyBackendProfile(Json);
+		if (!SuccessText.IsEmpty()) { OnBackendMessage.Broadcast(SuccessText); }
+		return;
+	}
+	FString Message;
+	if (Json.IsValid() && Json->TryGetStringField(TEXT("message"), Message)) { OnBackendMessage.Broadcast(FText::FromString(Message)); }
+	else { OnBackendMessage.Broadcast(FText::Format(NSLOCTEXT("BRProgression", "BackendDown", "Servidor de perfil indisponível ({0}). Usando dados salvos."), FText::AsNumber(Status))); }
+}
+
+void UBRProgressionSubsystem::ApplyBackendProfile(const TSharedPtr<FJsonObject>& J)
+{
+	// The backend's numbers replace the local cache entirely (server authority).
+	Profile->TotalXp = int64(J->GetNumberField(TEXT("totalXp")));
+	Profile->SeasonXp = int64(J->GetNumberField(TEXT("seasonXp")));
+	Profile->Coins = J->GetIntegerField(TEXT("coins"));
+	Profile->bPremiumPass = J->GetBoolField(TEXT("premiumPass"));
+	auto ReadNames = [&J](const TCHAR* Field, TArray<FName>& Out)
+	{
+		Out.Reset();
+		const TArray<TSharedPtr<FJsonValue>>* Arr = nullptr;
+		if (J->TryGetArrayField(Field, Arr)) { for (const TSharedPtr<FJsonValue>& V : *Arr) { Out.Add(FName(*V->AsString())); } }
+	};
+	auto ReadInts = [&J](const TCHAR* Field, TArray<int32>& Out)
+	{
+		Out.Reset();
+		const TArray<TSharedPtr<FJsonValue>>* Arr = nullptr;
+		if (J->TryGetArrayField(Field, Arr)) { for (const TSharedPtr<FJsonValue>& V : *Arr) { Out.Add(int32(V->AsNumber())); } }
+	};
+	ReadNames(TEXT("owned"), Profile->OwnedCosmetics);
+	ReadInts(TEXT("claimedFree"), Profile->ClaimedFreeTiers);
+	ReadInts(TEXT("claimedPremium"), Profile->ClaimedPremiumTiers);
+	const TSharedPtr<FJsonObject>* Loadout = nullptr;
+	if (J->TryGetObjectField(TEXT("loadout"), Loadout)) { Profile->Loadout = UBRCosmeticCatalog::Sanitize(UBRBackendClient::LoadoutFromJson(*Loadout)); }
+	const TSharedPtr<FJsonObject>* Stats = nullptr;
+	if (J->TryGetObjectField(TEXT("stats"), Stats))
+	{
+		Profile->Stats.Reset();
+		for (const TPair<FString, TSharedPtr<FJsonValue>>& P : (*Stats)->Values) { Profile->Stats.Add(FName(*P.Key), int64(P.Value->AsNumber())); }
+	}
+	const TArray<TSharedPtr<FJsonValue>>* Challenges = nullptr;
+	if (J->TryGetArrayField(TEXT("challenges"), Challenges))
+	{
+		Profile->Challenges.Reset();
+		for (const TSharedPtr<FJsonValue>& V : *Challenges)
+		{
+			const TSharedPtr<FJsonObject> O = V->AsObject();
+			if (!O.IsValid()) { continue; }
+			FBRChallenge C;
+			C.Id = FName(*O->GetStringField(TEXT("id")));
+			C.Stat = FName(*O->GetStringField(TEXT("stat")));
+			C.Description = FText::FromString(O->GetStringField(TEXT("text")));
+			C.Target = O->GetIntegerField(TEXT("target"));
+			C.Progress = O->GetIntegerField(TEXT("progress"));
+			C.XpReward = O->GetIntegerField(TEXT("xp"));
+			C.bWeekly = O->GetBoolField(TEXT("weekly"));
+			C.bCompleted = O->GetBoolField(TEXT("completed"));
+			Profile->Challenges.Add(C);
+		}
+	}
+	Save();
+}
+
+void UBRProgressionSubsystem::PushLoadoutToBackend()
+{
+	if (!IsBackendAuthoritative()) { return; }
+	TWeakObjectPtr<UBRProgressionSubsystem> WeakThis = this;
+	GetGameInstance()->GetSubsystem<UBRBackendClient>()->SaveLoadout(Profile->Loadout, FBRBackendResponse::CreateLambda([WeakThis](bool bOk, int32 Status, TSharedPtr<FJsonObject> Json)
+	{
+		if (WeakThis.IsValid()) { WeakThis->HandleBackendReply(bOk, Status, Json, FText::GetEmpty()); }
+	}));
 }
 
 void UBRProgressionSubsystem::Save()
@@ -92,6 +189,7 @@ bool UBRProgressionSubsystem::Equip(FName CosmeticId, int32 EmoteSlot)
 		break;
 	}
 	Save();
+	PushLoadoutToBackend();
 	return true;
 }
 
@@ -101,6 +199,7 @@ void UBRProgressionSubsystem::SetCustomization(uint8 BodyType, uint8 BodyStyle, 
 	L.BodyType = BodyType; L.BodyStyle = BodyStyle; L.HairStyle = HairStyle; L.HeadGear = HeadGear; L.ColorVariant = ColorVariant;
 	L = UBRCosmeticCatalog::Sanitize(L);
 	Save();
+	PushLoadoutToBackend();
 }
 
 void UBRProgressionSubsystem::GetShopItems(TArray<const FBRCosmeticDef*>& Out) const
@@ -114,6 +213,16 @@ EBRPurchaseResult UBRProgressionSubsystem::Purchase(FName CosmeticId)
 	if (!D) { return EBRPurchaseResult::Unknown; }
 	if (!D->bShopItem || D->Price <= 0) { return EBRPurchaseResult::NotForSale; }
 	if (Owns(CosmeticId)) { return EBRPurchaseResult::AlreadyOwned; }
+	if (IsBackendAuthoritative())
+	{
+		TWeakObjectPtr<UBRProgressionSubsystem> WeakThis = this;
+		const FText Done = FText::Format(NSLOCTEXT("BRProgression", "Bought", "{0} adquirido!"), D->Name);
+		GetGameInstance()->GetSubsystem<UBRBackendClient>()->Purchase(CosmeticId, FBRBackendResponse::CreateLambda([WeakThis, Done](bool bOk, int32 Status, TSharedPtr<FJsonObject> Json)
+		{
+			if (WeakThis.IsValid()) { WeakThis->HandleBackendReply(bOk, Status, Json, Done); }
+		}));
+		return EBRPurchaseResult::Pending;
+	}
 	if (Profile->Coins < D->Price) { return EBRPurchaseResult::NotEnoughCoins; }
 	Profile->Coins -= D->Price;
 	Grant(CosmeticId);
@@ -136,7 +245,17 @@ float UBRProgressionSubsystem::GetSeasonTierProgress() const
 
 bool UBRProgressionSubsystem::BuyPremiumPass()
 {
-	if (!Profile || Profile->bPremiumPass || Profile->Coins < PremiumPassPrice) { return false; }
+	if (!Profile || Profile->bPremiumPass) { return false; }
+	if (IsBackendAuthoritative())
+	{
+		TWeakObjectPtr<UBRProgressionSubsystem> WeakThis = this;
+		GetGameInstance()->GetSubsystem<UBRBackendClient>()->BuyPremiumPass(FBRBackendResponse::CreateLambda([WeakThis](bool bOk, int32 Status, TSharedPtr<FJsonObject> Json)
+		{
+			if (WeakThis.IsValid()) { WeakThis->HandleBackendReply(bOk, Status, Json, NSLOCTEXT("BRProgression", "PassOk", "Passe premium desbloqueado!")); }
+		}));
+		return true; // request sent; the result arrives through OnBackendMessage / OnProfileChanged
+	}
+	if (Profile->Coins < PremiumPassPrice) { return false; }
 	Profile->Coins -= PremiumPassPrice;
 	Profile->bPremiumPass = true;
 	Save();
@@ -151,6 +270,15 @@ bool UBRProgressionSubsystem::IsTierClaimed(int32 Tier, bool bPremium) const
 bool UBRProgressionSubsystem::ClaimTier(int32 Tier, bool bPremium)
 {
 	if (!Profile || Tier > GetSeasonTier() || IsTierClaimed(Tier, bPremium) || (bPremium && !Profile->bPremiumPass)) { return false; }
+	if (IsBackendAuthoritative())
+	{
+		TWeakObjectPtr<UBRProgressionSubsystem> WeakThis = this;
+		GetGameInstance()->GetSubsystem<UBRBackendClient>()->ClaimTier(Tier, bPremium, FBRBackendResponse::CreateLambda([WeakThis](bool bOk, int32 Status, TSharedPtr<FJsonObject> Json)
+		{
+			if (WeakThis.IsValid()) { WeakThis->HandleBackendReply(bOk, Status, Json, NSLOCTEXT("BRProgression", "Claimed", "Recompensa resgatada!")); }
+		}));
+		return true;
+	}
 	for (const FBRSeasonReward& R : UBRCosmeticCatalog::SeasonRewards())
 	{
 		if (R.Tier != Tier || R.bPremium != bPremium) { continue; }
@@ -165,42 +293,38 @@ bool UBRProgressionSubsystem::ClaimTier(int32 Tier, bool bPremium)
 
 void UBRProgressionSubsystem::EnsureChallenges()
 {
+	static_assert(UE_ARRAY_COUNT(GTemplates) == BRRules::ChallengeTemplateCount, "Challenge templates must match the rules (and the backend).");
 	const FDateTime Now = FDateTime::UtcNow();
-	const FString Daily = Now.ToString(TEXT("%Y-%m-%d"));
 	const int32 Week = (Now.GetDayOfYear() - 1) / 7;
+	const FString Daily = Now.ToString(TEXT("%Y-%m-%d"));
 	const FString Weekly = FString::Printf(TEXT("%d-W%d"), Now.GetYear(), Week);
+	auto Fill = [this](uint32 Seed, int32 Count, bool bWeekly)
+	{
+		int Picks[BRRules::ChallengeTemplateCount];
+		const int N = BRRules::PickChallenges(Seed, Count, Picks);
+		for (int32 I = 0; I < N; ++I)
+		{
+			const FChallengeTemplate& T = GTemplates[Picks[I]];
+			FBRChallenge C;
+			C.Id = FName(*FString::Printf(TEXT("%s_%s"), bWeekly ? TEXT("W") : TEXT("D"), T.Id));
+			C.Stat = T.Stat;
+			C.Target = bWeekly ? T.Weekly : T.Daily;
+			C.XpReward = bWeekly ? 12000 : 3000;
+			C.bWeekly = bWeekly;
+			C.Description = FText::Format(FText::FromString(T.Text), FText::AsNumber(C.Target));
+			Profile->Challenges.Add(C);
+		}
+	};
 	if (Profile->DailyKey != Daily)
 	{
 		Profile->Challenges.RemoveAll([](const FBRChallenge& C) { return !C.bWeekly; });
-		BRRules::Rng R(GetTypeHash(Daily));
-		TArray<int32> Pool; for (int32 I = 0; I < UE_ARRAY_COUNT(GTemplates); ++I) { Pool.Add(I); }
-		for (int32 N = 0; N < 3 && Pool.Num() > 0; ++N)
-		{
-			const int32 Pick = Pool[R.RangeInt(0, Pool.Num() - 1)];
-			Pool.Remove(Pick);
-			const FChallengeTemplate& T = GTemplates[Pick];
-			FBRChallenge C;
-			C.Id = FName(*FString::Printf(TEXT("D_%s"), T.Id)); C.Stat = T.Stat; C.Target = T.Daily; C.XpReward = 3000; C.bWeekly = false;
-			C.Description = FText::Format(FText::FromString(T.Text), FText::AsNumber(T.Daily));
-			Profile->Challenges.Add(C);
-		}
+		Fill(BRRules::DailyChallengeSeed(Now.GetYear(), Now.GetMonth(), Now.GetDay()), BRRules::DailyChallengeCount, false);
 		Profile->DailyKey = Daily;
 	}
 	if (Profile->WeeklyKey != Weekly)
 	{
 		Profile->Challenges.RemoveAll([](const FBRChallenge& C) { return C.bWeekly; });
-		BRRules::Rng R(GetTypeHash(Weekly) | 1u);
-		TArray<int32> Pool; for (int32 I = 0; I < UE_ARRAY_COUNT(GTemplates); ++I) { Pool.Add(I); }
-		for (int32 N = 0; N < 5 && Pool.Num() > 0; ++N)
-		{
-			const int32 Pick = Pool[R.RangeInt(0, Pool.Num() - 1)];
-			Pool.Remove(Pick);
-			const FChallengeTemplate& T = GTemplates[Pick];
-			FBRChallenge C;
-			C.Id = FName(*FString::Printf(TEXT("W_%s"), T.Id)); C.Stat = T.Stat; C.Target = T.Weekly; C.XpReward = 12000; C.bWeekly = true;
-			C.Description = FText::Format(FText::FromString(T.Text), FText::AsNumber(T.Weekly));
-			Profile->Challenges.Add(C);
-		}
+		Fill(BRRules::WeeklyChallengeSeed(Now.GetYear(), Week), BRRules::WeeklyChallengeCount, true);
 		Profile->WeeklyKey = Weekly;
 	}
 }
@@ -219,7 +343,8 @@ void UBRProgressionSubsystem::GrantXp(int64 Xp)
 
 void UBRProgressionSubsystem::RecordStat(FName Stat, int32 Amount)
 {
-	if (!Profile || Amount <= 0) { return; }
+	// With a backend, stats and challenges are only counted from server-signed match results.
+	if (!Profile || Amount <= 0 || IsBackendAuthoritative()) { return; }
 	EnsureChallenges();
 	Profile->Stats.FindOrAdd(Stat) += Amount;
 	for (FBRChallenge& C : Profile->Challenges)
@@ -239,6 +364,13 @@ void UBRProgressionSubsystem::RecordStat(FName Stat, int32 Amount)
 void UBRProgressionSubsystem::ApplyMatchResult(const FBRMatchResult& Result)
 {
 	if (!Profile) { return; }
+	if (IsBackendAuthoritative())
+	{
+		// The dedicated server already posted this result to the backend: just refresh.
+		FTimerHandle H;
+		GetGameInstance()->GetTimerManager().SetTimer(H, FTimerDelegate::CreateUObject(this, &UBRProgressionSubsystem::RefreshFromBackend), 3.f, false);
+		return;
+	}
 	GrantXp(Result.XpEarned);
 	Profile->Coins += Result.CoinsEarned;
 	if (Result.bCountsForProgression)

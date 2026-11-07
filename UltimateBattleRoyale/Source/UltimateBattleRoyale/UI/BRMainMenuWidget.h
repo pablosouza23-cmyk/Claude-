@@ -41,5 +41,5 @@ private:
 
 	int32 CurrentTab = 0;
 	EBRGameModeType SelectedMode = EBRGameModeType::Solo;
-	FDelegateHandle ProfileHandle, StatusHandle, FriendsHandle;
+	FDelegateHandle ProfileHandle, StatusHandle, FriendsHandle, BackendHandle;
 };

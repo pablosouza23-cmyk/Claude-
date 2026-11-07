@@ -14,3 +14,7 @@ DerivedDataCache/
 Build/*/
 !Build/*/Resources/
 Tests/RulesTests/build/
+__pycache__/
+*.pyc
+Backend/*.db
+Backend/*.db-*

@@ -512,6 +512,24 @@ BR_TEST(World_DeterministicAndContinuous)
 	}
 }
 
+
+BR_TEST(Progression_ChallengesAndShop)
+{
+	int A[8], B[8];
+	const int N = PickChallenges(DailyChallengeSeed(2026, 11, 7), DailyChallengeCount, A);
+	BR_CHECK(N == DailyChallengeCount);
+	PickChallenges(DailyChallengeSeed(2026, 11, 7), DailyChallengeCount, B);
+	for (int I = 0; I < N; ++I) { BR_CHECK(A[I] == B[I]); BR_CHECK(A[I] >= 0 && A[I] < ChallengeTemplateCount); }
+	BR_CHECK(A[0] != A[1] && A[1] != A[2] && A[0] != A[2]);
+	BR_CHECK(PickChallenges(WeeklyChallengeSeed(2026, 44), 99, A) == ChallengeTemplateCount); // never more than the pool
+	int Order[20];
+	for (int I = 0; I < 20; ++I) { Order[I] = I; }
+	ShuffleShop(DailyShopSeed(2026, 11, 7), 20, Order);
+	int Seen = 0;
+	for (int I = 0; I < 20; ++I) { Seen |= 1 << Order[I]; }
+	BR_CHECK(Seen == (1 << 20) - 1); // permutation
+}
+
 int main()
 {
 	int FailedCases = 0;

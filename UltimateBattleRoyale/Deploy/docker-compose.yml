@@ -1,0 +1,30 @@
+# Local stack: profile backend + one dedicated server per mode.
+# docker compose -f Deploy/docker-compose.yml up --build
+services:
+  backend:
+    build: ../Backend
+    environment:
+      BR_AUTH_MODE: dev            # use "eos" + BR_EOS_JWKS_URL/BR_EOS_CLIENT_ID in production
+      BR_SERVER_SECRET: ${BR_SERVER_SECRET:?set BR_SERVER_SECRET}
+    ports: ["8080:8080"]
+    volumes: ["profiles:/data"]
+  server-solo:
+    build: { context: .., dockerfile: Deploy/DedicatedServer.Dockerfile }
+    environment:
+      BR_MODE: Solo
+      BR_BACKEND: http://backend:8080
+      BR_SERVER_SECRET: ${BR_SERVER_SECRET}
+    ports: ["7777:7777/udp"]
+    depends_on: [backend]
+    restart: always               # the server exits after each match; restart = fresh match
+  server-duos:
+    build: { context: .., dockerfile: Deploy/DedicatedServer.Dockerfile }
+    environment:
+      BR_MODE: Duos
+      BR_BACKEND: http://backend:8080
+      BR_SERVER_SECRET: ${BR_SERVER_SECRET}
+    ports: ["7778:7777/udp"]
+    depends_on: [backend]
+    restart: always
+volumes:
+  profiles: {}

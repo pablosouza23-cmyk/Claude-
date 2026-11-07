@@ -6,3 +6,4 @@ mkdir -p build
 CXX="${CXX:-g++}"
 "$CXX" -std=c++17 -O1 -Wall -Wextra -Werror -I ../../Source/UltimateBattleRoyale RulesTests.cpp -o build/rules_tests
 ./build/rules_tests
+"$CXX" -std=c++17 -O1 -Wall -Wextra -Werror -I ../../Source/UltimateBattleRoyale CrossCheck.cpp -o build/crosscheck

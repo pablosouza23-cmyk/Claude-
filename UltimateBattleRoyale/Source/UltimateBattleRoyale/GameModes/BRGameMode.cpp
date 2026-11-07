@@ -18,6 +18,7 @@
 #include "Items/BRLootSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Matchmaking/BRSessionSubsystem.h"
+#include "Multiplayer/BRBackendClient.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Serialization/JsonReader.h"
@@ -750,6 +751,15 @@ void ABRGameMode::SendMatchResult(ABRPlayerState* PS)
 	R.XpEarned = Rules.bCountsForProgression ? BRRules::ComputeMatchXp(In) : BRRules::ComputeMatchXp(In) / 4;
 	R.CoinsEarned = Rules.bCountsForProgression ? BRRules::ComputeMatchCoins(In) : 0;
 	if (ABRPlayerController* PC = Cast<ABRPlayerController>(PS->GetOwner())) { PC->ClientMatchResult(R); }
+	// Authoritative persistence: the dedicated server (holder of BR_SERVER_SECRET) reports to the backend.
+	UBRBackendClient* Backend = GetGameInstance()->GetSubsystem<UBRBackendClient>();
+	if (Backend && Backend->CanActAsServer() && !PS->IsABot() && PS->GetUniqueId().IsValid())
+	{
+		FBRBackendMatchEntry Entry;
+		Entry.PlayerId = PS->GetUniqueId()->ToString();
+		Entry.Result = R;
+		Backend->PostMatchResults(MatchId, Rules.Mode, Rules.bCountsForProgression, { Entry });
+	}
 	if (UBRMatchLogger* Log = GetWorld()->GetSubsystem<UBRMatchLogger>())
 	{
 		Log->LogEvent(TEXT("result"), { { TEXT("player"), PS->GetPlayerName() }, { TEXT("placement"), FString::FromInt(R.Placement) },

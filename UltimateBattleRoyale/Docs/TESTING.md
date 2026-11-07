@@ -12,12 +12,21 @@ validação de movimento, token bucket, níveis/XP/passe, pilhas de inventário,
 partida, rota do ônibus, níveis de aparelho, convergência da resolução dinâmica, aim assist e modelo de
 mundo (POIs secos e planos, rio/lago/mar, determinismo e continuidade).
 
+## 1b. Backend — executados
+```
+cd Backend && python3 -m unittest discover -s tests -t . -v
+```
+23 testes: verificação cruzada com o C++ (curva de XP, recompensas, passe, desafios, rotação da loja),
+catálogo sincronizado com `BRCosmetics.cpp`, regras de compra/passe/loadout/limite, resultados idempotentes e
+plausíveis, API HTTP real (autenticação, assinatura HMAC, expiração), validação de JWT RS256 do EOS e o vetor de
+assinatura compartilhado com o teste `BR.Backend.Signature` do Unreal.
+
 ## 2. Automação Unreal — escritos
 ```
 UnrealEditor-Cmd UltimateBattleRoyale.uproject -ExecCmds="Automation RunTests BR.;Quit" -unattended -nullrhi -log
 ```
 `BR.Items.Registry`, `BR.Inventory.Stacking`, `BR.Modes.Rules`, `BR.Progression.Cosmetics`,
-`BR.Audio.Synth`, `BR.Building.Geometry`, `BR.Functional.MatchBoots` (sobe uma partida real).
+`BR.Audio.Synth`, `BR.Building.Geometry`, `BR.Backend.Signature`, `BR.Functional.MatchBoots` (sobe uma partida real).
 
 ## 3. Checklist manual (PIE, 1 servidor + 2 clientes)
 - [ ] Menu: todas as abas abrem; trocar traje/cabelo atualiza o lobby 3D; compra com moedas; resgate do passe.

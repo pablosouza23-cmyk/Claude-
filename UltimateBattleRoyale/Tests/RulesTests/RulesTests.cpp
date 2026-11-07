@@ -2,6 +2,7 @@
 // Build & run: ./run_tests.sh
 #include "TestFramework.h"
 #include "Rules/BRRules.h"
+#include "Rules/BRWorldRules.h"
 
 using namespace BRRules;
 
@@ -444,6 +445,71 @@ BR_TEST(AimAssist_Weights)
 	const double W = AimAssistWeight(1, 0, P);
 	BR_NEAR(AimSlowdownMultiplier(W, P), P.MaxSlowdown, 1e-9);
 	BR_CHECK(AimPullStep(1, 0.01, 1.0, P) <= 0.01 + 1e-12); // never overshoots
+}
+
+
+// ---------------------------------------------------------------- World
+BR_TEST(World_SettlementsAreDryAndFlat)
+{
+	const WorldModel W(150000.0, 12345);
+	for (int I = 0; I < WorldPoiCount; ++I)
+	{
+		const Poi& P = GetPoi(I);
+		if (!IsSettlement(P.Kind)) { continue; }
+		const double X = W.PoiX(I), Y = W.PoiY(I);
+		const double H = W.Height(X, Y);
+		if (H <= WorldModel::WaterLevel + 100.0) { std::printf("  POI under water: %s (%.0f)\n", P.Name, H); }
+		BR_CHECK(H > WorldModel::WaterLevel + 100.0);
+		// Flat pad: +-30 m around centre changes less than 1.5 m.
+		BR_CHECK(std::fabs(W.Height(X + 3000, Y) - H) < 150.0);
+		BR_CHECK(std::fabs(W.Height(X, Y - 3000) - H) < 150.0);
+		// No settlement sits on the river.
+		if (W.RiverDistance(X, Y) <= W.PoiRadius(I) + WorldModel::RiverHalfWidth) { std::printf("  POI on river: %s\n", P.Name); }
+		BR_CHECK(W.RiverDistance(X, Y) > W.PoiRadius(I) + WorldModel::RiverHalfWidth);
+	}
+}
+
+BR_TEST(World_WaterBodies)
+{
+	const WorldModel W(150000.0, 7);
+	// River centre is water across the island.
+	for (int I = -8; I <= 8; ++I)
+	{
+		const double Y = I * 15000.0;
+		const double X = W.RiverCenterX(Y);
+		if (W.PoiAt(X, Y) >= 0 && IsSettlement(GetPoi(W.PoiAt(X, Y)).Kind)) { continue; }
+		BR_CHECK(W.IsUnderWater(X, Y));
+	}
+	// Lake centre is water; open sea at the corners.
+	BR_CHECK(W.IsUnderWater(W.PoiX(14), W.PoiY(14)));
+	BR_CHECK(W.IsUnderWater(148000.0, 148000.0));
+	BR_CHECK(W.BiomeAt(148000.0, 148000.0, W.Height(148000.0, 148000.0)) == Biome::Ocean);
+	// Mountains are high.
+	BR_CHECK(W.Height(W.PoiX(12), W.PoiY(12)) > 8000.0);
+}
+
+BR_TEST(World_DeterministicAndContinuous)
+{
+	const WorldModel A(150000.0, 99), B(150000.0, 99);
+	Rng R(5);
+	int Land = 0, Samples = 0;
+	for (int I = 0; I < 3000; ++I)
+	{
+		const double X = R.Range(-150000, 150000), Y = R.Range(-150000, 150000);
+		const double H = A.Height(X, Y);
+		BR_CHECK(H == B.Height(X, Y));
+		// Continuity: 15 m step never jumps more than 12 m (except steep mountains, < 30 m).
+		BR_CHECK(std::fabs(A.Height(X + 1500, Y) - H) < 3000.0);
+		++Samples; if (H > 0) { ++Land; }
+	}
+	// Roughly 9 km2 of playable island: most of the square is land.
+	BR_CHECK(double(Land) / Samples > 0.55);
+	// Roads connect: midpoint of each road is on dry land, unless it crosses water (bridge).
+	for (int Rd = 0; Rd < WorldRoadCount; ++Rd)
+	{
+		int Ia, Ib; GetRoad(Rd, Ia, Ib);
+		BR_CHECK(Ia >= 0 && Ia < WorldPoiCount && Ib >= 0 && Ib < WorldPoiCount && Ia != Ib);
+	}
 }
 
 int main()

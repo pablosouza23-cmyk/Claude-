@@ -17,6 +17,6 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'es2022',
     chunkSizeWarningLimit: 1200,
-    rollupOptions: { output: { manualChunks: { three: ['three'] } } },
+    rollupOptions: { output: { manualChunks: (id: string) => (id.includes('node_modules/three') ? 'three' : undefined) } },
   },
 });

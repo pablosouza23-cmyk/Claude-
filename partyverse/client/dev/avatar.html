@@ -1,0 +1,26 @@
+<!doctype html><html><body style="margin:0;background:#9fd3ff"><script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { Avatar, loadAvatarClips } from '../src/avatar/Avatar.ts';
+import { randomOutfit, COSMETICS } from '../../shared/cosmetics.ts';
+const W=1200,H=600; const r=new THREE.WebGLRenderer({antialias:true}); r.setSize(W,H); document.body.appendChild(r.domElement);
+r.toneMapping=THREE.ACESFilmicToneMapping; r.shadowMap.enabled=true; r.shadowMap.type=THREE.PCFSoftShadowMap; r.outputColorSpace=THREE.SRGBColorSpace;
+const s=new THREE.Scene(); s.background=new THREE.Color(0xa8d8ff);
+s.environment=new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(),0.04).texture; s.environmentIntensity=0.4;
+const c=new THREE.PerspectiveCamera(30,W/H,0.1,100); c.position.set(0,2.6,11); c.lookAt(0,1.1,0);
+s.add(new THREE.HemisphereLight(0xdff1ff,0x7a8a5a,1.1)); const d=new THREE.DirectionalLight(0xfff1dd,2.6); d.position.set(4,8,6); d.castShadow=true; d.shadow.mapSize.set(2048,2048); d.shadow.camera.left=-10;d.shadow.camera.right=10;d.shadow.camera.top=10;d.shadow.camera.bottom=-10; s.add(d);
+const g=new THREE.Mesh(new THREE.CircleGeometry(14,48),new THREE.MeshStandardMaterial({color:0x8fc26a,roughness:0.9})); g.rotation.x=-Math.PI/2; g.receiveShadow=true; s.add(g);
+const clips=await loadAvatarClips();
+const P=new URLSearchParams(location.search); const anims=(P.get('a')||'idle,walk,wave,carry,sit,run').split(',');
+const outfits=[
+ {...randomOutfit(0.11), hair:'hair-short', hat:'hat-cap', top:'top-tee', acc:'acc-none', face:'face-happy'},
+ {...randomOutfit(0.22), hair:'hair-long', hat:'hat-none', top:'top-hoodie', acc:'acc-glasses', face:'face-cute'},
+ {...randomOutfit(0.33), hair:'hair-spiky', hat:'hat-headphones', top:'top-jacket', acc:'acc-backpack', face:'face-cool'},
+ {...randomOutfit(0.44), hair:'hair-afro', hat:'hat-none', top:'top-overall', acc:'acc-none', face:'face-wink'},
+ {...randomOutfit(0.55), hair:'hair-bun', hat:'hat-party', top:'top-suit', acc:'acc-shades', face:'face-happy'},
+ {...randomOutfit(0.66), hair:'hair-mohawk', hat:'hat-crown', top:'top-space', acc:'acc-jetpack', face:'face-surprised'},
+];
+const avs=[]; outfits.forEach((o,i)=>{ const a=new Avatar(o,clips,['Ana','Beto','Caio','Duda','Enzo','Fifi'][i],i+1); a.root.position.x=(i-2.5)*2.1; a.root.rotation.y=Number(P.get('ry')||0.35); const an=anims[i%anims.length]; if(an==='carry'){a.carrying=true;a.setAnim('carry');} else a.setAnim(an); a.speed=4; s.add(a.root); avs.push(a); });
+for(let i=0;i<20;i++){ avs.forEach(a=>a.update(Number(P.get('t')||0.04))); }
+r.render(s,c); window.__done=true; window.__info=['ok'];
+</script></body></html>

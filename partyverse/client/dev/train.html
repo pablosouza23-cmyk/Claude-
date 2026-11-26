@@ -1,0 +1,15 @@
+<!doctype html><html><body style="margin:0"><script type="module">
+import * as THREE from 'three';
+import { buildTrain } from '../src/world/TrainModel.ts';
+import { Environment } from '../src/world/Environment.ts';
+import { Renderer } from '../src/core/Renderer.ts';
+const host=document.body; const R=new Renderer(host); R.gl.setPixelRatio(1); R.gl.setSize(1200,650);
+const s=new THREE.Scene(); const env=new Environment(s,R); await env.addClouds(30,[60,200],[-40,10],[6,14]);
+const P=new URLSearchParams(location.search);
+const t=buildTrain({}); s.add(t.root); t.setDoors(Number(P.get('d')||1)); t.setThrust(Number(P.get('th')||0.3));
+for(let i=0;i<10;i++) t.update(0.05,i*0.05);
+const c=new THREE.PerspectiveCamera(Number(P.get('fov')||40),1200/650,0.1,4000);
+const cp=(P.get('c')||'18,8,22').split(',').map(Number); const ct=(P.get('l')||'0,1,0').split(',').map(Number);
+c.position.set(...cp); c.lookAt(...ct); env.update(0.016,new THREE.Vector3(0,0,0));
+R.gl.render(s,c); window.__done=true; window.__info=['ok'];
+</script></body></html>

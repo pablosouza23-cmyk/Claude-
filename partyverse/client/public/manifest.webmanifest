@@ -1,0 +1,1 @@
+{ "name": "PARTYVERSE", "short_name": "PARTYVERSE", "start_url": "/", "display": "fullscreen", "orientation": "landscape", "background_color": "#1b1036", "theme_color": "#1b1036", "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }] }

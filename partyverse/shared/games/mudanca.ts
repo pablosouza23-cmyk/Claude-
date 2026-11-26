@@ -100,11 +100,14 @@ export function planMudanca(players: number, diff: Difficulty): MudancaPlan {
 
 /* ------------------------------------------------------------------ */
 /* Mapa: Vila Girassol                                                   */
-/* Rua ao longo de X. Casa antiga a oeste (x≈-34), casa nova a leste      */
-/* (x≈+34). A estação do trem fica ao norte (z≈-30).                      */
+/* Estação ao norte (z≈-32). Rua ao longo de X (z -14..0). Casas ao sul,  */
+/* com a porta voltada para a rua (parede norte). Casa antiga a oeste     */
+/* (x=-36), casa nova a leste (x=+36).                                    */
 /* ------------------------------------------------------------------ */
 
 export const MUDANCA_ARRIVAL: Pose = { x: 0, y: 0.4, z: -32, yaw: 0, pitch: 0, roll: 0 };
+export const FLOOR_H = 3.2;
+export const HOUSE_Z = 12;
 
 export interface Room { name: 'sala' | 'quarto' | 'cozinha'; x0: number; x1: number; z0: number; z1: number; floor: number }
 
@@ -113,7 +116,7 @@ export interface HouseDef {
   x: number; z: number; // centro
   w: number; d: number; // largura (x), profundidade (z)
   floors: 1 | 2;
-  /** porta na fachada sul (+z) */
+  /** porta na fachada norte (-z), voltada para a rua */
   doorX: number;
   rooms: Room[];
 }
@@ -121,58 +124,61 @@ export interface HouseDef {
 export interface MudancaMap {
   colliders: Collider[];
   houses: HouseDef[];
-  /** área de estacionamento do caminhão em cada casa (centro, yaw) */
+  /** vaga do caminhão em cada casa */
   parkOld: { x: number; z: number; yaw: number };
   parkNew: { x: number; z: number; yaw: number };
-  /** limites da vila */
   bounds: { x0: number; x1: number; z0: number; z1: number };
-  /** pontos de surgimento dos itens (dentro da casa antiga) */
   itemSpots: { x: number; y: number; z: number; floor: number }[];
   spawns: { x: number; z: number }[];
-  stairs: { x: number; z: number; w: number; len: number; height: number; dir: 1 | -1 }[];
+  stairs: { x: number; z0: number; w: number; len: number; height: number }[];
+  /** objetos decorativos com colisão (para o cliente desenhar) */
+  decor: { kind: 'neighbor' | 'lamp' | 'tree' | 'mailbox' | 'hydrant'; x: number; z: number; rot?: number }[];
 }
 
 const WALL = 0.2;
-const FLOOR_H = 3.2;
+const DOOR_HALF = 1.35;
 
 function houseColliders(h: HouseDef, out: Collider[], stairs: MudancaMap['stairs']): void {
   const { x, z, w, d } = h;
   const H = FLOOR_H * h.floors;
   const box = (cx: number, cy: number, cz: number, hx: number, hy: number, hz: number, extra: Partial<Collider> = {}) => out.push({ kind: 'box', x: cx, y: cy, z: cz, hx, hy, hz, ...extra } as Collider);
-  // piso (degrau de 0.3 na entrada)
+  const zN = z - d / 2, zS = z + d / 2, xW = x - w / 2, xE = x + w / 2;
+  // piso elevado 0.3 (degrau natural)
   box(x, 0.15, z, w / 2, 0.15, d / 2);
   // paredes externas
-  box(x, H / 2, z - d / 2, w / 2, H / 2, WALL); // norte (fundos)
-  box(x - w / 2, H / 2, z, WALL, H / 2, d / 2); // oeste
-  box(x + w / 2, H / 2, z, WALL, H / 2, d / 2); // leste
-  // sul com porta larga (2.6 m) para passar sofás
-  const dl = h.doorX - 1.3, dr = h.doorX + 1.3;
-  box((x - w / 2 + dl) / 2, H / 2, z + d / 2, (dl - (x - w / 2)) / 2, H / 2, WALL);
-  box((dr + x + w / 2) / 2, H / 2, z + d / 2, (x + w / 2 - dr) / 2, H / 2, WALL);
-  box(h.doorX, H - (H - 2.8) / 2, z + d / 2, 1.3, (H - 2.8) / 2, WALL, { noFloor: true });
-  // divisória interna (corredor central) com vãos
+  box(x, H / 2, zS, w / 2, H / 2, WALL);
+  box(xW, H / 2, z, WALL, H / 2, d / 2);
+  box(xE, H / 2, z, WALL, H / 2, d / 2);
+  const dl = h.doorX - DOOR_HALF, dr = h.doorX + DOOR_HALF;
+  box((xW + dl) / 2, H / 2, zN, (dl - xW) / 2, H / 2, WALL);
+  box((dr + xE) / 2, H / 2, zN, (xE - dr) / 2, H / 2, WALL);
+  box(h.doorX, H - (H - 2.9) / 2, zN, DOOR_HALF, (H - 2.9) / 2, WALL, { noFloor: true });
+  // divisória interna (frente / fundos) com vão central de 3.6 m
   const midZ = z - d * 0.1;
-  box(x - w / 4 - 0.9, FLOOR_H / 2 + 0.3, midZ, w / 4 - 0.9, FLOOR_H / 2, WALL);
-  box(x + w / 4 + 0.9, FLOOR_H / 2 + 0.3, midZ, w / 4 - 0.9, FLOOR_H / 2, WALL);
+  const gap = 1.8;
+  box((xW + x - gap) / 2, 0.3 + FLOOR_H / 2, midZ, (x - gap - xW) / 2, FLOOR_H / 2, WALL);
+  box((x + gap + xE) / 2, 0.3 + FLOOR_H / 2, midZ, (xE - x - gap) / 2, FLOOR_H / 2, WALL);
   if (h.floors === 2) {
-    // laje do 2º andar com vão da escada
-    const sx = x - w / 2 + 2.2;
-    const holeX0 = sx - 1.1, holeX1 = sx + 1.1;
-    const slabTop = FLOOR_H + 0.3;
-    box((holeX1 + x + w / 2) / 2, slabTop - 0.15, z, (x + w / 2 - holeX1) / 2, 0.15, d / 2);
-    box((x - w / 2 + holeX0) / 2, slabTop - 0.15, z, Math.max(0.05, (holeX0 - (x - w / 2)) / 2), 0.15, d / 2);
-    box(sx, slabTop - 0.15, z + d / 2 - 2.6, 1.1, 0.15, 2.6 - 0.05);
-    // escada: degraus de 0.3 subindo para -z
-    const steps = 11;
-    const len = 6.0;
+    // escada junto à parede oeste, subindo para o sul (+z)
+    const sx = xW + 1.4;
+    const z0 = zN + 1.6;
+    const steps = 12, len = 6.6;
+    const slabTop = 0.3 + FLOOR_H;
     for (let i = 0; i < steps; i++) {
       const top = 0.3 + ((i + 1) / steps) * FLOOR_H;
-      const sz = z + d / 2 - 2.6 - 0.3 - (i + 0.5) * (len / steps);
-      box(sx, top / 2, sz, 1.0, top / 2, len / steps / 2);
+      const sz = z0 + (i + 0.5) * (len / steps);
+      box(sx, top / 2, sz, 1.05, top / 2, len / steps / 2);
     }
-    stairs.push({ x: sx, z: z + d / 2 - 2.9, w: 2.0, len, height: FLOOR_H, dir: -1 });
-    // corrimão do vão
-    box(sx + 1.15, slabTop + 0.5, z - 0.5, 0.06, 0.5, d / 2 - 3.2, { noFloor: true });
+    stairs.push({ x: sx, z0, w: 2.1, len, height: FLOOR_H });
+    // laje do 2º andar com o vão da escada (x de xW a sx+1.05, z de z0-0.2 a z0+len)
+    const holeX1 = sx + 1.1;
+    box((holeX1 + xE) / 2, slabTop - 0.15, z, (xE - holeX1) / 2, 0.15, d / 2);
+    box((xW + holeX1) / 2, slabTop - 0.15, (z0 + len + zS) / 2, (holeX1 - xW) / 2, 0.15, (zS - (z0 + len)) / 2);
+    box((xW + holeX1) / 2, slabTop - 0.15, (zN + z0 - 0.2) / 2, (holeX1 - xW) / 2, 0.15, Math.max(0.1, (z0 - 0.2 - zN) / 2));
+    // guarda-corpo ao longo do vão
+    box(holeX1 + 0.06, slabTop + 0.55, z0 + len / 2 - 0.6, 0.06, 0.55, len / 2 - 0.6, { noFloor: true });
+    // divisória do 2º andar
+    box((xW + x - gap) / 2 + 1.2, slabTop + FLOOR_H / 2, z + d * 0.15, (x - gap - xW) / 2 - 1.2, FLOOR_H / 2, WALL);
   }
 }
 
@@ -182,69 +188,99 @@ export function buildMudancaMap(plan: Pick<MudancaPlan, 'layout'>): MudancaMap {
   const two = plan.layout === 'sobrado';
   const oldW = plan.layout === 'compacta' ? 14 : 18;
   const oldD = plan.layout === 'compacta' ? 11 : 14;
-  const old: HouseDef = {
-    id: 'old', x: -36, z: 10, w: oldW, d: oldD, floors: two ? 2 : 1, doorX: -36 + 2,
-    rooms: [],
-  };
+  const old: HouseDef = { id: 'old', x: -36, z: HOUSE_Z, w: oldW, d: oldD, floors: two ? 2 : 1, doorX: -36 + 2.5, rooms: [] };
+  const nz = HOUSE_Z, nd = 14, mid = nz - nd * 0.1;
   const nw: HouseDef = {
-    id: 'new', x: 36, z: 10, w: 18, d: 14, floors: 1, doorX: 36 - 2,
+    id: 'new', x: 36, z: nz, w: 18, d: nd, floors: 1, doorX: 36 - 2.5,
     rooms: [
-      { name: 'sala', x0: 27, x1: 36, z0: 10 - 1.4, z1: 17, floor: 0 },
-      { name: 'cozinha', x0: 36, x1: 45, z0: 10 - 1.4, z1: 17, floor: 0 },
-      { name: 'quarto', x0: 27, x1: 45, z0: 3, z1: 10 - 1.4, floor: 0 },
+      { name: 'sala', x0: 27, x1: 36, z0: nz - nd / 2, z1: mid, floor: 0 },
+      { name: 'cozinha', x0: 36, x1: 45, z0: nz - nd / 2, z1: mid, floor: 0 },
+      { name: 'quarto', x0: 27, x1: 45, z0: mid, z1: nz + nd / 2, floor: 0 },
     ],
   };
   houseColliders(old, colliders, stairs);
   houseColliders(nw, colliders, stairs);
-  // ---------------- vila: limites, calçadas, cercas, árvores ----------------
-  const bounds = { x0: -62, x1: 62, z0: -40, z1: 44 };
+  const bounds = { x0: -62, x1: 62, z0: -40, z1: 40 };
   const box = (cx: number, cy: number, cz: number, hx: number, hy: number, hz: number, extra: Partial<Collider> = {}) => colliders.push({ kind: 'box', x: cx, y: cy, z: cz, hx, hy, hz, ...extra } as Collider);
-  box(0, -0.5, 0, 64, 0.5, 46); // chão
+  box(0, -0.5, 0, 66, 0.5, 44); // chão
   box(0, 1, bounds.z0 - 0.3, 64, 1.2, 0.3, { noFloor: true });
   box(0, 1, bounds.z1 + 0.3, 64, 1.2, 0.3, { noFloor: true });
-  box(bounds.x0 - 0.3, 1, 0, 0.3, 1.2, 46, { noFloor: true });
-  box(bounds.x1 + 0.3, 1, 0, 0.3, 1.2, 46, { noFloor: true });
-  // cercas dos quintais (deixam o portão aberto)
-  for (const hx of [-36, 36]) {
-    box(hx - 12, 0.6, 26, 0.12, 0.6, 7, { noFloor: true });
-    box(hx + 12, 0.6, 26, 0.12, 0.6, 7, { noFloor: true });
+  box(bounds.x0 - 0.3, 1, 0, 0.3, 1.2, 42, { noFloor: true });
+  box(bounds.x1 + 0.3, 1, 0, 0.3, 1.2, 42, { noFloor: true });
+  const decor: MudancaMap['decor'] = [];
+  // vizinhos (sólidos)
+  for (const [cx, cz] of [[0, 14], [-12, 30], [12, 30], [-52, 30], [52, 30]] as const) { box(cx, 4, cz, 4.5, 4, 4.5); decor.push({ kind: 'neighbor', x: cx, z: cz }); }
+  // postes nas duas calçadas
+  for (let x = -54; x <= 54; x += 18) {
+    colliders.push({ kind: 'cyl', x, z: -16, r: 0.3, y0: 0, y1: 5 }); decor.push({ kind: 'lamp', x, z: -16 });
+    colliders.push({ kind: 'cyl', x: x + 9, z: 2.2, r: 0.3, y0: 0, y1: 5 }); decor.push({ kind: 'lamp', x: x + 9, z: 2.2, rot: Math.PI });
   }
-  // casas vizinhas decorativas (sólidas)
-  for (const [cx, cz] of [[0, 18], [-36, 38], [36, 38], [0, 38]] as const) box(cx, 3.5, cz, 6, 3.5, 5);
-  // postes / árvores da rua
-  for (let x = -54; x <= 54; x += 18) { colliders.push({ kind: 'cyl', x, z: -6.5, r: 0.35, y0: 0, y1: 5 }); }
+  for (const [tx, tz] of [[-56, 10], [-20, 6], [20, 6], [56, 10], [-24, 26], [24, 26], [-44, 32], [44, 32], [0, 34], [-60, -24], [60, -24], [-40, -26], [40, -26]] as const) {
+    colliders.push({ kind: 'cyl', x: tx, z: tz, r: 0.5, y0: 0, y1: 6 }); decor.push({ kind: 'tree', x: tx, z: tz });
+  }
+  for (const h of [old, nw]) { decor.push({ kind: 'mailbox', x: h.doorX + 3.2, z: h.z - h.d / 2 - 2.5 }); colliders.push({ kind: 'cyl', x: h.doorX + 3.2, z: h.z - h.d / 2 - 2.5, r: 0.25, y0: 0, y1: 1.3 }); }
+  decor.push({ kind: 'hydrant', x: -4, z: 1.5 }); colliders.push({ kind: 'cyl', x: -4, z: 1.5, r: 0.3, y0: 0, y1: 0.9 });
   // pontos de itens na casa antiga
   const itemSpots: MudancaMap['itemSpots'] = [];
   const cols = plan.layout === 'compacta' ? 4 : 5;
+  const xW = old.x - old.w / 2, zN = old.z - old.d / 2;
   for (let fl = 0; fl < old.floors; fl++) {
-    const y = 0.3 + fl * FLOOR_H + 0.05;
+    const y = 0.3 + fl * FLOOR_H + 0.02;
     for (let r = 0; r < 3; r++) for (let c = 0; c < cols; c++) {
-      const ix = old.x - old.w / 2 + 2.4 + c * ((old.w - 4.8) / (cols - 1));
-      const iz = old.z - old.d / 2 + 2.0 + r * ((old.d - 4.5) / 2);
-      if (fl === 0 && Math.abs(ix - old.doorX) < 2 && r === 2) continue;
-      if (two && Math.abs(ix - (old.x - old.w / 2 + 2.2)) < 1.6) continue; // escada
+      const ix = xW + 2.2 + c * ((old.w - 4.4) / (cols - 1));
+      const iz = zN + 2.4 + r * ((old.d - 4.6) / 2);
+      if (Math.abs(ix - old.doorX) < 2.2 && r === 0) continue; // caminho da porta
+      if (Math.abs(iz - (old.z - old.d * 0.1)) < 1.2) continue; // divisória
+      if (two && ix < xW + 3.4 && iz < zN + 1.6 + 6.8) continue; // escada
       itemSpots.push({ x: ix, y, z: iz, floor: fl });
     }
   }
   return {
-    colliders,
-    houses: [old, nw],
-    parkOld: { x: old.doorX, z: 25, yaw: Math.PI / 2 },
-    parkNew: { x: nw.doorX, z: 25, yaw: Math.PI / 2 },
-    bounds,
-    itemSpots,
-    spawns: Array.from({ length: 4 }, (_, i) => ({ x: -6 + i * 4, z: -18 })),
-    stairs,
+    colliders, houses: [old, nw],
+    parkOld: { x: old.doorX + 1, z: -5, yaw: Math.PI / 2 },
+    parkNew: { x: nw.doorX + 1, z: -5, yaw: Math.PI / 2 },
+    bounds, itemSpots, stairs, decor,
+    spawns: Array.from({ length: 4 }, (_, i) => ({ x: -6 + i * 4, z: -19 })),
   };
 }
 
+/** Caminhão de mudança (cabine Kenney + baú). Espaço local: frente = +z. */
 export const TRUCK = {
-  /** dimensões do corpo (para colisão) */
-  hx: 1.5, hz: 3.4,
-  /** caçamba (espaço local: frente = +z) */
-  bedZ0: -3.1, bedZ1: 0.2, bedHalfW: 1.25, bedY: 1.0,
-  maxSpeed: 14, accel: 7, brake: 12, turn: 1.6,
+  hx: 1.9, hz: 3.8,
+  /** ponto de carga atrás do baú (local) */
+  loadZ: -4.6, loadR: 2.6,
+  maxSpeed: 15, reverse: 6, accel: 8, brake: 16, drag: 2.5, turn: 1.7,
 };
+
+export interface TruckState { x: number; z: number; yaw: number; speed: number }
+export interface TruckInput { throttle: number; steer: number }
+
+/** Física arcade do caminhão (compartilhada: servidor simula, motorista prediz). */
+export function stepTruck(s: TruckState, inp: TruckInput, dt: number, col: CollisionLike, grip = 1): void {
+  const th = Math.max(-1, Math.min(1, inp.throttle || 0));
+  const st = Math.max(-1, Math.min(1, inp.steer || 0));
+  if (th > 0) s.speed += (s.speed < 0 ? TRUCK.brake : TRUCK.accel) * th * dt;
+  else if (th < 0) s.speed += (s.speed > 0 ? TRUCK.brake : TRUCK.accel * 0.6) * th * dt;
+  else s.speed -= Math.sign(s.speed) * Math.min(Math.abs(s.speed), TRUCK.drag * dt);
+  s.speed = Math.max(-TRUCK.reverse, Math.min(TRUCK.maxSpeed, s.speed));
+  const turnRate = TRUCK.turn * st * Math.max(-1, Math.min(1, s.speed / 4)) * grip;
+  s.yaw -= turnRate * dt;
+  const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
+  s.x += fx * s.speed * dt;
+  s.z += fz * s.speed * dt;
+  // colisão: 3 círculos ao longo do corpo
+  for (let pass = 0; pass < 2; pass++) {
+    let hit = false;
+    for (const off of [-2.4, 0, 2.4]) {
+      const cx = s.x + fx * off, cz = s.z + fz * off;
+      const p = col.push(cx, cz, 1.85);
+      if (p) { s.x += p[0]; s.z += p[1]; hit = true; }
+    }
+    if (hit) { s.speed *= -0.25; } else break;
+  }
+}
+
+export interface CollisionLike { push(x: number, z: number, r: number): [number, number] | null }
 
 export function inRoom(h: HouseDef, x: number, z: number, y: number): Room | null {
   for (const r of h.rooms) if (x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1 && Math.abs(y - (0.3 + r.floor * FLOOR_H)) < 1.6) return r;

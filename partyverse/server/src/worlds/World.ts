@@ -133,6 +133,7 @@ export abstract class World {
   }
 
   correct(p: WPlayer): void {
+    if (process.env.PV_DEBUG) console.log('[correct]', p.id, p.x.toFixed(2), p.z.toFixed(2), new Error().stack?.split('\n')[2]?.trim());
     p.session.send({ t: 'correct', x: p.x, y: p.y, z: p.z, plat: p.plat });
   }
 
@@ -149,7 +150,7 @@ export abstract class World {
     if (ANIMS.has(m.anim)) p.anim = m.anim;
     p.yaw = m.yaw;
     if (m.plat !== p.plat) {
-      if (!this.platformChange(p, m)) this.correct(p);
+      if (!this.platformChange(p, m)) { if (process.env.PV_DEBUG) console.log('[move] plataforma rejeitada', p.id, p.plat, '->', m.plat); this.correct(p); }
       return;
     }
     const now = Date.now();
@@ -157,6 +158,7 @@ export abstract class World {
     const maxH = CHAR.sprintSpeed * Math.max(1, p.speedMul) * 1.35 * dt + 0.8;
     const dh = Math.hypot(m.x - p.x, m.z - p.z);
     if (dh > maxH || Math.abs(m.y - p.y) > 12) {
+      if (process.env.PV_DEBUG) console.log('[move] rejeitado (velocidade)', p.id, dh.toFixed(2), '>', maxH.toFixed(2));
       this.correct(p);
       return;
     }
@@ -167,12 +169,14 @@ export abstract class World {
     }
     const [rx, rz] = resolvePosition(this.collisionFor(p), m.x, m.y, m.z);
     if (Math.hypot(rx - m.x, rz - m.z) > 0.4) {
+      if (process.env.PV_DEBUG) console.log('[move] rejeitado (parede)', p.id, m.x.toFixed(2), m.z.toFixed(2), '->', rx.toFixed(2), rz.toFixed(2));
       p.x = rx; p.z = rz; p.y = m.y;
       this.correct(p);
       return;
     }
     p.x = m.x; p.y = m.y; p.z = m.z;
     p.lastMoveAt = now;
+    if (process.env.PV_DEBUG === '2') console.log('[move] ok', p.id, m.x.toFixed(2), m.z.toFixed(2));
   }
 
   snapshot(now: number): S2C {

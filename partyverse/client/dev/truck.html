@@ -1,0 +1,13 @@
+<!doctype html><html><body style="margin:0"><script type="module">
+import * as THREE from 'three';
+import { model } from '../src/core/Assets.ts';
+import { Environment } from '../src/world/Environment.ts';
+import { Renderer } from '../src/core/Renderer.ts';
+const R=new Renderer(document.body); R.gl.setPixelRatio(1); R.gl.setSize(1000,600);
+const s=new THREE.Scene(); const env=new Environment(s,R);
+const t=await model('kenney/racing/vehicle-truck-red.glb',1); s.add(t);
+const g=new THREE.GridHelper(4,8); s.add(g);
+const out=[]; t.traverse(o=>{ if(o.isMesh){ const b=new THREE.Box3().setFromObject(o); out.push(o.name+' '+b.min.toArray().map(v=>v.toFixed(2))+' / '+b.max.toArray().map(v=>v.toFixed(2))); }});
+const c=new THREE.PerspectiveCamera(35,1000/600,0.1,100); c.position.set(4,3.2,-3.5); c.lookAt(0,0.5,0); env.update(0.01,new THREE.Vector3());
+R.gl.render(s,c); window.__info=out; window.__done=true;
+</script></body></html>

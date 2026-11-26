@@ -36,6 +36,7 @@ export class App {
   myId = 0;
   readonly remotes = new Map<number, RemotePlayer>();
   private pendingWorld: WorldEnter | null = null;
+  private pendingCorrect: { x: number; y: number; z: number; plat: 0 | 1 } | null = null;
   private loadingWorld = false;
   private clock = new THREE.Clock();
   private focus = new THREE.Vector3();
@@ -130,7 +131,12 @@ export class App {
       }
       if (m.w !== undefined) this.view?.onWorld(m.w);
     });
-    n.on('correct', (m) => { this.stats.corrections++; this.local?.correct(m.x, m.y, m.z, m.plat); });
+    n.on('correct', (m) => {
+      this.stats.corrections++;
+      // durante o carregamento guarda a correção para aplicar depois
+      if (this.loadingWorld || !this.local?.colFor) { this.pendingCorrect = m; return; }
+      this.local.correct(m.x, m.y, m.z, m.plat);
+    });
     n.on('ev', (m) => {
       if (m.e === 'achievement') { this.ui.achievement((m.d as { id: string }).id); return; }
       this.view?.onEvent(m.e, m.d);
@@ -226,6 +232,9 @@ export class App {
     lp.platYaw = () => v.platYaw(lp.plat);
     lp.platformCheck = (l) => v.platformCheck(l);
     lp.place(p.x, p.y, p.z, p.plat, p.yaw);
+    const pc = this.pendingCorrect;
+    this.pendingCorrect = null;
+    if (pc) lp.place(pc.x, pc.y, pc.z, pc.plat);
     this.cam.yaw = p.yaw + Math.PI;
   }
 
@@ -264,6 +273,8 @@ export class App {
       for (const r of this.remotes.values()) r.update(dt, now, (pl) => view.parentFor(pl));
       view.update(dt, now);
       this.cam.worlds = view.cameraWorlds();
+      // dentro do trem a câmera fica mais próxima (interior estreito)
+      this.cam.maxDist = lp.plat === 1 ? 5 : 16;
       lp.worldPos(this.focus);
       this.focus.y += 1.55;
       // interação mais próxima

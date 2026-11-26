@@ -17,10 +17,12 @@ import type { Session } from '../Session';
 import type { GameResult, MinigameServer } from '../games/types';
 import { World, type WPlayer } from './World';
 
-const FLIGHT_MS = 32_000;
-const BOARD_TIMEOUT_MS = 75_000;
-const DISEMBARK_TIMEOUT_MS = 30_000;
-const DEPART_COUNTDOWN_MS = 5_000;
+// PV_FAST_TRAIN=1 encurta a viagem (apenas para testes automatizados)
+const FAST = process.env.PV_FAST_TRAIN === '1';
+const FLIGHT_MS = FAST ? 6_000 : 32_000;
+const BOARD_TIMEOUT_MS = FAST ? 1_500 : 75_000;
+const DISEMBARK_TIMEOUT_MS = FAST ? 1_500 : 30_000;
+const DEPART_COUNTDOWN_MS = FAST ? 1_000 : 5_000;
 
 export type MatchPhase = 'boarding' | 'departing' | 'flight' | 'arrived' | 'game' | 'results';
 
@@ -51,7 +53,7 @@ export class MatchWorld extends World {
     this.trainCol = new CollisionWorld(trainInteriorColliders(true), null);
     const dep: Collider[] = [...transformColliders(stationLocalColliders(), DEPART_POSE), ...transformColliders(trainHullColliders(true), DEPART_POSE)];
     this.departCol = new CollisionWorld(dep, null);
-    const arr: Collider[] = [...this.minigame.colliders(), ...transformColliders(stationLocalColliders(), to), ...transformColliders(trainHullColliders(true), to)];
+    const arr: Collider[] = [...this.minigame.colliders(), ...transformColliders(stationLocalColliders(false), to), ...transformColliders(trainHullColliders(true), to)];
     this.arriveCol = new CollisionWorld(arr, null);
     this.col = this.departCol;
     this.phaseDeadline = now + BOARD_TIMEOUT_MS;
@@ -60,6 +62,16 @@ export class MatchWorld extends World {
   private setDoors(open: boolean): void {
     this.schedule.doorsOpen = open;
     for (const w of [this.trainCol, this.departCol, this.arriveCol]) for (const c of w.colliders) if (c.id === 'doorleaf') c.disabled = open;
+  }
+
+  /** colisor móvel no mapa de destino (ex.: caminhão) */
+  addDynamic(c: Collider): void {
+    this.arriveCol.addDynamic(c);
+  }
+
+  /** acesso ao mundo de colisão do mapa (consultas do minigame) */
+  get mapCol(): CollisionWorld {
+    return this.arriveCol;
   }
 
   pose(now = Date.now()): Pose {

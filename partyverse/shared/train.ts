@@ -223,9 +223,10 @@ export function transformColliders(list: Collider[], p: Pose): Collider[] {
 /** Plataforma de estação (espaço local do trem atracado): fica do lado +Z (portas). */
 export const STATION = { depth: 9, halfLen: TRAIN_HALF_LEN + 4 };
 
-export function stationLocalColliders(): Collider[] {
+export function stationLocalColliders(floating = true): Collider[] {
   const z0 = TRAIN.halfWidth + 0.05;
   const zc = z0 + STATION.depth / 2;
+  if (!floating) return [{ kind: 'box', x: 0, y: -0.4, z: zc, hx: STATION.halfLen, hy: 0.4, hz: STATION.depth / 2 }];
   return [
     // laje da plataforma (topo no nível do piso do trem)
     { kind: 'box', x: 0, y: -0.4, z: zc, hx: STATION.halfLen, hy: 0.4, hz: STATION.depth / 2 },

@@ -61,6 +61,8 @@ export const CHAR = {
 /** Grade espacial simples para acelerar consultas de colisão. */
 export class CollisionWorld {
   readonly colliders: Collider[] = [];
+  /** colisores móveis (ex.: caminhão) — sempre testados, sem grade */
+  readonly dynamic: Collider[] = [];
   private grid = new Map<string, Collider[]>();
   private cell = 4;
   /** chão infinito opcional */
@@ -87,8 +89,13 @@ export class CollisionWorld {
     return this.colliders.find((c) => c.id === id);
   }
 
+  addDynamic(c: Collider): void {
+    this.dynamic.push(c);
+  }
+
   query(x: number, z: number, r: number, out: Set<Collider>): Set<Collider> {
     out.clear();
+    for (const c of this.dynamic) if (!c.disabled) out.add(c);
     for (let gx = Math.floor((x - r) / this.cell); gx <= Math.floor((x + r) / this.cell); gx++)
       for (let gz = Math.floor((z - r) / this.cell); gz <= Math.floor((z + r) / this.cell); gz++) {
         const arr = this.grid.get(gx + ',' + gz);
@@ -277,4 +284,18 @@ export function resolvePosition(world: CollisionWorld, x: number, y: number, z: 
     if (!moved) break;
   }
   return [x, z];
+}
+
+/** Adaptador para o caminhão: empurra um círculo para fora de colisores altos o bastante. */
+export function pushCircle(world: CollisionWorld, x: number, z: number, r: number, minTop = 0.6, ignore?: Collider): [number, number] | null {
+  const set = new Set<Collider>();
+  world.query(x, z, r, set);
+  let ox = 0, oz = 0, hit = false;
+  for (const c of set) {
+    if (c === ignore) continue;
+    if (colliderTop(c) < minTop || colliderBottom(c) > 2.5) continue;
+    const p = pushOut2D(x + ox, z + oz, r, c);
+    if (p) { ox += p[0]; oz += p[1]; hit = true; }
+  }
+  return hit ? [ox, oz] : null;
 }

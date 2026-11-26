@@ -99,7 +99,10 @@ export class Net {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(m));
   }
 
+  /** contadores de mensagens enviadas por tipo (diagnóstico) */
+  readonly sent: Record<string, number> = {};
   send(m: C2S): void {
+    this.sent[m.t] = (this.sent[m.t] ?? 0) + 1;
     this.raw(m);
   }
 

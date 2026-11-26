@@ -10,6 +10,10 @@ export class CameraRig {
   pitch = 0.32;
   distance = 7.5;
   targetDistance = 7.5;
+  /** distância escolhida pelo jogador (zoom) */
+  userDist = 7.5;
+  /** distância imposta por um modo (ex.: dirigindo) */
+  forceDist: number | null = null;
   minDist = 2.2;
   maxDist = 14;
   readonly target = new THREE.Vector3();
@@ -26,7 +30,8 @@ export class CameraRig {
   update(dt: number, look: { x: number; y: number; zoom: number }, focus: THREE.Vector3): void {
     this.yaw -= look.x;
     this.pitch = THREE.MathUtils.clamp(this.pitch + look.y, -0.12, 1.25);
-    this.targetDistance = THREE.MathUtils.clamp(this.targetDistance + look.zoom, this.minDist, this.maxDist);
+    this.userDist = THREE.MathUtils.clamp(this.userDist + look.zoom, this.minDist, 14);
+    this.targetDistance = Math.min(this.forceDist ?? this.userDist, this.maxDist);
     this.distance += (this.targetDistance - this.distance) * Math.min(1, dt * 8);
 
     if (!this.initialized) { this.smoothTarget.copy(focus); this.initialized = true; }

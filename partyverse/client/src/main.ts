@@ -1,3 +1,4 @@
+import { settings } from './core/Settings';
 import { App } from './app/App';
 
 const boot = (p: number, msg: string) => {
@@ -9,6 +10,7 @@ const boot = (p: number, msg: string) => {
 
 const app = new App(document.getElementById('game')!, document.getElementById('ui')!);
 (window as unknown as { pv: App }).pv = app; // acesso para testes automatizados
+(window as unknown as { pvSettings: typeof settings }).pvSettings = settings;
 app.start(boot).catch((e) => {
   console.error(e);
   boot(0, 'Erro ao iniciar. Recarregue a página.');

@@ -33,9 +33,9 @@ export class LocalPlayer {
   private wasGrounded = true;
   private stepT = 0;
   /** fornecido pela view: colisão de cada plataforma */
-  colFor: (p: Platform) => CollisionWorld = () => { throw new Error('sem colisão'); };
+  colFor: ((p: Platform) => CollisionWorld) | null = null;
   /** grupo pai de cada plataforma (para o avatar seguir o trem) */
-  parentFor: (p: Platform) => THREE.Object3D = () => { throw new Error('sem plataforma'); };
+  parentFor: ((p: Platform) => THREE.Object3D) | null = null;
   /** hook de transição de plataforma (entrar/sair do trem) */
   platformCheck: ((lp: LocalPlayer) => void) | null = null;
   /** yaw da plataforma (para converter a direção da câmera) */
@@ -53,6 +53,7 @@ export class LocalPlayer {
   }
 
   reparent(): void {
+    if (!this.parentFor) return;
     const parent = this.parentFor(this.plat);
     if (this.avatar.root.parent !== parent) parent.add(this.avatar.root);
   }
@@ -100,6 +101,7 @@ export class LocalPlayer {
     const jump = input.take('jump');
     let jumpQueued = jump && !this.carrying;
     this.acc += Math.min(dt, 0.1);
+    if (!this.colFor) return;
     const col = this.colFor(this.plat);
     while (this.acc >= STEP) {
       stepCharacter(this.s, { mx, mz, sprint: input.sprint, jump: jumpQueued, speedMul: this.speedMul }, STEP, col);

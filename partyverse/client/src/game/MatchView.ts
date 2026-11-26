@@ -73,7 +73,7 @@ export class MatchView extends View {
     const to = this.minigame.arrivalPose();
     const dep: Collider[] = [...transformColliders(stationLocalColliders(), DEPART_POSE), ...transformColliders(trainHullColliders(true), DEPART_POSE)];
     this.departCol = new CollisionWorld(dep, null);
-    const arr: Collider[] = [...this.minigame.colliders(), ...transformColliders(stationLocalColliders(), to), ...transformColliders(trainHullColliders(true), to)];
+    const arr: Collider[] = [...this.minigame.colliders(), ...transformColliders(stationLocalColliders(false), to), ...transformColliders(trainHullColliders(true), to)];
     this.arriveCol = new CollisionWorld(arr, null);
     this.buildStationAt(to, def.destination.toUpperCase(), def.color);
     this.buildFlightDecor(DEPART_POSE, to);

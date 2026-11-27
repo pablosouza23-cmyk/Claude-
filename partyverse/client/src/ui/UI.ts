@@ -16,6 +16,7 @@ import type { ActionButton } from '../game/types';
 import { el, esc, on } from './dom';
 import { gameIconSvg, icon } from './icons';
 import { Panels, type PanelName } from './panels';
+import { VoiceDock } from './voiceDock';
 
 export class UI {
   readonly root: HTMLElement;
@@ -41,6 +42,9 @@ export class UI {
   private actionKey = '';
   private actions: ActionButton[] = [];
   private bannerTimer = 0;
+  private voiceDock: VoiceDock;
+  leaderboard: { name: string; level: number; xp: number; wins: number }[] = [];
+  private tutorialEl: HTMLElement | null = null;
 
   constructor(public app: App, root: HTMLElement) {
     this.root = root;
@@ -125,6 +129,11 @@ export class UI {
 
     this.panels = new Panels(this);
 
+    // voz
+    this.voiceDock = new VoiceDock(app.voice, () => this.open('voice'));
+    root.appendChild(this.voiceDock.root);
+    app.voice.onChange = () => { if (this.panels.current === 'voice') this.panels.refresh(); };
+
     // atalhos globais
     this.app.input.onKey = (code) => {
       if (code === 'Escape') {
@@ -157,6 +166,55 @@ export class UI {
     this.hud.querySelector('[data-coins]')!.textContent = String(p.coins);
     this.panels.refresh();
     if (first) this.renderRoomPill();
+    if (first && !p.tutorialDone) setTimeout(() => this.startTutorial(), 1500);
+  }
+
+  /* ------------------------------ contas ------------------------------ */
+
+  onAuth(m: Extract<S2C, { t: 'auth' }>): void {
+    if (!m.ok) { this.toast(m.msg ?? 'Não foi possível concluir.', 'err'); return; }
+    if (m.msg === 'registered') { this.panels.open('recovery', { code: m.recovery, then: null }); return; }
+    if (m.msg === 'login' && m.token) { this.toast('Entrando na sua conta…', 'ok'); this.app.net.switchAccount(m.token); return; }
+    if (m.msg === 'recovered' && m.token) { this.panels.open('recovery', { code: m.recovery, then: m.token }); return; }
+  }
+
+  setLeaderboard(rows: UI['leaderboard']): void {
+    this.leaderboard = rows;
+    this.panels.refresh();
+  }
+
+  /* ------------------------------ tutorial ------------------------------ */
+
+  private startTutorial(): void {
+    if (this.tutorialEl || this.mode !== 'lobby') return;
+    const touch = useTouch();
+    const steps = [
+      { t: 'Bem-vindo ao PARTYVERSE!', d: touch ? 'Use o joystick à esquerda para andar e arraste a tela para girar a câmera.' : 'Ande com WASD, corra com Shift, pule com Espaço. Arraste o mouse para girar a câmera.' },
+      { t: 'Interaja com tudo', d: `Chegue perto de bancos, quiosques, da loja e do trem. Quando aparecer um balão, ${touch ? 'toque no botão de mão' : 'aperte E'}.` },
+      { t: 'Jogue com amigos', d: 'Em "Jogar", crie uma sala (pública ou privada) ou entre com um código. Em "Amigos", troque códigos e mande convites.' },
+      { t: 'Embarque no Trem Voador', d: 'Quando o líder iniciar, todos vão para a estação: entrem no trem, sentem e aproveitem a viagem até a missão.' },
+      { t: 'Fale com a equipe', d: 'O botão de microfone à direita ativa o chat de voz por proximidade. É opcional e você pode silenciar quando quiser.' },
+    ];
+    let i = 0;
+    const el2 = el('div', 'tutorial');
+    this.tutorialEl = el2;
+    const render = () => {
+      const s2 = steps[i];
+      el2.innerHTML = `<h4>${esc(s2.t)}</h4><p style="margin:0 0 12px">${esc(s2.d)}</p>
+        <div class="row between"><div class="dots">${steps.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>
+        <div class="row"><button class="btn small ghost" style="color:var(--ink)" data-t="skip">Pular</button><button class="btn small pink" data-t="next">${i === steps.length - 1 ? 'Vamos jogar!' : 'Próximo'}</button></div></div>`;
+    };
+    render();
+    el2.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest('[data-t]') as HTMLElement | null;
+      if (!b) return;
+      audio.play('click');
+      if (b.dataset.t === 'next' && i < steps.length - 1) { i++; render(); return; }
+      el2.remove();
+      this.tutorialEl = null;
+      this.app.net.send({ t: 'tutorialDone' });
+    });
+    this.root.appendChild(el2);
   }
 
   setFriends(f: Extract<S2C, { t: 'friends' }>): void {
@@ -454,6 +512,13 @@ export class UI {
   }
 
   frame(_dt: number, fps: number): void {
+    const sp: { name: string; self?: boolean }[] = [];
+    const v = this.app.voice;
+    if (v.state !== 'off') {
+      if (v.selfSpeaking) sp.push({ name: 'Você', self: true });
+      for (const r of this.app.remotes.values()) if (v.isSpeaking(r.id)) sp.push({ name: r.avatar.name });
+    }
+    this.voiceDock.render(sp);
     this.fpsEl.textContent = settings.data.showFps ? `${Math.round(fps)} FPS • ${Math.round(this.app.net.rtt)} ms` : '';
   }
 

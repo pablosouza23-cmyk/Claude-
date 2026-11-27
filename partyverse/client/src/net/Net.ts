@@ -86,6 +86,15 @@ export class Net {
     ws.onerror = () => {};
   }
 
+  /** troca a conta deste dispositivo (login/recuperação) e reconecta */
+  switchAccount(token: string | null): void {
+    try {
+      if (token) localStorage.setItem(this.tokenKey(), token);
+      else localStorage.removeItem(this.tokenKey());
+    } catch { /* */ }
+    location.reload();
+  }
+
   /** simula queda de conexão (testes de reconexão) */
   dropForTest(): void {
     this.ws?.close();

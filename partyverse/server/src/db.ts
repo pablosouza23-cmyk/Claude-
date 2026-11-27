@@ -3,7 +3,7 @@
  * Contas de convidado com token de dispositivo (hash SHA-256 no banco).
  */
 import { DatabaseSync } from 'node:sqlite';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DEFAULT_OWNED, randomOutfit, type Outfit } from '../../shared/cosmetics';
@@ -66,7 +66,19 @@ export class Database {
         stars INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_matches_user ON matches(user_id, at DESC);
+      CREATE TABLE IF NOT EXISTS tokens (
+        token_hash TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_tokens_user ON tokens(user_id);
     `);
+    // migrações de colunas (bancos criados por versões anteriores — sem perda de dados)
+    const cols = new Set((this.db.prepare('PRAGMA table_info(users)').all() as { name: string }[]).map((c) => c.name));
+    if (!cols.has('username')) this.db.exec('ALTER TABLE users ADD COLUMN username TEXT');
+    if (!cols.has('pass_hash')) this.db.exec('ALTER TABLE users ADD COLUMN pass_hash TEXT');
+    if (!cols.has('recovery_hash')) this.db.exec('ALTER TABLE users ADD COLUMN recovery_hash TEXT');
+    this.db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)');
   }
 
   private row(r: Record<string, unknown> | undefined): UserRow | null {
@@ -87,7 +99,66 @@ export class Database {
   }
 
   byToken(token: string): UserRow | null {
-    return this.row(this.db.prepare('SELECT * FROM users WHERE token_hash = ?').get(hash(token)) as never);
+    const h = hash(token);
+    const direct = this.db.prepare('SELECT * FROM users WHERE token_hash = ?').get(h);
+    if (direct) return this.row(direct as never);
+    const t = this.db.prepare('SELECT user_id FROM tokens WHERE token_hash = ?').get(h) as { user_id: string } | undefined;
+    return t ? this.byId(t.user_id) : null;
+  }
+
+  /* ----------------------------- contas ----------------------------- */
+
+  usernameOf(id: string): string | null {
+    const r = this.db.prepare('SELECT username FROM users WHERE id = ?').get(id) as { username: string | null } | undefined;
+    return r?.username ?? null;
+  }
+
+  /** transforma a conta convidado em conta com usuário/senha. Retorna o código de recuperação. */
+  register(id: string, username: string, password: string): string | 'taken' | 'already' {
+    const u = username.toLowerCase();
+    if (this.usernameOf(id)) return 'already';
+    if (this.db.prepare('SELECT 1 FROM users WHERE username = ?').get(u)) return 'taken';
+    const recovery = newRecoveryCode();
+    this.db.prepare('UPDATE users SET username = ?, pass_hash = ?, recovery_hash = ? WHERE id = ?').run(u, hashPassword(password), hashPassword(recovery), id);
+    return recovery;
+  }
+
+  /** valida usuário/senha e emite um novo token para este dispositivo */
+  login(username: string, password: string): { user: UserRow; token: string } | null {
+    const r = this.db.prepare('SELECT id, pass_hash FROM users WHERE username = ?').get(username.toLowerCase()) as { id: string; pass_hash: string | null } | undefined;
+    if (!r || !r.pass_hash || !verifyPassword(password, r.pass_hash)) return null;
+    return { user: this.byId(r.id)!, token: this.issueToken(r.id) };
+  }
+
+  /** redefine a senha com o código de recuperação; gera novo código e encerra as outras sessões */
+  recover(username: string, code: string, newPassword: string): { user: UserRow; token: string; recovery: string } | null {
+    const r = this.db.prepare('SELECT id, recovery_hash FROM users WHERE username = ?').get(username.toLowerCase()) as { id: string; recovery_hash: string | null } | undefined;
+    if (!r || !r.recovery_hash || !verifyPassword(code.trim().toUpperCase(), r.recovery_hash)) return null;
+    const recovery = newRecoveryCode();
+    this.db.prepare('UPDATE users SET pass_hash = ?, recovery_hash = ?, token_hash = ? WHERE id = ?').run(hashPassword(newPassword), hashPassword(recovery), hash(randomBytes(24).toString('base64url')), r.id);
+    this.revokeAllTokens(r.id);
+    return { user: this.byId(r.id)!, token: this.issueToken(r.id), recovery };
+  }
+
+  issueToken(userId: string): string {
+    const token = randomBytes(24).toString('base64url');
+    this.db.prepare('INSERT INTO tokens (token_hash, user_id, created_at) VALUES (?,?,?)').run(hash(token), userId, Date.now());
+    return token;
+  }
+
+  /** logout deste dispositivo */
+  revokeToken(token: string): void {
+    this.db.prepare('DELETE FROM tokens WHERE token_hash = ?').run(hash(token));
+  }
+
+  private revokeAllTokens(userId: string): void {
+    this.db.prepare('DELETE FROM tokens WHERE user_id = ?').run(userId);
+  }
+
+  /** ranking global por XP (apenas dados públicos) */
+  leaderboard(limit = 20): { name: string; level: number; xp: number; wins: number }[] {
+    const rows = this.db.prepare('SELECT name, xp, stats FROM users ORDER BY xp DESC LIMIT ?').all(limit) as { name: string; xp: number; stats: string }[];
+    return rows.map((r) => ({ name: r.name, level: 0, xp: Number(r.xp), wins: Number(JSON.parse(r.stats).wins ?? 0) }));
   }
   byId(id: string): UserRow | null {
     return this.row(this.db.prepare('SELECT * FROM users WHERE id = ?').get(id) as never);
@@ -178,4 +249,24 @@ export class Database {
   close(): void {
     this.db.close();
   }
+}
+
+function hashPassword(pw: string): string {
+  const salt = randomBytes(16);
+  const key = scryptSync(pw, salt, 32, { N: 16384, r: 8, p: 1 });
+  return `scrypt$${salt.toString('hex')}$${key.toString('hex')}`;
+}
+
+function verifyPassword(pw: string, stored: string): boolean {
+  const [alg, saltHex, keyHex] = stored.split('$');
+  if (alg !== 'scrypt' || !saltHex || !keyHex) return false;
+  const key = scryptSync(pw, Buffer.from(saltHex, 'hex'), 32, { N: 16384, r: 8, p: 1 });
+  const want = Buffer.from(keyHex, 'hex');
+  return want.length === key.length && timingSafeEqual(want, key);
+}
+
+function newRecoveryCode(): string {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const raw = Array.from(randomBytes(12), (b) => A[b % A.length]).join('');
+  return `${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}`;
 }

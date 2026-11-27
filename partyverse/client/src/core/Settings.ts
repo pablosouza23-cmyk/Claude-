@@ -10,6 +10,9 @@ export interface SettingsData {
   masterVolume: number;
   musicVolume: number;
   sfxVolume: number;
+  voiceVolume: number;
+  /** no lobby: ouvir todos por proximidade ou só a própria sala */
+  voiceLobby: 'proximity' | 'room';
   showFps: boolean;
   uiScale: number;
   keys: Record<string, string>;
@@ -43,7 +46,7 @@ class SettingsStore {
     try { saved = JSON.parse(localStorage.getItem(KEY) ?? '{}'); } catch { /* */ }
     this.data = {
       quality: detectQuality(), autoResolution: true, renderScale: 1, sensitivity: 1, invertY: false,
-      masterVolume: 0.8, musicVolume: 0.45, sfxVolume: 0.9, showFps: false, uiScale: 1, touchControls: 'auto',
+      masterVolume: 0.8, musicVolume: 0.45, sfxVolume: 0.9, voiceVolume: 1, voiceLobby: 'proximity', showFps: false, uiScale: 1, touchControls: 'auto',
       ...saved,
       keys: { ...DEFAULT_KEYS, ...(saved.keys ?? {}) },
     };

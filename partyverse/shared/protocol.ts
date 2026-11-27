@@ -24,6 +24,9 @@ export interface PrivateProfile extends PublicProfile {
   stats: Record<string, number>;
   history: MatchHistoryEntry[];
   records: Record<string, number>;
+  /** nome de usuário (null = conta convidado sem senha) */
+  username: string | null;
+  tutorialDone: boolean;
 }
 
 export interface MatchHistoryEntry {
@@ -130,7 +133,17 @@ export type C2S =
   | { t: 'roomStart' }
   | { t: 'roomList' }
   | { t: 'returnLobby' }
-  | { t: 'playAgain' };
+  | { t: 'playAgain' }
+  /* voz: estado e sinalização WebRTC (o servidor só repassa dentro do mesmo mundo) */
+  | { t: 'voice'; on: boolean; mic: boolean }
+  | { t: 'rtc'; to: number; d: unknown }
+  /* contas */
+  | { t: 'register'; username: string; password: string }
+  | { t: 'login'; username: string; password: string }
+  | { t: 'recover'; username: string; code: string; password: string }
+  | { t: 'logout'; token: string }
+  | { t: 'leaderboard' }
+  | { t: 'tutorialDone' };
 
 /* ------------------------------------------------------------------ */
 /* Servidor -> Cliente                                                   */
@@ -169,4 +182,9 @@ export type S2C =
   | { t: 'roomList'; rooms: RoomListEntry[] }
   | { t: 'toast'; msg: string; kind?: 'info' | 'ok' | 'warn' | 'err' }
   | { t: 'reward'; xp: number; coins: number; achievements: string[]; levelUp: number | null }
-  | { t: 'err'; msg: string };
+  | { t: 'err'; msg: string }
+  | { t: 'voice'; on: number[]; mic: number[] }
+  | { t: 'rtc'; from: number; d: unknown }
+  | { t: 'ice'; servers: { urls: string | string[]; username?: string; credential?: string }[] }
+  | { t: 'auth'; ok: boolean; msg?: string; token?: string; recovery?: string; username?: string }
+  | { t: 'leaderboard'; rows: { name: string; level: number; xp: number; wins: number }[] };

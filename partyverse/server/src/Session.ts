@@ -13,6 +13,8 @@ export class Session {
   /** limite simples de taxa de mensagens */
   private bucket = 60;
   private bucketAt = Date.now();
+  /** tentativas de login/recuperação (anti força bruta) */
+  authTries: number[] = [];
 
   constructor(public user: UserRow, public token: string) {}
 

@@ -276,3 +276,22 @@ button { cursor: pointer; }
 @media (max-width: 760px) and (pointer: coarse) {
   .chat { bottom: calc(190px + var(--safe-b)); }
 }
+
+/* ------------------------------ voz ------------------------------ */
+.voice-dock { position: absolute; right: calc(10px + var(--safe-r)); top: 42%; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; z-index: 5; }
+.vbtn { width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--glass-line); background: var(--glass); color: #fff; display: grid; place-items: center; backdrop-filter: blur(8px); box-shadow: var(--shadow); }
+.vbtn svg { width: 24px; height: 24px; }
+.vbtn.small { width: 36px; height: 36px; font-weight: 900; }
+.vbtn.live { background: rgba(47,201,122,.85); border-color: #7ff0b3; }
+.vbtn.talking { box-shadow: 0 0 0 4px rgba(47,201,122,.45), 0 0 22px rgba(47,201,122,.8); }
+.vbtn.muted { background: rgba(255,77,94,.85); border-color: #ff9aa5; }
+.vbtn.listen { background: rgba(57,208,255,.6); }
+.speakers { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; pointer-events: none; }
+.speakers span { font-size: .78em; font-weight: 800; padding: 3px 9px; border-radius: 99px; background: rgba(47,201,122,.85); }
+.speakers span.me { background: rgba(124,92,255,.9); }
+.tutorial { position: absolute; left: 50%; bottom: calc(24px + var(--safe-b)); transform: translateX(-50%); width: min(520px, 92vw); padding: 16px 18px; border-radius: 20px; background: #fff; color: var(--ink); box-shadow: var(--shadow); z-index: 35; animation: rise .25s; }
+.tutorial h4 { margin: 0 0 6px; font-family: var(--display); font-weight: normal; font-size: 1.3em; }
+.tutorial .dots { display: flex; gap: 5px; }
+.tutorial .dots i { width: 8px; height: 8px; border-radius: 50%; background: #d9d3f5; }
+.tutorial .dots i.on { background: var(--violet); }
+.recovery { font-family: var(--display); font-size: 1.6em; letter-spacing: 3px; text-align: center; padding: 12px; border-radius: 14px; background: #fff7d6; border: 2px dashed var(--yellow); user-select: text; -webkit-user-select: text; }

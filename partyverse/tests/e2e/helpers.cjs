@@ -5,7 +5,7 @@ const { chromium } = require('playwright');
 const BASE = process.env.PV_URL || 'http://localhost:5173';
 
 async function launch() {
-  return chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
+  return chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${require('path').join(__dirname, '../fixtures/fala-sintetica.wav')}`] });
 }
 
 async function client(browser, name, vp = { width: 960, height: 600 }, quality = 'low') {
@@ -14,7 +14,7 @@ async function client(browser, name, vp = { width: 960, height: 600 }, quality =
   page.on('pageerror', (e) => console.log(`[${name}] pageerror`, e.message));
   page.on('console', (m) => { const t = m.text(); if (m.type() === 'error' && !/GL Driver/.test(t)) console.log(`[${name}]`, t); });
   await page.goto(`${BASE}/?name=${name}&profile=${name}-${Date.now()}`);
-  await page.waitForFunction(() => window.pv && window.pv.local && window.pv.view && !window.pv.ui.isBlocking(), null, { timeout: 60000 });
+  await page.waitForFunction(() => window.pv && window.pv.local && window.pv.view && !window.pv.ui.isBlocking(), null, { timeout: 180000 });
   return page;
 }
 

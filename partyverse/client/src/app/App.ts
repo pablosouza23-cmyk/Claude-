@@ -19,6 +19,7 @@ import type { View } from '../game/View';
 import { Net } from '../net/Net';
 import { UI } from '../ui/UI';
 import { Environment } from '../world/Environment';
+import { VoiceChat, type VoicePeerInfo } from '../voice/Voice';
 
 export class App {
   readonly renderer: Renderer;
@@ -42,6 +43,8 @@ export class App {
   private focus = new THREE.Vector3();
   private nearest: Interactable | null = null;
   private lastPos = new THREE.Vector3();
+  readonly voice: VoiceChat;
+  private speakingShown = new Map<number, boolean>();
   /** contadores para testes automatizados */
   readonly stats = { snaps: 0, corrections: 0, worlds: 0 };
 
@@ -50,6 +53,10 @@ export class App {
     this.cam = new CameraRig(this.camera);
     this.input = new Input(this.renderer.gl.domElement);
     this.env = new Environment(this.scene, this.renderer);
+    this.voice = new VoiceChat(
+      (to, d) => this.net.send({ t: 'rtc', to, d }),
+      (on, mic) => this.net.send({ t: 'voice', on, mic }),
+    );
     this.ui = new UI(this, uiRoot);
     settings.on(() => { this.env.applyQuality(); this.camera.far = Math.max(600, this.renderer.preset.drawDistance * 8); this.camera.updateProjectionMatrix(); });
     addEventListener('resize', () => this.onResize());
@@ -154,6 +161,11 @@ export class App {
       if (this.view instanceof LobbyView) this.view.onDepartures(m.rooms.filter((r) => r.state !== 'waiting').map((r) => ({ code: r.code, game: r.game, players: r.players })));
     });
     n.on('toast', (m) => this.ui.toast(m.msg, m.kind));
+    n.on('ice', (m) => { this.voice.iceServers = m.servers as RTCIceServer[]; });
+    n.on('voice', (m) => this.voice.setVoiceIds(m.on, this.myId));
+    n.on('rtc', (m) => { void this.voice.onSignal(m.from, m.d as never); });
+    n.on('auth', (m) => this.ui.onAuth(m));
+    n.on('leaderboard', (m) => this.ui.setLeaderboard(m.rows));
     n.on('reward', (m) => this.ui.reward(m));
     n.on('err', (m) => this.ui.toast(m.msg, 'err'));
     // painel de partidas do lobby: atualiza periodicamente
@@ -175,6 +187,7 @@ export class App {
     this.ui.showLoading(m.kind === 'lobby' ? 'Voltando à Praça PARTYVERSE…' : 'Rumo à estação…', 0);
     try {
       this.view?.dispose();
+      this.voice.reset();
       for (const r of this.remotes.values()) r.avatar.dispose();
       this.remotes.clear();
       this.local?.avatar.dispose();
@@ -191,6 +204,8 @@ export class App {
       await view.load((p, msg) => this.ui.showLoading(msg, p));
       this.syncPlayers(m);
       this.ui.setMode(m.kind);
+      // o servidor cria um jogador novo a cada mundo: reanuncia a voz
+      if (this.voice.state === 'on' || this.voice.state === 'listen-only') this.net.send({ t: 'voice', on: true, mic: this.voice.state === 'on' && !this.voice.micMuted });
       this.cam.worlds = view.cameraWorlds();
       const lp = this.local as LocalPlayer | null;
       if (lp) this.cam.snap(lp.worldPos(new THREE.Vector3()).add(new THREE.Vector3(0, 1.5, 0)));
@@ -299,11 +314,38 @@ export class App {
     if (!this.input.enabled) { look.x = look.y = look.zoom = 0; }
     this.cam.update(dt, look, this.focus);
     this.env.update(dt, this.focus);
+    if (lp && view && this.voice.state !== 'off') this.updateVoice(lp, view);
     // atualiza avatares
     if (lp) lp.avatar.update(dt);
     for (const r of this.remotes.values()) r.avatar.update(dt);
     this.renderer.gl.render(this.scene, this.camera);
     this.ui.frame(dt, this.renderer.fps);
+  }
+
+  private updateVoice(lp: LocalPlayer, view: View): void {
+    const info = new Map<number, VoicePeerInfo & { userId: string }>();
+    const roomOnly = view instanceof LobbyView && settings.data.voiceLobby === 'room';
+    const members = new Set(this.ui.room?.members.map((m) => m.userId) ?? []);
+    const party = new Set<number>();
+    const v = new THREE.Vector3();
+    for (const r of this.remotes.values()) {
+      const inRoom = members.has(r.userId);
+      if (roomOnly && !inRoom) continue;
+      if (roomOnly && inRoom) party.add(r.id);
+      r.avatar.root.getWorldPosition(v);
+      info.set(r.id, { id: r.id, name: r.avatar.name, userId: r.userId, pos: { x: v.x, y: v.y + 1.6, z: v.z } });
+    }
+    const me = lp.worldPos(new THREE.Vector3());
+    const col = lp.plat === 0 ? view.colFor(0) : null;
+    this.voice.update({ x: me.x, y: me.y + 1.6, z: me.z }, this.cam.yaw, info, col, roomOnly ? party : null);
+    // indicador de fala na etiqueta de nome
+    for (const r of this.remotes.values()) {
+      const sp = this.voice.isSpeaking(r.id);
+      if (this.speakingShown.get(r.id) !== sp) {
+        this.speakingShown.set(r.id, sp);
+        r.avatar.setName(r.avatar.name, r.avatar.level, sp ? '🔊' : r.connected ? '' : '⚠');
+      }
+    }
   }
 
   useNearest(): void {

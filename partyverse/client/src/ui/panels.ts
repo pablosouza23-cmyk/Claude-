@@ -16,14 +16,14 @@ import { colorFor, el, esc, initials, on } from './dom';
 import { gameIconSvg, icon } from './icons';
 import type { UI } from './UI';
 
-export type PanelName = 'play' | 'friends' | 'wardrobe' | 'shop' | 'profile' | 'settings' | 'pause' | 'name' | 'results';
+export type PanelName = 'play' | 'friends' | 'wardrobe' | 'shop' | 'profile' | 'settings' | 'pause' | 'name' | 'results' | 'voice' | 'recovery';
 
 const SLOT_NAMES: Record<Slot, string> = { hair: 'Cabelo', hat: 'Chapéu', top: 'Roupa', bottom: 'Calça', shoes: 'Sapatos', face: 'Rosto', acc: 'Acessório' };
 const SLOT_ICON: Record<Slot, string> = { hair: '💇', hat: '🧢', top: '👕', bottom: '👖', shoes: '👟', face: '😊', acc: '🕶️' };
 
 export class Panels {
   private wrap: HTMLElement | null = null;
-  private current: PanelName | null = null;
+  current: PanelName | null = null;
   private arg: Record<string, unknown> = {};
   private tab: Record<string, string> = { play: 'create', style: 'wardrobe', profile: 'stats' };
   private draft: Outfit | null = null;
@@ -53,6 +53,7 @@ export class Panels {
     this.arg = (arg as Record<string, unknown>) ?? {};
     if (name === 'play' && this.arg.game) { this.createGame = this.arg.game as GameId; this.tab.play = 'create'; }
     if (name === 'play') this.ui.app.net.send({ t: 'roomList' });
+    if (name === 'profile') this.ui.app.net.send({ t: 'leaderboard' });
     if (name === 'wardrobe' && this.ui.profile) this.draft = { ...this.ui.profile.outfit };
     this.current = name;
     if (!this.wrap) {
@@ -71,11 +72,11 @@ export class Panels {
   }
 
   refresh(): void {
-    if (this.wrap && this.current && this.current !== 'name' && this.current !== 'settings') this.render();
+    if (this.wrap && this.current && this.current !== 'name' && this.current !== 'settings' && this.current !== 'recovery' && !(this.current === 'profile' && this.tab.profile === 'account')) this.render();
   }
 
   private frame(title: string, body: string, narrow = false): string {
-    const closable = this.current !== 'name';
+    const closable = this.current !== 'name' && this.current !== 'recovery';
     return `<div class="panel ${narrow ? 'narrow' : ''}"><div class="panel-head"><h2>${title}</h2>${closable ? `<button class="x" data-close>${icon('close')}</button>` : ''}</div><div class="panel-body">${body}</div></div>`;
   }
 
@@ -92,6 +93,8 @@ export class Panels {
       case 'pause': w.innerHTML = this.pauseHtml(); break;
       case 'name': w.innerHTML = this.nameHtml(); break;
       case 'results': w.innerHTML = this.resultsHtml(); break;
+      case 'voice': w.innerHTML = this.voiceHtml(); break;
+      case 'recovery': w.innerHTML = this.recoveryHtml(); break;
     }
     const body = w.querySelector('.panel-body');
     if (body) body.scrollTop = scroll;
@@ -334,7 +337,7 @@ export class Panels {
           <div class="muted">Nível ${p.level} • ${p.xpInto}/${p.xpNeed} XP • Código ${esc(p.friendCode)}</div>
           <div class="progress" style="background:var(--paper-2);max-width:320px"><i style="width:${Math.round((p.xpInto / p.xpNeed) * 100)}%"></i></div></div>
         <button class="btn small" data-act="rename">Mudar nome</button></div>
-      <div class="tabs"><button data-ptab="stats" class="${t === 'stats' ? 'on' : ''}">Estatísticas</button><button data-ptab="ach" class="${t === 'ach' ? 'on' : ''}">Conquistas (${p.achievements.length}/${ACHIEVEMENTS.length})</button><button data-ptab="hist" class="${t === 'hist' ? 'on' : ''}">Histórico</button></div>`;
+      <div class="tabs"><button data-ptab="stats" class="${t === 'stats' ? 'on' : ''}">Estatísticas</button><button data-ptab="ach" class="${t === 'ach' ? 'on' : ''}">Conquistas (${p.achievements.length}/${ACHIEVEMENTS.length})</button><button data-ptab="hist" class="${t === 'hist' ? 'on' : ''}">Histórico</button><button data-ptab="rank" class="${t === 'rank' ? 'on' : ''}">Ranking</button><button data-ptab="account" class="${t === 'account' ? 'on' : ''}">Conta</button></div>`;
     if (t === 'stats') {
       body += `<div class="grid g3">
         <div class="stat"><b>${st.matches ?? 0}</b>Partidas</div><div class="stat"><b>${st.wins ?? 0}</b>Vitórias</div>
@@ -345,6 +348,29 @@ export class Panels {
     } else if (t === 'ach') {
       const got = new Set(p.achievements);
       body += `<div class="grid g2">${ACHIEVEMENTS.map((a) => `<div class="ach ${got.has(a.id) ? 'got' : ''}"><div class="medal">${got.has(a.id) ? '★' : '🔒'}</div><div><b>${esc(a.name)}</b><div class="muted">${esc(a.desc)}</div><div class="muted" style="font-size:.8em">+${a.coins} moedas${a.unlock ? ` • libera ${esc(COSMETIC_BY_ID.get(a.unlock)?.name ?? '')}` : ''}</div></div></div>`).join('')}</div>`;
+    } else if (t === 'rank') {
+      const rows = this.ui.leaderboard;
+      body += rows.length ? `<div class="list">${rows.map((r, i) => `<div class="li" style="${r.name === p.name ? 'outline:2px solid var(--violet)' : ''}"><b style="width:32px;font-family:var(--display);font-size:1.2em;color:${i < 3 ? ['#e0a800', '#9aa5b1', '#c2692d'][i] : 'var(--ink-2)'}">${i + 1}º</b><div class="grow t">${esc(r.name)}</div><span class="tag">Nv ${r.level}</span><span class="tag green">${r.wins} vitórias</span></div>`).join('')}</div>` : '<div class="empty">Carregando ranking…</div>';
+    } else if (t === 'account') {
+      body += p.username
+        ? `<div class="card"><h3>Conta protegida</h3><p class="muted">Usuário: <b>${esc(p.username)}</b>. Use usuário e senha para entrar em outro celular ou computador.</p>
+            <div class="row"><button class="btn red" data-act="logout">Sair da conta neste dispositivo</button></div></div>`
+        : `<div class="card"><h3>Proteja seu progresso</h3><p class="muted">Você está jogando como convidado: o progresso fica salvo neste dispositivo. Crie usuário e senha para não perder nada e jogar em outros aparelhos.</p>
+            <div class="grid g2"><div class="field"><label>Usuário</label><input class="input" data-ru maxlength="16" autocomplete="username"/></div>
+            <div class="field"><label>Senha (mín. 6)</label><input class="input" type="password" data-rp maxlength="72" autocomplete="new-password"/></div></div>
+            <button class="btn green" style="margin-top:10px" data-act="register">Criar conta com este progresso</button></div>`;
+      body += `<div class="grid g2" style="margin-top:12px">
+        <div class="card"><h3>Entrar em outra conta</h3>
+          <div class="field"><label>Usuário</label><input class="input" data-lu maxlength="16" autocomplete="username"/></div>
+          <div class="field" style="margin-top:6px"><label>Senha</label><input class="input" type="password" data-lp maxlength="72" autocomplete="current-password"/></div>
+          <button class="btn" style="margin-top:10px" data-act="login">Entrar</button>
+          ${p.username ? '' : '<p class="muted" style="font-size:.8em">Atenção: o progresso deste convidado fica para trás se você não criar uma conta antes.</p>'}</div>
+        <div class="card"><h3>Esqueci a senha</h3>
+          <div class="field"><label>Usuário</label><input class="input" data-cu maxlength="16"/></div>
+          <div class="field" style="margin-top:6px"><label>Código de recuperação</label><input class="input" data-cc maxlength="14" placeholder="XXXX-XXXX-XXXX"/></div>
+          <div class="field" style="margin-top:6px"><label>Nova senha</label><input class="input" type="password" data-cp maxlength="72" autocomplete="new-password"/></div>
+          <button class="btn yellow" style="margin-top:10px" data-act="recover">Redefinir senha</button></div></div>
+        <p class="muted" style="margin-top:10px"><a href="/privacidade.html" target="_blank" rel="noopener">Política de privacidade e uso do microfone</a></p>`;
     } else {
       body += p.history.length
         ? `<div class="list">${p.history.map((h) => `<div class="li"><div class="avatar-dot" style="background:linear-gradient(135deg,${GAMES[h.game].color},${GAMES[h.game].accent})">${gameIconSvg(h.game)}</div>
@@ -377,7 +403,8 @@ export class Panels {
       <div class="grid g3" style="margin-top:8px">${Object.keys(DEFAULT_KEYS).map((k) => `<button class="li" data-rebind="${k}" style="border:0;cursor:pointer"><span class="grow" style="text-align:left">${KEY_LABELS[k]}</span><b class="tag">${this.rebind === k ? '…' : esc(s.keys[k].replace('Key', '').replace('Left', ''))}</b></button>`).join('')}</div>
       <div class="row" style="margin-top:8px"><button class="btn small ghost" style="color:var(--ink)" data-act="resetkeys">Restaurar teclas</button></div>
       <h3 style="margin-top:14px">Áudio</h3>
-      <div class="grid g3">${slider('masterVolume', s.masterVolume, 0, 1, 0.05, 'Geral')}${slider('musicVolume', s.musicVolume, 0, 1, 0.05, 'Música')}${slider('sfxVolume', s.sfxVolume, 0, 1, 0.05, 'Efeitos')}</div>`;
+      <div class="grid g2">${slider('masterVolume', s.masterVolume, 0, 1, 0.05, 'Geral')}${slider('musicVolume', s.musicVolume, 0, 1, 0.05, 'Música')}${slider('sfxVolume', s.sfxVolume, 0, 1, 0.05, 'Efeitos')}${slider('voiceVolume', s.voiceVolume, 0, 1.5, 0.05, 'Voz dos jogadores')}</div>
+      <div class="field" style="margin-top:8px"><label>Voz no lobby</label><div class="seg"><button data-vlobby="proximity" class="${s.voiceLobby === 'proximity' ? 'on' : ''}">Por proximidade</button><button data-vlobby="room" class="${s.voiceLobby === 'room' ? 'on' : ''}">Só minha sala</button></div></div>`;
     return this.frame('Configurações', body);
   }
 
@@ -419,6 +446,53 @@ export class Panels {
     void game;
     setTimeout(() => this.wrap?.querySelectorAll('.star').forEach((s) => s.classList.add('x')), 50);
     return this.frame(GAMES[game].name, body, true);
+  }
+
+  private voiceHtml(): string {
+    const v = this.ui.app.voice;
+    const st = v.state;
+    if (st === 'off' || st === 'denied' || st === 'unsupported' || st === 'requesting') {
+      return this.frame('Chat de voz', `
+        <p><b>Converse com quem está perto de você.</b> Quanto mais longe, mais baixo; muito longe, você não ouve. Na partida, só a sua equipe ouve.</p>
+        <ul class="muted" style="padding-left:18px">
+          <li>O navegador vai pedir permissão para usar o <b>microfone</b>. Ele só é usado enquanto o chat de voz estiver ligado.</li>
+          <li>O áudio vai direto entre os jogadores (WebRTC). <b>Não gravamos nem armazenamos</b> sua voz.</li>
+          <li>Aplicamos cancelamento de eco, redução de ruído, controle de volume e limitador para a voz chegar limpa.</li>
+          <li>Você pode silenciar seu microfone ou qualquer jogador a qualquer momento.</li>
+        </ul>
+        ${st === 'unsupported' ? '<p class="tag red">Este navegador não suporta chat de voz.</p>' : ''}
+        ${st === 'denied' ? '<p class="tag yellow">Permissão negada. Você pode só ouvir ou liberar o microfone nas configurações do navegador.</p>' : ''}
+        <div class="row" style="justify-content:flex-end;margin-top:12px">
+          <button class="btn ghost" style="color:var(--ink)" data-close>Agora não</button>
+          <button class="btn green" data-act="voiceon" ${st === 'unsupported' || st === 'requesting' ? 'disabled' : ''}>${st === 'requesting' ? 'Aguardando permissão…' : 'Ativar microfone'}</button>
+        </div>
+        <p class="muted" style="font-size:.8em"><a href="/privacidade.html" target="_blank" rel="noopener">Política de privacidade</a></p>`, true);
+    }
+    const app = this.ui.app;
+    const rows = [...app.remotes.values()].map((r) => {
+      const has = v.voiceIds.has(r.id);
+      const peer = v.peers.get(r.id);
+      const blocked = v.blocked.has(r.userId);
+      return `<div class="li"><span class="dot ${peer?.connected ? 'on' : ''}"></span><div class="grow"><div class="t">${esc(r.avatar.name)} ${v.isSpeaking(r.id) ? '🔊' : ''}</div><div class="muted" style="font-size:.8em">${has ? (peer?.connected ? 'Conectado por voz' : 'Conectando…') : 'Sem voz'}</div></div>
+        <button class="btn small ${blocked ? 'green' : 'red'}" data-vblock="${esc(r.userId)}">${blocked ? 'Ouvir' : 'Silenciar'}</button></div>`;
+    }).join('');
+    return this.frame('Chat de voz', `
+      <div class="row between"><div><b>${st === 'on' ? (v.micMuted ? 'Microfone silenciado' : 'Microfone ligado') : 'Somente ouvindo'}</b>
+        ${st === 'on' ? `<div class="progress" style="background:var(--paper-2);width:200px"><i style="width:${Math.min(100, Math.round(v.micLevel * 600))}%"></i></div>` : ''}</div>
+        <div class="row">${st === 'on' ? `<button class="btn small ${v.micMuted ? 'green' : 'yellow'}" data-act="micmute">${v.micMuted ? 'Ativar microfone' : 'Silenciar microfone'}</button>` : `<button class="btn small green" data-act="voiceretry">Tentar microfone</button>`}
+        <button class="btn small red" data-act="voiceoff">Desligar voz</button></div></div>
+      <h3 style="margin-top:14px">Jogadores aqui</h3>
+      ${rows ? `<div class="list">${rows}</div>` : '<div class="empty">Ninguém por perto ainda.</div>'}
+      <div class="grid g2" style="margin-top:12px"><div class="field"><label>Volume das vozes: <span data-val="voiceVolume">${settings.data.voiceVolume.toFixed(2)}</span></label><input type="range" min="0" max="1.5" step="0.05" value="${settings.data.voiceVolume}" data-range="voiceVolume"/></div>
+      <div class="field"><label>No lobby</label><div class="seg"><button data-vlobby="proximity" class="${settings.data.voiceLobby === 'proximity' ? 'on' : ''}">Proximidade</button><button data-vlobby="room" class="${settings.data.voiceLobby === 'room' ? 'on' : ''}">Só minha sala</button></div></div></div>`, true);
+  }
+
+  private recoveryHtml(): string {
+    const a = this.arg as { code?: string; then?: string | null };
+    return this.frame('Guarde seu código', `
+      <p>Este é o seu <b>código de recuperação</b>. Ele é a única forma de redefinir a senha se você esquecê-la. Anote ou tire um print — ele não será mostrado de novo.</p>
+      <div class="recovery">${esc(a.code ?? '')}</div>
+      <div class="row" style="margin-top:12px;justify-content:space-between"><button class="btn ghost" style="color:var(--ink)" data-act="copyrec">Copiar</button><button class="btn green" data-act="recdone">Já guardei</button></div>`, true);
   }
 
   /* ------------------------------ eventos ------------------------------ */
@@ -472,6 +546,13 @@ export class Panels {
       if (ck && this.draft) { (this.draft as unknown as Record<string, string>)[ck] = t.dataset.color!; this.render(); }
     });
     on(w, '[data-skin]', 'click', (_e, t) => { if (this.draft) { this.draft.skin = Number(t.dataset.skin); this.render(); } });
+    on(w, '[data-vlobby]', 'click', (_e, t) => { settings.set('voiceLobby', t.dataset.vlobby as 'room'); this.render(); });
+    on(w, '[data-vblock]', 'click', (_e, t) => {
+      const v = this.ui.app.voice;
+      const id = t.dataset.vblock!;
+      if (v.blocked.has(id)) v.blocked.delete(id); else v.blocked.add(id);
+      this.render();
+    });
     on(w, '[data-quality]', 'click', (_e, t) => { settings.set('quality', t.dataset.quality as Quality); this.render(); });
     on(w, '[data-touch]', 'click', (_e, t) => { settings.set('touchControls', t.dataset.touch as 'auto'); this.render(); });
     on(w, '[data-rebind]', 'click', (_e, t) => { this.rebind = t.dataset.rebind!; this.render(); });
@@ -512,6 +593,40 @@ export class Panels {
         case 'resetkeys': settings.set('keys', { ...DEFAULT_KEYS }); this.render(); break;
         case 'leavematch': net.send({ t: 'returnLobby' }); this.close(); break;
         case 'again': net.send({ t: 'playAgain' }); this.close(); break;
+        case 'voiceon': case 'voiceretry': {
+          const v = this.ui.app.voice;
+          if (a === 'voiceretry') v.disable();
+          void v.enable().then((st) => {
+            this.ui.toast(st === 'on' ? 'Microfone ligado — fale com quem está perto!' : st === 'listen-only' ? 'Sem microfone: você está só ouvindo.' : 'Chat de voz indisponível.', st === 'on' ? 'ok' : 'warn');
+            this.render();
+          });
+          this.render();
+          break;
+        }
+        case 'micmute': this.ui.app.voice.setMicMuted(!this.ui.app.voice.micMuted); this.render(); break;
+        case 'voiceoff': this.ui.app.voice.disable(); this.close(); break;
+        case 'register': {
+          const u = q<HTMLInputElement>('[data-ru]')?.value.trim() ?? '', pw = q<HTMLInputElement>('[data-rp]')?.value ?? '';
+          net.send({ t: 'register', username: u, password: pw });
+          break;
+        }
+        case 'login': net.send({ t: 'login', username: q<HTMLInputElement>('[data-lu]')?.value.trim() ?? '', password: q<HTMLInputElement>('[data-lp]')?.value ?? '' }); break;
+        case 'recover': net.send({ t: 'recover', username: q<HTMLInputElement>('[data-cu]')?.value.trim() ?? '', code: q<HTMLInputElement>('[data-cc]')?.value.trim() ?? '', password: q<HTMLInputElement>('[data-cp]')?.value ?? '' }); break;
+        case 'logout': {
+          if (!confirm('Sair da conta neste dispositivo? Você poderá entrar de novo com usuário e senha.')) break;
+          const tok = net.token;
+          if (tok) net.send({ t: 'logout', token: tok });
+          setTimeout(() => net.switchAccount(null), 300);
+          break;
+        }
+        case 'copyrec': void navigator.clipboard?.writeText(String((this.arg as { code?: string }).code ?? '')).then(() => this.ui.toast('Código copiado!', 'ok')); break;
+        case 'recdone': {
+          const then = (this.arg as { then?: string | null }).then;
+          this.close();
+          if (then) net.switchAccount(then);
+          else this.ui.toast('Conta criada! Seu progresso está protegido.', 'ok');
+          break;
+        }
         case 'tolobby': net.send({ t: 'returnLobby' }); this.lastReward = null; this.close(); break;
       }
     });

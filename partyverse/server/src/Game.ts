@@ -5,6 +5,7 @@
 import type { WebSocket } from 'ws';
 import { MAX_LOBBY_SHARD, PROTOCOL_VERSION, RECONNECT_GRACE_MS, SERVER_TICK, SNAPSHOT_RATE, sanitizeChat, sanitizeName } from '../../shared/constants';
 import { COSMETIC_BY_ID, validateOutfit } from '../../shared/cosmetics';
+import { NAME_MAX } from '../../shared/constants';
 import { isDifficulty, isGameId, type GameId } from '../../shared/minigames';
 import type { C2S, FriendEntry, PrivateProfile } from '../../shared/protocol';
 import { ACH_BY_ID, computeReward, levelFromXp } from '../../shared/progression';
@@ -116,6 +117,7 @@ export class Game {
       this.sessions.set(user.id, s);
     }
     s.send({ t: 'welcome', token, profile: this.profile(s), serverTime: Date.now(), needName });
+    s.send({ t: 'ice', servers: ICE_SERVERS });
     this.unlock(s, 'first-steps');
     if (reconnect && s.world) {
       s.world.join(s); // reenvia o estado atual e marca como conectado
@@ -139,8 +141,12 @@ export class Game {
   }
 
   private dropSession(s: Session): void {
+    if (this.sessions.get(s.id) !== s) return;
+    this.db.save(s.user);
     this.rooms.leave(s);
-    s.world?.leave(s);
+    const w = s.world;
+    w?.leave(s);
+    if (w instanceof MatchWorld && w.size === 0) this.endMatch(w);
     this.sessions.delete(s.id);
     this.friendsChanged([s.id]);
   }
@@ -307,8 +313,91 @@ export class Game {
       }
       case 'roomList': s.send({ t: 'roomList', rooms: this.rooms.list() }); break;
       case 'returnLobby': if (w?.kind === 'match') this.toLobby(s); break;
+      case 'voice': {
+        if (!w || !p) break;
+        p.voice = !!m.on;
+        p.mic = !!m.on && !!m.mic;
+        w.broadcastVoice();
+        break;
+      }
+      case 'rtc': {
+        // repassa sinalização WebRTC apenas para alguém do MESMO mundo com voz ativa
+        if (!w || !p || !p.voice) break;
+        const target = w.players.get(Number(m.to));
+        if (!target || !target.voice || target === p) break;
+        const raw = JSON.stringify(m.d ?? null);
+        if (raw.length > 16_000) break;
+        target.session.send({ t: 'rtc', from: p.id, d: m.d });
+        break;
+      }
+      case 'register': this.register(s, m.username, m.password); break;
+      case 'login': this.login(s, m.username, m.password); break;
+      case 'recover': this.recover(s, m.username, m.code, m.password); break;
+      case 'logout': {
+        if (typeof m.token === 'string' && this.db.byToken(m.token)?.id === s.id) this.db.revokeToken(m.token);
+        s.send({ t: 'auth', ok: true, msg: 'logout' });
+        this.dropSession(s);
+        break;
+      }
+      case 'leaderboard':
+        s.send({ t: 'leaderboard', rows: this.db.leaderboard(20).map((r) => ({ ...r, level: levelFromXp(r.xp).level })) });
+        break;
+      case 'tutorialDone':
+        s.user.stats.tutorial = 1;
+        this.db.save(s.user);
+        this.sendProfile(s);
+        break;
       case 'playAgain': if (w instanceof MatchWorld) w.playAgain(s); break;
     }
+  }
+
+  /* ----------------------------- contas ----------------------------- */
+
+  private authAllowed(s: Session): boolean {
+    const now = Date.now();
+    s.authTries = s.authTries.filter((t) => now - t < 60_000);
+    if (s.authTries.length >= 6) { s.send({ t: 'auth', ok: false, msg: 'Muitas tentativas. Aguarde um minuto.' }); return false; }
+    s.authTries.push(now);
+    return true;
+  }
+
+  private validCreds(username: unknown, password: unknown): { u: string; pw: string } | string {
+    if (typeof username !== 'string' || !/^[a-zA-Z0-9_.-]{3,16}$/.test(username)) return `Usuário: 3 a ${NAME_MAX} letras, números, ponto, hífen ou _.`;
+    if (typeof password !== 'string' || password.length < 6 || password.length > 72) return 'Senha: de 6 a 72 caracteres.';
+    return { u: username, pw: password };
+  }
+
+  private register(s: Session, username: unknown, password: unknown): void {
+    const c = this.validCreds(username, password);
+    if (typeof c === 'string') { s.send({ t: 'auth', ok: false, msg: c }); return; }
+    const r = this.db.register(s.id, c.u, c.pw);
+    if (r === 'taken') { s.send({ t: 'auth', ok: false, msg: 'Esse nome de usuário já existe.' }); return; }
+    if (r === 'already') { s.send({ t: 'auth', ok: false, msg: 'Esta conta já tem usuário e senha.' }); return; }
+    s.send({ t: 'auth', ok: true, msg: 'registered', recovery: r, username: c.u.toLowerCase() });
+    this.sendProfile(s);
+  }
+
+  private login(s: Session, username: unknown, password: unknown): void {
+    if (!this.authAllowed(s)) return;
+    const c = this.validCreds(username, password);
+    if (typeof c === 'string') { s.send({ t: 'auth', ok: false, msg: 'Usuário ou senha incorretos.' }); return; }
+    const r = this.db.login(c.u, c.pw);
+    if (!r) { s.send({ t: 'auth', ok: false, msg: 'Usuário ou senha incorretos.' }); return; }
+    s.send({ t: 'auth', ok: true, msg: 'login', token: r.token, username: c.u.toLowerCase() });
+    // a sessão convidado atual é encerrada; o cliente reconecta com o novo token
+    if (r.user.id !== s.id) this.dropSession(s);
+  }
+
+  private recover(s: Session, username: unknown, code: unknown, password: unknown): void {
+    if (!this.authAllowed(s)) return;
+    const c = this.validCreds(username, password);
+    if (typeof c === 'string' || typeof code !== 'string') { s.send({ t: 'auth', ok: false, msg: typeof c === 'string' ? c : 'Código inválido.' }); return; }
+    const r = this.db.recover(c.u, code, c.pw);
+    if (!r) { s.send({ t: 'auth', ok: false, msg: 'Usuário ou código de recuperação incorretos.' }); return; }
+    const live = this.sessions.get(r.user.id);
+    if (live && live !== s) { live.send({ t: 'toast', msg: 'Sua senha foi redefinida em outro dispositivo.', kind: 'warn' }); live.ws?.close(4002, 'senha redefinida'); this.dropSession(live); }
+    s.send({ t: 'auth', ok: true, msg: 'recovered', token: r.token, recovery: r.recovery, username: c.u.toLowerCase() });
+    if (r.user.id !== s.id) this.dropSession(s);
   }
 
   /* ----------------------------- loja ----------------------------- */
@@ -338,6 +427,7 @@ export class Game {
       userId: u.id, name: u.name, level: lv.level, outfit: u.outfit, friendCode: u.friendCode,
       xp: u.xp, xpInto: lv.into, xpNeed: lv.need, coins: u.coins, owned: u.owned, achievements: u.achievements,
       stats: u.stats, history: this.db.history(u.id, 15), records: u.records,
+      username: this.db.usernameOf(u.id), tutorialDone: !!u.stats.tutorial,
     };
   }
 
@@ -449,3 +539,9 @@ export class Game {
     for (const uid of notify) this.sendFriends(this.sessions.get(uid)!);
   }
 }
+
+/** servidores ICE para WebRTC (STUN público; TURN configurável via PV_ICE_SERVERS em JSON) */
+const ICE_SERVERS: { urls: string | string[]; username?: string; credential?: string }[] = (() => {
+  try { if (process.env.PV_ICE_SERVERS) return JSON.parse(process.env.PV_ICE_SERVERS); } catch { /* */ }
+  return [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+})();

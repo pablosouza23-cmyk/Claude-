@@ -24,6 +24,9 @@ export interface WPlayer {
   speedMul: number;
   /** dados livres do minigame */
   data: Record<string, unknown>;
+  /** participa do chat de voz / microfone aberto */
+  voice: boolean;
+  mic: boolean;
 }
 
 const ANIMS = new Set<AnimName>(['idle', 'walk', 'run', 'jump', 'fall', 'sit', 'drive', 'carry', 'carry-walk', 'interact', 'pick-up', 'emote-yes', 'emote-no', 'wave', 'die', 'crouch', 'tool']);
@@ -80,7 +83,7 @@ export abstract class World {
     const sp = this.spawnPoint(s);
     const p: WPlayer = {
       id: this.nextId++, session: s, x: sp.x, y: sp.y, z: sp.z, yaw: sp.yaw, anim: 'idle', plat: sp.plat ?? 0,
-      lastMoveAt: Date.now(), connected: s.connected, carry: 0, seat: null, locked: false, speedMul: 1, data: {},
+      lastMoveAt: Date.now(), connected: s.connected, carry: 0, seat: null, locked: false, speedMul: 1, data: {}, voice: false, mic: false,
     };
     this.players.set(p.id, p);
     this.byUser.set(s.id, p);
@@ -91,6 +94,16 @@ export abstract class World {
     return p;
   }
 
+  /** lista de quem está com voz ativa neste mundo (isolamento por mundo/sala) */
+  voiceList(): Extract<S2C, { t: 'voice' }> {
+    const on: number[] = [], mic: number[] = [];
+    for (const q of this.players.values()) if (q.voice && q.connected) { on.push(q.id); if (q.mic) mic.push(q.id); }
+    return { t: 'voice', on, mic };
+  }
+  broadcastVoice(): void {
+    this.broadcast(this.voiceList());
+  }
+
   sendEnter(p: WPlayer): void {
     p.session.send({
       t: 'world', kind: this.kind, worldId: this.id, you: p.id,
@@ -98,6 +111,7 @@ export abstract class World {
       state: this.stateFor(p),
       ...this.extraEnter(),
     });
+    p.session.send(this.voiceList());
   }
 
   leave(s: Session): void {
@@ -108,12 +122,14 @@ export abstract class World {
     this.byUser.delete(s.id);
     if (s.world === this) s.world = null;
     this.broadcast({ t: 'pleave', id: p.id });
+    if (p.voice) this.broadcastVoice();
   }
 
   setConnected(s: Session, connected: boolean): void {
     const p = this.byUser.get(s.id);
     if (!p || p.connected === connected) return;
     p.connected = connected;
+    if (!connected) { p.voice = false; p.mic = false; this.broadcastVoice(); }
     this.broadcast({ t: 'pconn', id: p.id, connected }, p);
   }
 

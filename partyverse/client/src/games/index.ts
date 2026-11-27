@@ -7,4 +7,5 @@ import type { MinigameClientFactory } from './types';
  */
 export const CLIENT_GAMES: Partial<Record<GameId, () => Promise<{ default: MinigameClientFactory }>>> = {
   mudanca: () => import('./mudanca/client'),
+  nave: () => import('./nave/client'),
 };

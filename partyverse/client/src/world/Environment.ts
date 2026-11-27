@@ -104,7 +104,11 @@ export class Environment {
     this.scene.environment = q.envMap ? this.envTex : null;
     this.scene.environmentIntensity = 0.35;
     const fog = this.scene.fog as THREE.Fog;
-    if (fog) fog.far = Math.min(this.preset.fog[1], q.drawDistance * 1.6);
+    if (fog) {
+      fog.far = Math.min(this.preset.fog[1], q.drawDistance * 1.6);
+      // sem isto, céus com névoa distante (ex.: 'space') ficavam com near > far em qualidade baixa/média => tudo da cor da névoa
+      fog.near = Math.min(this.preset.fog[0], fog.far * 0.55);
+    }
   }
 
   private addStars(): void {

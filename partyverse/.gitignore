@@ -6,3 +6,4 @@ data/
 *.db-shm
 test-results/
 release/
+.netlify/

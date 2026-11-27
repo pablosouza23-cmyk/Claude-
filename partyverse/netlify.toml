@@ -8,16 +8,15 @@
   publish = "dist/client"
 
 [build.environment]
-  NODE_VERSION = "22"
+  NODE_VERSION = "24"
+
+# Servidor multiplayer (Netlify Server, Early Access): netlify/server/index.mjs
+[server]
+  region = "fra"
 
 [[redirects]]
   from = "/privacidade"
   to = "/privacidade.html"
-  status = 200
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
   status = 200
 
 [[headers]]

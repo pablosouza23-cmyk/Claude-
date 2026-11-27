@@ -200,6 +200,17 @@ export class UI {
     this.panels.refresh();
   }
 
+  /** cartão "Como jogar" de um minigame (some sozinho ou ao tocar) */
+  howTo(title: string, steps: string[]): void {
+    this.root.querySelector('.howto')?.remove();
+    const c = el('div', 'tutorial howto');
+    c.innerHTML = `<h4>Como jogar: ${esc(title)}</h4><ol style="margin:4px 0 10px;padding-left:20px">${steps.map((s2) => `<li>${esc(s2)}</li>`).join('')}</ol>
+      <div class="row" style="justify-content:flex-end"><button class="btn small pink">Entendi!</button></div>`;
+    c.querySelector('button')!.addEventListener('click', () => c.remove());
+    this.root.appendChild(c);
+    setTimeout(() => c.remove(), 25000);
+  }
+
   /* ------------------------------ tutorial ------------------------------ */
 
   private startTutorial(): void {

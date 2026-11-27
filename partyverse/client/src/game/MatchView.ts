@@ -287,6 +287,7 @@ export class MatchView extends View {
     if (ph === 'arrived' && this.minigame) {
       this.app.env.setSky(this.minigame.sky);
       this.app.ui.banner(GAMES[this.game].destination, 'Desembarque! Saia do trem para começar', 3500);
+      if (this.minigame.howTo?.length) this.app.ui.howTo(GAMES[this.game].name, this.minigame.howTo);
     }
     if (ph === 'game' && !this.started) this.startGame(true);
   }

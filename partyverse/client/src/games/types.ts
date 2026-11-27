@@ -17,6 +17,8 @@ export interface MinigameClientCtx {
 export interface MinigameClient {
   readonly sky: keyof typeof SKIES;
   readonly mood: 'work' | 'tense' | 'lobby' | 'flight';
+  /** passos curtos de "como jogar" exibidos na chegada (opcional) */
+  readonly howTo?: string[];
   build(root: THREE.Group, progress: (p: number) => void): Promise<void>;
   colliders(): Collider[];
   arrivalPose(): Pose;

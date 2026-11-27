@@ -320,7 +320,7 @@ export class App {
     // atualiza avatares
     if (lp) lp.avatar.update(dt);
     for (const r of this.remotes.values()) r.avatar.update(dt);
-    this.renderer.gl.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.camera);
     this.ui.frame(dt, this.renderer.fps);
   }
 

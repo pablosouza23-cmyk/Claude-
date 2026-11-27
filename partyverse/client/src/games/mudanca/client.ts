@@ -32,6 +32,13 @@ export default function create(ctx: MinigameClientCtx): MinigameClient {
 class MudancaClient implements MinigameClient {
   readonly sky;
   readonly mood = 'work' as const;
+  readonly howTo = [
+    'Entre na CASA ANTIGA (placa laranja) e pegue os móveis (E / botão de mão).',
+    'Móveis pesados (sofá, geladeira...) precisam de 2 pessoas: um pega, o outro ajuda do outro lado.',
+    'Coloque tudo no caminhão (círculo verde atrás dele) — cuidado: itens frágeis quebram se caírem.',
+    'Alguém dirige o caminhão (W/S acelera e freia, A/D vira) até a CASA NOVA (placa verde).',
+    'Descarregue e deixe os itens dentro da casa nova antes do tempo acabar. Bata a meta de valor!',
+  ];
   hud: HTMLElement;
   private app: MinigameClientCtx['app'];
   private plan: MudancaPlan;

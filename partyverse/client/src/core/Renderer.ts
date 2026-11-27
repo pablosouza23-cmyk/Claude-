@@ -60,6 +60,11 @@ export class Renderer {
     this.gl.setSize(innerWidth, innerHeight, false);
   }
 
+  /** desenha a cena */
+  render(scene: THREE.Scene, camera: THREE.Camera): void {
+    this.gl.render(scene, camera);
+  }
+
   /** chamado a cada quadro com o dt real */
   track(dt: number): void {
     this.frameTimes.push(dt);

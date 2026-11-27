@@ -178,9 +178,10 @@ export class Panels {
       <div class="members">${r.members.map((m) => `<div class="member ${m.ready ? 'ready' : ''} ${m.connected ? '' : 'off'}">
           ${m.host ? '<span class="crown">👑</span>' : ''}
           <div class="avatar-dot" style="background:${colorFor(m.name)}">${initials(m.name)}</div>
-          <div class="grow" style="min-width:0"><div class="t" style="font-weight:800">${esc(m.name)}</div><div class="muted" style="font-size:.8em">Nv ${m.level} • ${m.host ? 'Líder' : m.ready ? 'Pronto' : 'Aguardando'}${m.connected ? '' : ' • reconectando'}</div></div>
+          <div class="grow" style="min-width:0"><div class="t" style="font-weight:800">${esc(m.name)}</div><div class="muted" style="font-size:.8em">${m.bot ? 'Robô ajudante (IA)' : `Nv ${m.level} • ${m.host ? 'Líder' : m.ready ? 'Pronto' : 'Aguardando'}${m.connected ? '' : ' • reconectando'}`}</div></div>
           ${host && !m.host ? `<button class="btn small red" data-kick="${esc(m.userId)}" title="Remover">✕</button>` : ''}</div>`).join('')}
         <button class="member" style="border:2px dashed var(--line);justify-content:center;cursor:pointer;font-weight:800;color:var(--violet)" data-act="invite">+ Convidar amigos</button>
+        ${host ? `<button class="member" style="border:2px dashed var(--line);justify-content:center;cursor:pointer;font-weight:800;color:#13824a" data-act="addbot" title="Um robô controlado pelo servidor para completar a equipe">+ 🤖 Robô ajudante</button>` : ''}
       </div>
       <h3 style="margin-top:16px">Votação de experiência ${host ? '<span class="muted">(clique para escolher; o mais votado vence)</span>' : '<span class="muted">(clique para votar)</span>'}</h3>
       ${this.gameCards(me?.vote ?? r.game, votes, n)}
@@ -578,6 +579,7 @@ export class Panels {
         case 'ready': net.send({ t: 'roomReady', ready: !this.ui.myMember()?.ready }); break;
         case 'start': net.send({ t: 'roomStart' }); break;
         case 'invite': this.open('friends'); break;
+        case 'addbot': net.send({ t: 'roomBot', add: true }); break;
         case 'addf': { const c = q<HTMLInputElement>('[data-fcode]')?.value.trim().toUpperCase(); if (c) net.send({ t: 'friendAdd', code: c }); break; }
         case 'saveoutfit': if (this.draft) { net.send({ t: 'setOutfit', outfit: this.draft }); this.ui.toast('Visual salvo!', 'ok'); } break;
         case 'resetdraft': if (this.ui.profile) { this.draft = { ...this.ui.profile.outfit }; this.render(); } break;

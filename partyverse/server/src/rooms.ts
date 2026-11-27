@@ -51,6 +51,7 @@ export class RoomManager {
           userId: uid, name: s?.user.name ?? '?', level: s ? levelFromXp(s.user.xp).level : 1,
           ready: m.ready, host: uid === r.hostId, connected: !!s?.connected, vote: m.vote,
           outfit: s?.user.outfit ?? (undefined as never),
+          bot: !!s?.isBot,
         };
       }),
     };
@@ -115,14 +116,17 @@ export class RoomManager {
     s.room = null;
     s.send({ t: 'room', room: null });
     if (r.match) r.match.memberLeftRoom(s);
+    // sala sem humanos: os robôs saem junto
+    const humans = [...r.members.keys()].filter((u) => !this.game.sessions.get(u)?.isBot);
+    if (!humans.length) for (const u of [...r.members.keys()]) { r.members.delete(u); this.game.removeBot(u); }
     if (r.members.size === 0) {
       this.rooms.delete(r.code);
       r.match?.dispose();
       return;
     }
     if (r.hostId === s.id) {
-      // passa a liderança para quem está há mais tempo
-      const next = [...r.members.entries()].sort((a, b) => a[1].joinedAt - b[1].joinedAt)[0];
+      // passa a liderança para o humano que está há mais tempo
+      const next = [...r.members.entries()].filter(([u]) => !this.game.sessions.get(u)?.isBot).sort((a, b) => a[1].joinedAt - b[1].joinedAt)[0];
       r.hostId = next[0];
       r.members.get(next[0])!.ready = true;
       this.notify(r, `${this.game.sessions.get(next[0])?.user.name} agora é o líder da sala.`);
@@ -158,6 +162,7 @@ export class RoomManager {
     const r = s.room;
     if (!r || r.hostId !== s.id || userId === s.id || !r.members.has(userId)) return;
     const target = this.game.sessions.get(userId);
+    if (target?.isBot) { r.members.delete(userId); this.game.removeBot(userId); this.push(r); return; }
     if (target) {
       this.leave(target);
       target.send({ t: 'toast', msg: 'Você foi removido da sala pelo líder.', kind: 'warn' });
@@ -201,6 +206,27 @@ export class RoomManager {
     r.game = game;
     this.game.startMatch(r);
     return null;
+  }
+
+  /** líder adiciona um robô ajudante */
+  addBot(s: Session): void {
+    const r = s.room;
+    if (!r || r.hostId !== s.id || r.state !== 'waiting') return;
+    if (r.members.size >= Math.min(MAX_ROOM_PLAYERS, GAMES[r.game].max)) { s.send({ t: 'toast', msg: 'A sala já está cheia para esta experiência.', kind: 'warn' }); return; }
+    const bot = this.game.createBot(r.members.size);
+    r.members.set(bot.id, { ready: true, vote: null, joinedAt: Date.now() });
+    bot.room = r;
+    this.push(r);
+  }
+
+  removeBot(s: Session): void {
+    const r = s.room;
+    if (!r || r.hostId !== s.id || r.state !== 'waiting') return;
+    const id = [...r.members.keys()].reverse().find((u) => this.game.sessions.get(u)?.isBot);
+    if (!id) return;
+    r.members.delete(id);
+    this.game.removeBot(id);
+    this.push(r);
   }
 
   notify(r: Room, msg: string, except?: string): void {

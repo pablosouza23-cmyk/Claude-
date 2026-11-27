@@ -531,6 +531,128 @@ class MudancaServer implements MinigameServer {
     this.emit('driver', { id: 0 });
   }
 
+  /* ------------------------------ robô ajudante ------------------------------ */
+
+  /** rota até o alvo passando pela porta e pelo vão da divisória das casas */
+  private route(fx: number, fz: number, tx: number, tz: number): { x: number; z: number }[] {
+    const houseAt = (x: number, z: number) => this.map.houses.find((h) => insideHouse(h, x, z)) ?? null;
+    const hf = houseAt(fx, fz), ht = houseAt(tx, tz);
+    const pts: { x: number; z: number }[] = [];
+    const midZ = (h: typeof hf) => h!.z - h!.d * 0.1;
+    const exit = (h: NonNullable<typeof hf>, z: number) => {
+      if (z > midZ(h)) pts.push({ x: h.x, z: midZ(h) + 1 }, { x: h.x, z: midZ(h) - 1 });
+      pts.push({ x: h.doorX, z: h.z - h.d / 2 + 1.2 }, { x: h.doorX, z: h.z - h.d / 2 - 1.8 });
+    };
+    const enter = (h: NonNullable<typeof hf>, z: number) => {
+      pts.push({ x: h.doorX, z: h.z - h.d / 2 - 1.8 }, { x: h.doorX, z: h.z - h.d / 2 + 1.2 });
+      if (z > midZ(h)) pts.push({ x: h.x, z: midZ(h) - 1 }, { x: h.x, z: midZ(h) + 1 });
+    };
+    if (hf && hf === ht) {
+      if ((fz > midZ(hf)) !== (tz > midZ(hf))) {
+        const side = fz > midZ(hf) ? 1 : -1;
+        pts.push({ x: hf.x, z: midZ(hf) + side }, { x: hf.x, z: midZ(hf) - side });
+      }
+    } else {
+      if (hf) exit(hf, fz);
+      if (ht) enter(ht, tz);
+    }
+    pts.push({ x: tx, z: tz });
+    return pts;
+  }
+
+  /** segue a rota até (tx,tz); devolve a distância ao alvo final */
+  private botGo(p: WPlayer, tx: number, tz: number, move: (x: number, z: number) => number): number {
+    const key = `${tx.toFixed(1)},${tz.toFixed(1)}`;
+    let path = p.data.path as { x: number; z: number }[] | undefined;
+    if (p.data.pathKey !== key || !path || !path.length || ((p.data.pathAge as number) ?? 0) > 3) {
+      path = this.route(p.x, p.z, tx, tz);
+      p.data.path = path; p.data.pathKey = key; p.data.pathAge = 0;
+    }
+    p.data.pathAge = ((p.data.pathAge as number) ?? 0) + 1 / 30;
+    while (path.length > 1 && Math.hypot(path[0].x - p.x, path[0].z - p.z) < 0.8) path.shift();
+    const d = move(path[0].x, path[0].z);
+    return path.length === 1 ? d : Math.hypot(tx - p.x, tz - p.z);
+  }
+
+  botThink(p: WPlayer, _dt: number, move: (x: number, z: number) => number, act: (id: string) => void): void {
+    if (!this.started || this.finished || Date.now() < this.startAt) { p.anim = 'idle'; return; }
+    const mine = this.carrying(p);
+    // 1) carregando junto com alguém: acompanha o parceiro, que conduz
+    if (mine && mine.carriers.length === 2) {
+      const partner = this.match.players.get(mine.carriers.find((c) => c !== p.id)!);
+      if (partner) {
+        const def = ITEMS[mine.kind];
+        const want = Math.max(def.hx, def.hz) * 2 + 0.3;
+        const dx = p.x - partner.x, dz = p.z - partner.z;
+        const d = Math.hypot(dx, dz) || 1;
+        move(partner.x + (dx / d) * want, partner.z + (dz / d) * want);
+      }
+      return;
+    }
+    // aguardando ajuda num item pesado: fica parado
+    if (mine && mine.state === 'waiting') { p.anim = 'idle'; return; }
+    const lp = this.loadPoint();
+    const nh = this.map.houses[1];
+    const truckAtNew = Math.hypot(this.truck.x - this.map.parkNew.x, this.truck.z - this.map.parkNew.z) < 14;
+    // 2) carregando sozinho um item leve
+    if (mine) {
+      if (truckAtNew || this.loaded.length >= this.plan.truckCapacity) {
+        // leva para dentro da casa nova
+        const d = this.botGo(p, nh.x + 3, nh.z + 2, move);
+        if (d < 1.2) act('drop');
+      } else if (this.truckParked()) {
+        const d = this.botGo(p, lp.x, lp.z, move);
+        if (d < TRUCK.loadR) act('truck:load');
+      } else p.anim = 'carry';
+      return;
+    }
+    // 3) alguém (humano) esperando ajuda num item pesado: vai pelo outro lado
+    for (const it of this.items) {
+      if (it.state !== 'waiting' || it.carriers.includes(p.id)) continue;
+      const helper = this.match.players.get(it.carriers[0]);
+      if (!helper || helper.session.isBot) continue;
+      const t = it.body.translation();
+      const def = ITEMS[it.kind];
+      const dx = t.x - helper.x, dz = t.z - helper.z;
+      const d0 = Math.hypot(dx, dz) || 1;
+      const r = Math.max(def.hx, def.hz) + 0.9;
+      const d = this.botGo(p, t.x + (dx / d0) * r, t.z + (dz / d0) * r, move);
+      if (d < 1.4 || Math.hypot(t.x - p.x, t.z - p.z) < Math.max(def.hx, def.hz) + 1.6) act(`item:${it.id}`);
+      return;
+    }
+    // 4) caminhão na casa nova com carga: descarrega
+    if (truckAtNew && this.loaded.length && this.truckParked()) {
+      const d = this.botGo(p, lp.x, lp.z, move);
+      if (d < TRUCK.loadR) act('truck:unload');
+      return;
+    }
+    // 5) busca o item leve livre mais próximo na casa antiga (térreo)
+    const old = this.map.houses[0];
+    let best: Item | null = null, bd = Infinity;
+    const skip = (p.data.skip as Record<number, number> | undefined) ?? {};
+    for (const it of this.items) {
+      const def = ITEMS[it.kind];
+      if (it.state !== 'free' || it.broken || def.carriers !== 1 || (skip[it.id] ?? 0) > Date.now()) continue;
+      const t = it.body.translation();
+      if (!insideHouse(old, t.x, t.z) || t.y > 2.5) continue;
+      const d = Math.hypot(t.x - p.x, t.z - p.z);
+      if (d < bd) { bd = d; best = it; }
+    }
+    if (!best) {
+      // nada a fazer: acompanha o humano mais próximo
+      let h: WPlayer | null = null, hd = Infinity;
+      for (const q of this.match.players.values()) if (!q.session.isBot && !q.locked) { const d = Math.hypot(q.x - p.x, q.z - p.z); if (d < hd) { hd = d; h = q; } }
+      if (h && hd > 3) this.botGo(p, h.x, h.z, move); else p.anim = 'idle';
+      return;
+    }
+    const t = best.body.translation();
+    const def = ITEMS[best.kind];
+    if (p.data.target !== best.id) { p.data.target = best.id; p.data.targetSince = Date.now(); }
+    if (Date.now() - (p.data.targetSince as number) > 25_000) { skip[best.id] = Date.now() + 30_000; p.data.skip = skip; p.data.target = null; return; }
+    const d = this.botGo(p, t.x, t.z, move);
+    if (d < Math.max(def.hx, def.hz) + 1.2) act(`item:${best.id}`);
+  }
+
   onPlayerLeave(p: WPlayer): void {
     const it = this.carrying(p);
     if (it) this.release(it, true);

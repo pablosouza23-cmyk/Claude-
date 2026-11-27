@@ -16,10 +16,13 @@ export class Session {
   /** tentativas de login/recuperação (anti força bruta) */
   authTries: number[] = [];
 
+  /** jogador controlado pelo servidor (robô ajudante convidado pelo líder) */
+  isBot = false;
+
   constructor(public user: UserRow, public token: string) {}
 
   get id(): string { return this.user.id; }
-  get connected(): boolean { return this.ws !== null; }
+  get connected(): boolean { return this.isBot || this.ws !== null; }
 
   send(msg: S2C): void {
     const ws = this.ws;

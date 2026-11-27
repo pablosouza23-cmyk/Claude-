@@ -4,7 +4,7 @@
  */
 import type { WebSocket } from 'ws';
 import { MAX_LOBBY_SHARD, PROTOCOL_VERSION, RECONNECT_GRACE_MS, SERVER_TICK, SNAPSHOT_RATE, sanitizeChat, sanitizeName } from '../../shared/constants';
-import { COSMETIC_BY_ID, validateOutfit } from '../../shared/cosmetics';
+import { COSMETIC_BY_ID, DEFAULT_OWNED, randomOutfit, validateOutfit } from '../../shared/cosmetics';
 import { EMOTES, NAME_MAX } from '../../shared/constants';
 import { isDifficulty, isGameId, type GameId } from '../../shared/minigames';
 import type { C2S, FriendEntry, PrivateProfile } from '../../shared/protocol';
@@ -171,11 +171,44 @@ export class Game {
     return best;
   }
 
+  /* ----------------------------- robôs ----------------------------- */
+
+  private botSeq = 1;
+  createBot(n: number): Session {
+    const id = `bot-${Date.now().toString(36)}-${this.botSeq++}`;
+    const user: UserRow = {
+      id, name: `🤖 Robô ${n}`, friendCode: '', xp: 0, coins: 0, owned: [...DEFAULT_OWNED],
+      outfit: { ...randomOutfit(Math.random()), hat: 'hat-cap', hatColor: '#39d0ff', top: 'top-tee', topColor: '#9aa5b1', face: 'face-cool' },
+      achievements: [], stats: {}, records: {}, createdAt: Date.now(),
+    };
+    const s = new Session(user, '');
+    s.isBot = true;
+    this.sessions.set(id, s);
+    return s;
+  }
+
+  removeBot(id: string): void {
+    const s = this.sessions.get(id);
+    if (!s?.isBot) return;
+    s.world?.leave(s);
+    this.sessions.delete(id);
+  }
+
   toLobby(s: Session): void {
+    if (s.isBot) {
+      const w = s.world;
+      w?.leave(s);
+      if (w instanceof MatchWorld && w.size === 0) this.endMatch(w);
+      return;
+    }
     const prev = s.world;
     if (prev?.kind === 'lobby') { prev.join(s); return; }
     prev?.leave(s);
     this.lobbyFor(s).join(s);
+    // último humano saiu da partida: os robôs saem também
+    if (prev instanceof MatchWorld && ![...prev.players.values()].some((p) => !p.session.isBot)) {
+      for (const p of [...prev.players.values()]) prev.leave(p.session);
+    }
     if (prev instanceof MatchWorld && prev.size === 0) this.endMatch(prev);
     this.friendsChanged([s.id]);
   }
@@ -306,6 +339,7 @@ export class Game {
       case 'roomVote': if (isGameId(m.game)) this.rooms.vote(s, m.game); break;
       case 'roomReady': this.rooms.ready(s, !!m.ready); break;
       case 'roomKick': this.rooms.kick(s, String(m.userId)); break;
+      case 'roomBot': if (m.add) this.rooms.addBot(s); else this.rooms.removeBot(s); break;
       case 'roomStart': {
         const err = this.rooms.start(s);
         if (err) s.send({ t: 'toast', msg: err, kind: 'warn' });
@@ -437,6 +471,7 @@ export class Game {
 
   /** Concede conquista (uma vez). Retorna true se foi nova. */
   unlock(s: Session, id: string, silent = false): boolean {
+    if (s.isBot) return false;
     const a = ACH_BY_ID.get(id);
     if (!a || s.user.achievements.includes(id)) return false;
     s.user.achievements.push(id);
@@ -451,6 +486,7 @@ export class Game {
   }
 
   awardMatch(s: Session, m: MatchWorld, res: GameResult): void {
+    if (s.isBot) return;
     const u = s.user;
     const friendIds = new Set(this.db.friendRows(u.id).filter((f) => f.status === 'accepted').map((f) => f.other));
     const friendsIn = [...m.players.values()].filter((p) => friendIds.has(p.session.id)).length;

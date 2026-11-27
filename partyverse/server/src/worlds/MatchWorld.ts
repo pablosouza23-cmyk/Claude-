@@ -4,7 +4,7 @@
  * A pose do trem é calculada de forma determinística a partir do cronograma,
  * então todos os clientes veem a mesma viagem.
  */
-import { CollisionWorld, type Collider } from '../../../shared/collision';
+import { CollisionWorld, stepCharacter, type CharacterState, type Collider } from '../../../shared/collision';
 import type { C2S } from '../../../shared/protocol';
 import { GAMES } from '../../../shared/minigames';
 import {
@@ -156,7 +156,7 @@ export class MatchWorld extends World {
 
   /* ----------------------------- assentos ----------------------------- */
 
-  private sitDown(p: WPlayer, seatId: string): void {
+  sitDown(p: WPlayer, seatId: string): void {
     const seat = trainSeats().find((s) => s.id === seatId);
     if (!seat || p.plat !== 1 || this.seats.has(seatId) || p.carry) return;
     if (Math.hypot(p.x - seat.x, p.z - seat.z) > 2.2) return;
@@ -201,8 +201,63 @@ export class MatchWorld extends World {
 
   /* ----------------------------- ciclo ----------------------------- */
 
+  /* ----------------------------- robôs ----------------------------- */
+
+  /** anda o robô em direção a (x,z) com a física compartilhada; devolve a distância */
+  private botMove(p: WPlayer, x: number, z: number, dt: number): number {
+    let st = p.data.botState as CharacterState | undefined;
+    if (!st || p.data.botPlat !== p.plat) { st = { x: p.x, y: p.y, z: p.z, vx: 0, vy: 0, vz: 0, grounded: true }; p.data.botState = st; p.data.botPlat = p.plat; }
+    st.x = p.x; st.y = p.y; st.z = p.z;
+    const dx = x - p.x, dz = z - p.z;
+    const d = Math.hypot(dx, dz);
+    const mx = d > 0.3 ? dx / d : 0, mz = d > 0.3 ? dz / d : 0;
+    stepCharacter(st, { mx, mz, sprint: d > 8 && !p.carry, jump: false, speedMul: p.speedMul }, dt, this.collisionFor(p));
+    // destravar: se não andou, tenta um passo lateral
+    const moved = Math.hypot(st.x - p.x, st.z - p.z);
+    p.data.stuck = moved < 0.01 && d > 0.5 ? ((p.data.stuck as number) ?? 0) + dt : 0;
+    if ((p.data.stuck as number) > 0.6) { st.x += -mz * 0.25; st.z += mx * 0.25; p.data.stuck = 0; }
+    p.x = st.x; p.y = st.y; p.z = st.z;
+    if (d > 0.3) p.yaw = Math.atan2(mx, mz);
+    p.anim = d > 0.3 ? (p.carry ? 'carry-walk' : 'walk') : p.carry ? 'carry' : 'idle';
+    return d;
+  }
+
+  private botTick(p: WPlayer, dt: number): void {
+    if (p.locked && p.anim === 'drive') return;
+    switch (this.phase) {
+      case 'boarding':
+        if (p.plat === 0) {
+          // entra direto no trem e senta num assento livre
+          const free = trainSeats().find((s) => !s.cockpit && !this.seats.has(s.id));
+          this.teleport(p, free ? free.x + 0.6 : 0, 0, free ? free.z * 0.2 : 0, 1, Math.PI / 2);
+          if (free) this.sitDown(p, free.id);
+        }
+        break;
+      case 'arrived':
+        if (p.plat === 1) {
+          this.standUp(p, false);
+          const sp = stationSpawns(10)[9];
+          const [x, y, z] = trainLocalToWorld(this.pose(), sp.x, 0, sp.z);
+          this.teleport(p, x, y, z, 0);
+        }
+        break;
+      case 'game': {
+        const mg = this.minigame;
+        if (mg.botThink) mg.botThink(p, dt, (x, z) => this.botMove(p, x, z, dt), (id) => mg.onInteract(p, id, undefined));
+        else {
+          // sem IA específica: acompanha o humano mais próximo
+          let best: WPlayer | null = null, bd = Infinity;
+          for (const q of this.players.values()) if (!q.session.isBot && q.plat === 0) { const d = Math.hypot(q.x - p.x, q.z - p.z); if (d < bd) { bd = d; best = q; } }
+          if (best && bd > 3) this.botMove(p, best.x, best.z, dt); else p.anim = 'idle';
+        }
+        break;
+      }
+    }
+  }
+
   tick(dt: number, now: number): void {
     if (this.disposed) return;
+    for (const p of this.players.values()) if (p.session.isBot) { try { this.botTick(p, dt); } catch (e) { console.error('[robô]', e); } }
     const players = [...this.players.values()];
     const active = players.filter((p) => p.connected);
     switch (this.phase) {

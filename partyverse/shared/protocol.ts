@@ -58,6 +58,7 @@ export interface RoomMember {
   connected: boolean;
   vote: GameId | null;
   outfit: Outfit;
+  bot?: boolean;
 }
 
 export interface RoomView {
@@ -143,7 +144,9 @@ export type C2S =
   | { t: 'recover'; username: string; code: string; password: string }
   | { t: 'logout'; token: string }
   | { t: 'leaderboard' }
-  | { t: 'tutorialDone' };
+  | { t: 'tutorialDone' }
+  /** líder adiciona/remove um robô ajudante na sala */
+  | { t: 'roomBot'; add: boolean };
 
 /* ------------------------------------------------------------------ */
 /* Servidor -> Cliente                                                   */

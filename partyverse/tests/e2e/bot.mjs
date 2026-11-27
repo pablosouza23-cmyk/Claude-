@@ -1,0 +1,51 @@
+// Robô ajudante: sala com 1 humano + 1 robô inicia e o robô trabalha na Mudança Maluca.
+import WebSocket from 'ws';
+const URL = process.env.PV_WS ?? 'ws://localhost:8787/ws';
+let fails = 0;
+const ok = (c, m) => { console.log(c ? '  ✔' : '  ✘', m); if (!c) fails++; };
+const ws = new WebSocket(URL);
+const msgs = [];
+let room = null, world = null, lastSnap = null;
+ws.on('message', (r) => { const m = JSON.parse(String(r)); msgs.push(m); if (m.t === 'room') room = m.room; if (m.t === 'world') world = m; if (m.t === 'snap') lastSnap = m; });
+const send = (m) => ws.send(JSON.stringify(m));
+const until = (f, ms = 20000) => new Promise((res, rej) => { const t0 = Date.now(); const i = setInterval(() => { if (f()) { clearInterval(i); res(); } else if (Date.now() - t0 > ms) { clearInterval(i); rej(new Error('timeout')); } }, 50); });
+await new Promise((r) => ws.on('open', r));
+send({ t: 'hello', v: 1, name: 'Testador' });
+await until(() => msgs.some((m) => m.t === 'welcome'));
+send({ t: 'roomCreate', visibility: 'private', game: 'mudanca', difficulty: 'facil' });
+await until(() => room);
+send({ t: 'roomBot', add: true });
+await until(() => room && room.members.length === 2);
+const bot = room.members.find((m) => m.bot);
+ok(!!bot && bot.ready && bot.name.includes('Robô'), `robô entrou na sala (${bot && bot.name}) já pronto`);
+const health = () => fetch(URL.replace('ws://', 'http://').replace('/ws', '/health')).then((r) => r.json());
+const before = (await health()).matches;
+send({ t: 'roomStart' });
+await until(() => world && world.kind === 'match', 30000);
+await until(() => world.players.some((p) => p.name.includes('Robô')) || msgs.some((m) => m.t === 'pjoin' && m.p.name.includes('Robô')), 10000).catch(() => {});
+const botId = world.players.find((p) => p.name.includes('Robô'))?.id ?? msgs.find((m) => m.t === 'pjoin' && m.p.name.includes('Robô'))?.p.id;
+ok(!!botId, 'robô está na partida');
+await until(() => lastSnap && lastSnap.w && lastSnap.w.ph === 'game', 60000);
+ok(true, 'trem: embarque, voo e desembarque concluídos com o robô');
+// observa o robô trabalhando
+let carried = false, loaded = 0, maxMove = 0, start = null;
+const t0 = Date.now();
+while (Date.now() - t0 < 60000 && !(carried && loaded > 0)) {
+  await new Promise((r) => setTimeout(r, 250));
+  const me = lastSnap.p.find((p) => p[0] === botId);
+  if (!start) start = [me[1], me[3]];
+  maxMove = Math.max(maxMove, Math.hypot(me[1] - start[0], me[3] - start[1]));
+  if (me[7]) carried = true;
+  const tr = lastSnap.w.g && lastSnap.w.g.t; if (tr) loaded = Math.max(loaded, tr[5]);
+}
+ok(maxMove > 10, `robô andou pelo mapa (${maxMove.toFixed(1)} m)`);
+ok(carried, 'robô pegou um móvel');
+ok(loaded > 0, `robô colocou móvel no caminhão (${loaded} no baú)`);
+send({ t: 'returnLobby' });
+await until(() => world && world.kind === 'lobby', 20000);
+await new Promise((r) => setTimeout(r, 500));
+const h = await health();
+ok(h.matches === before, `partida encerrada ao sair o último humano (antes ${before}, depois ${h.matches})`);
+ws.close();
+console.log(fails ? `\n${fails} FALHA(S)` : '\nRobô: tudo certo.');
+process.exit(fails ? 1 : 0);

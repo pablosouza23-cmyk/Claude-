@@ -44,6 +44,11 @@ export interface MinigameServer {
   /** multiplicador de velocidade (ex.: carregando algo pesado) */
   speedMul(p: WPlayer): number;
   result(): GameResult | null;
+  /**
+   * IA do robô ajudante (opcional). `move(x, z)` anda um passo em direção ao
+   * ponto e devolve a distância restante; `act(id)` faz uma interação.
+   */
+  botThink?(p: WPlayer, dt: number, move: (x: number, z: number) => number, act: (id: string) => void): void;
   dispose(): void;
 }
 

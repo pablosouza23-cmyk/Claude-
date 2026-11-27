@@ -562,6 +562,13 @@ class MudancaClient implements MinigameClient {
     // carregando: velocidade e trava de pulo locais
     const mine = this.myItem();
     lp.carrying = !!mine && !!(mine.flags & FLAG.carried);
+    // câmera não "entra" no móvel: mais alta/afastada e o objeto fica translúcido para quem carrega
+    if (this.driver !== me) {
+      const big = mine && (mine.flags & FLAG.carried) && ITEMS[mine.kind].hy + ITEMS[mine.kind].hx > 0.9;
+      this.app.cam.forceDist = big ? 8.5 : null;
+      if (big && this.app.cam.pitch < 0.5) this.app.cam.pitch += (0.5 - this.app.cam.pitch) * Math.min(1, dt * 4);
+    }
+    for (const it of this.items.values()) this.setSeeThrough(it, it === mine && !!(mine.flags & FLAG.carried));
     lp.speedMul = mine && (mine.flags & FLAG.carried) ? ITEMS[mine.kind].speed : 1;
     // itens
     const k = 1 - Math.exp(-dt * 14);
@@ -651,6 +658,28 @@ class MudancaClient implements MinigameClient {
       pos.needsUpdate = true;
     }
     this.updateHud(now, mine);
+  }
+
+  private setSeeThrough(it: CItem, on: boolean): void {
+    if ((it.obj.userData.seeThrough ?? false) === on) return;
+    it.obj.userData.seeThrough = on;
+    it.obj.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      if (on) {
+        if (!m.userData.solidMat) m.userData.solidMat = m.material;
+        const c = (m.userData.solidMat as THREE.Material).clone();
+        c.transparent = true;
+        c.opacity = 0.45;
+        c.depthWrite = false;
+        m.material = c;
+        m.castShadow = true;
+      } else if (m.userData.solidMat) {
+        (m.material as THREE.Material).dispose();
+        m.material = m.userData.solidMat;
+        delete m.userData.solidMat;
+      }
+    });
   }
 
   private placeTruck(): void {

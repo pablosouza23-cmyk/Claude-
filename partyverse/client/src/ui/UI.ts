@@ -129,6 +129,9 @@ export class UI {
 
     this.panels = new Panels(this);
 
+    // servidor fora do ar: tela de manutenção (continua tentando em segundo plano)
+    app.net.onUnavailable = () => this.showUnavailable();
+
     // voz
     this.voiceDock = new VoiceDock(app.voice, () => this.open('voice'));
     root.appendChild(this.voiceDock.root);
@@ -167,6 +170,20 @@ export class UI {
     this.panels.refresh();
     if (first) this.renderRoomPill();
     if (first && !p.tutorialDone) setTimeout(() => this.startTutorial(), 1500);
+  }
+
+  private showUnavailable(): void {
+    if (this.root.querySelector('.unavailable')) return;
+    document.getElementById('boot')?.remove();
+    const u = el('div', 'boot unavailable');
+    u.style.zIndex = '120';
+    u.innerHTML = `<div class="boot-logo"><span>PARTY</span><b>VERSE</b></div>
+      <div style="max-width:420px;padding:0 20px;margin:0 auto"><h2 style="font-family:var(--display);font-weight:normal;margin:0 0 8px">Servidores em manutenção</h2>
+      <p style="opacity:.85;margin:0 0 16px">Não conseguimos falar com o servidor do jogo. Pode ser uma manutenção rápida ou sua conexão. Continuamos tentando automaticamente.</p>
+      <button class="btn pink" data-r>Tentar agora</button></div>`;
+    u.querySelector('[data-r]')!.addEventListener('click', () => location.reload());
+    this.root.appendChild(u);
+    const iv = setInterval(() => { if (this.app.net.connected) { u.remove(); clearInterval(iv); } }, 1000);
   }
 
   /* ------------------------------ contas ------------------------------ */

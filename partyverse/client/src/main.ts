@@ -8,6 +8,10 @@ const boot = (p: number, msg: string) => {
   if (m) m.textContent = msg;
 };
 
+// erros inesperados: registra e avisa sem derrubar o jogo
+addEventListener('error', (e) => console.error('[erro]', e.error ?? e.message));
+addEventListener('unhandledrejection', (e) => console.error('[promessa]', e.reason));
+
 const app = new App(document.getElementById('game')!, document.getElementById('ui')!);
 (window as unknown as { pv: App }).pv = app; // acesso para testes automatizados
 (window as unknown as { pvSettings: typeof settings }).pvSettings = settings;

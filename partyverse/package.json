@@ -9,6 +9,7 @@
     "dev:server": "tsx watch server/src/main.ts",
     "dev:client": "vite --config client/vite.config.ts",
     "build": "vite build --config client/vite.config.ts && node scripts/build-server.mjs",
+    "build:client": "vite build --config client/vite.config.ts",
     "start": "node --no-warnings dist/server/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --no-warnings --import tsx --test tests/unit/*.test.ts",

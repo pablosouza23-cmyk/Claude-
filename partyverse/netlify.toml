@@ -1,0 +1,34 @@
+# Netlify hospeda SOMENTE o cliente (estático). O servidor multiplayer (WebSocket
+# persistente) precisa de um host Node — veja DEPLOY.md. Configure no painel do
+# Netlify a variável VITE_SERVER_URL=wss://SEU-SERVIDOR/ws antes do build.
+# No Netlify, defina "Base directory" = partyverse (este arquivo fica nessa pasta
+# para não interferir no site da pizzaria na raiz do repositório).
+[build]
+  command = "npm ci && npm run build:client"
+  publish = "dist/client"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[redirects]]
+  from = "/privacidade"
+  to = "/privacidade.html"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "microphone=(self), camera=(), geolocation=()"
+    X-Frame-Options = "DENY"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

@@ -43,13 +43,20 @@ async function main() {
     res.writeHead(200, {
       'content-type': MIME[ext] ?? 'application/octet-stream',
       'cache-control': file.includes(`${join('assets', '')}`) && ext !== '.html' ? 'public, max-age=86400' : 'no-cache',
+      'x-content-type-options': 'nosniff',
+      'referrer-policy': 'strict-origin-when-cross-origin',
+      'permissions-policy': 'microphone=(self), camera=(), geolocation=()',
     });
     createReadStream(file).pipe(res);
   });
 
   const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
+  // PV_ALLOWED_ORIGINS="https://meujogo.netlify.app,https://partyverse.app" restringe quem pode conectar
+  const allowed = (process.env.PV_ALLOWED_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
   http.on('upgrade', (req, socket, head) => {
     if (!req.url?.startsWith('/ws')) { socket.destroy(); return; }
+    const origin = req.headers.origin ?? '';
+    if (allowed.length && !allowed.includes(origin)) { socket.write('HTTP/1.1 403 Forbidden\r\n\r\n'); socket.destroy(); return; }
     wss.handleUpgrade(req, socket, head, (ws) => game.attach(ws));
   });
 
@@ -65,5 +72,8 @@ async function main() {
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 }
+
+process.on('unhandledRejection', (e) => console.error('[servidor] promessa rejeitada', e));
+process.on('uncaughtException', (e) => console.error('[servidor] exceção', e));
 
 main().catch((e) => { console.error(e); process.exit(1); });

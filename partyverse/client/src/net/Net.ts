@@ -17,6 +17,9 @@ export class Net {
   rtt = 0;
   connected = false;
   private retry = 0;
+  /** tentativas seguidas sem conseguir conectar (para a tela de indisponibilidade) */
+  failures = 0;
+  onUnavailable: (() => void) | null = null;
   private pingTimer: number | null = null;
   private pendingName: string | undefined;
   onStatus: ((s: 'connecting' | 'online' | 'offline') => void) | null = null;
@@ -24,8 +27,11 @@ export class Net {
 
   constructor(url?: string) {
     const override = new URLSearchParams(location.search).get('server');
+    // ordem: ?server= (testes) > VITE_SERVER_URL (build de produção, ex.: Netlify) > mesmo host
+    const envUrl = (import.meta.env.VITE_SERVER_URL as string | undefined) || '';
     if (url) this.url = url;
     else if (override) this.url = override;
+    else if (envUrl) this.url = envUrl;
     else this.url = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
   }
 
@@ -51,6 +57,7 @@ export class Net {
     ws.onopen = () => {
       this.connected = true;
       this.retry = 0;
+      this.failures = 0;
       this.raw({ t: 'hello', v: PROTOCOL_VERSION, token: this.token ?? undefined, name: this.pendingName });
       this.ping();
       if (this.pingTimer) clearInterval(this.pingTimer);
@@ -80,6 +87,8 @@ export class Net {
       if (this.pingTimer) clearInterval(this.pingTimer);
       if (this.ws !== ws) return;
       this.onStatus?.('offline');
+      this.failures++;
+      if (this.failures === 6) this.onUnavailable?.();
       const delay = Math.min(8000, 500 * Math.pow(1.7, this.retry++));
       setTimeout(() => { if (this.ws === ws) this.connect(); }, delay);
     };

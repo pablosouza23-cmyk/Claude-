@@ -48,18 +48,23 @@ Para os testes E2E, suba o servidor com `PV_FAST_TRAIN=1 PV_DEBUG=1` (viagem cur
 | Lobby 3D (praça, estação, loja, galeria, palco, ilha flutuante) | ✅ pronto | captura + 2 clientes |
 | Avatar personalizável (cabelo, chapéu, roupa, calça, sapato, rosto, acessório, pele) + 32 animações | ✅ pronto | captura |
 | Câmera 3ª pessoa com colisão, controles PC e touch | ✅ pronto | E2E (joystick virtual) |
-| Contas convidado persistentes, nomes | ✅ | E2E |
+| Contas: convidado + cadastro usuário/senha (scrypt), login em vários dispositivos, logout, recuperação por código, anti força bruta | ✅ | protocolo (social.mjs) |
+| **Chat de voz por proximidade** (WebRTC P2P, sinalização isolada por mundo, eco/ruído/ganho nativos + filtros, noise gate, compressor/limitador, oclusão por paredes, pan estéreo, silenciar a si e a outros, indicador de quem fala) | ✅ | E2E 2–4 navegadores (voice.cjs) |
+| Tutorial de primeira vez, ranking, política de privacidade, tela de manutenção | ✅ | capturas |
+| Publicação: build, Netlify (cliente), Dockerfile (servidor), DEPLOY.md | ✅ pronto para configurar | build local; ❌ não publicado (requer host do servidor) |
 | Salas públicas/privadas, código, votação, dificuldade, pronto, expulsar, partida rápida | ✅ | E2E |
-| Amigos (código, pedidos, aceitar, convites, status online, entrar na sala do amigo) | ✅ implementado | ⚠️ sem E2E dedicado ainda |
-| Reconexão (90 s, jogador aparece "desconectado") | ✅ implementado | ⚠️ verificado visualmente, sem E2E de queda |
+| Amigos (código, pedidos, aceitar, convites, status online, entrar na sala do amigo) | ✅ | protocolo (social.mjs) |
+| Reconexão (90 s; volta à mesma sala/partida com estado reaplicado) | ✅ | social.mjs + stability.cjs |
 | Trem Voador: embarque a pé, interior caminhável, assentos, cabine (buzina/luzes), portas, propulsores, voo e chegada sincronizados | ✅ pronto | E2E 2 clientes |
 | **Mudança Maluca** (física, móveis 1/2 pessoas, quebra, caminhão dirigível, viagens, cômodos, cronômetro, estrelas, vitória/derrota, jogar de novo) | ✅ jogável | E2E: pegar, carregar, dirigir, descarregar, entregar, resultados |
 | Progressão: XP, níveis, moedas, 16 conquistas, histórico, recordes, bônus com amigos | ✅ | parcial (recompensa exibida no E2E) |
-| Loja e guarda-roupa com prévia 3D (só cosméticos) | ✅ implementado | ⚠️ sem E2E de compra |
+| Loja e guarda-roupa com prévia 3D (só cosméticos, validado no servidor) | ✅ | protocolo (compra, nível mínimo, item não comprado) |
 | Qualidade Baixa/Média/Alta, resolução dinâmica, instancing, partículas limitadas, minigames sob demanda | ✅ | parcial |
 | Roubo Perfeito, Loja em Caos, Hotel Estranho, Oficina Impossível, Nave em Perigo | ❌ **não implementados** (aparecem como "EM BREVE" e não podem ser iniciados) | — |
 | APK Android / app iOS / instalador Windows | ❌ não gerados (sem Android SDK/Xcode neste ambiente) | — |
-| Voz, moderação de chat, contas com login (e-mail/Google) | ❌ | — |
+| Login social (Google/e-mail), moderação de chat, servidor TURN para voz | ❌ | — |
+
+Lista completa de testes e resultados: `docs/TESTES.md`. Publicação: `DEPLOY.md`.
 
 ## Créditos e licenças
 

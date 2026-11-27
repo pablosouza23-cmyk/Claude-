@@ -87,14 +87,19 @@ export class AudioSys {
     const ctx = this.ctx;
     if (!ctx) return;
     let l = this.loops.get(key);
-    const buf = this.buffers.get(id);
+    let buf = this.buffers.get(id);
+    if (!buf && id.startsWith('noise:')) { buf = this.noiseBuffer(); this.buffers.set(id, buf); }
     if (!l && buf) {
       const src = ctx.createBufferSource();
       src.buffer = buf;
       src.loop = true;
       const gain = ctx.createGain();
       gain.gain.value = 0;
-      src.connect(gain).connect(id === 'ambience' ? this.music : this.sfx);
+      if (id === 'noise:water') {
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 0.6;
+        src.connect(bp).connect(gain).connect(this.sfx);
+      } else src.connect(gain).connect(id === 'ambience' ? this.music : this.sfx);
       src.start();
       l = { src, gain };
       this.loops.set(key, l);
@@ -104,6 +109,16 @@ export class AudioSys {
       l.src.playbackRate.setTargetAtTime(rate, ctx.currentTime, 0.1);
     }
   }
+  private noiseBuffer(): AudioBuffer {
+    const ctx = this.ctx!;
+    const len = ctx.sampleRate * 2;
+    const b = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = b.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) { last = last * 0.6 + (Math.random() * 2 - 1) * 0.4; d[i] = last * (0.7 + 0.3 * Math.sin(i / 900)); }
+    return b;
+  }
+
   stopLoop(key: string): void {
     const l = this.loops.get(key);
     if (!l || !this.ctx) return;

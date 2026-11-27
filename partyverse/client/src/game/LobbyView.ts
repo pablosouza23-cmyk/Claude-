@@ -24,6 +24,12 @@ export class LobbyView extends View {
     audio.setMood('lobby');
   }
 
+  dispose(): void {
+    audio.stopLoop('ambience');
+    audio.stopLoop('fountain');
+    super.dispose();
+  }
+
   colFor(): CollisionWorld { return this.col; }
   cameraWorlds() { return [{ col: this.col }]; }
 
@@ -55,6 +61,15 @@ export class LobbyView extends View {
 
   update(dt: number): void {
     this.scene.update(dt);
+    // água da fonte: mais alta perto dela
+    const lp = this.app.local;
+    if (lp) {
+      const p = lp.worldPos(new THREE.Vector3());
+      const d = Math.hypot(p.x, p.z);
+      audio.loop('fountain', 'noise:water', Math.max(0, 0.14 * (1 - d / 16)));
+      // ambiente da praça (CC0) — chamado por quadro: começa assim que o áudio é liberado e o arquivo carrega
+      audio.loop('ambience', 'ambience', 0.25);
+    }
   }
 
   onDepartures(rows: Parameters<LobbyScene['updateDepartures']>[0]): void {

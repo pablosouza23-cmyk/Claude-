@@ -295,3 +295,33 @@ button { cursor: pointer; }
 .tutorial .dots i { width: 8px; height: 8px; border-radius: 50%; background: #d9d3f5; }
 .tutorial .dots i.on { background: var(--violet); }
 .recovery { font-family: var(--display); font-size: 1.6em; letter-spacing: 3px; text-align: center; padding: 12px; border-radius: 14px; background: #fff7d6; border: 2px dashed var(--yellow); user-select: text; -webkit-user-select: text; }
+
+/* ------------------------------ ajustes mobile (auditoria) ------------------------------ */
+@media (max-width: 640px) {
+  .hud-top { gap: 6px; }
+  .profile-chip { padding: 4px; gap: 0; }
+  .profile-chip .nm, .profile-chip .xpbar { display: none; }
+  .profile-chip .lvl { width: 36px; height: 36px; font-size: 16px; }
+  .coins { padding: 6px 10px; font-size: .95em; }
+  .hud-top .grow { display: none; }
+  .hud-menu { gap: 5px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+  .hud-menu .btn { padding: 8px 9px; }
+  .hud-menu .icon-btn { width: 38px; height: 38px; border-radius: 12px; }
+  .room-pill { top: calc(110px + var(--safe-t)); width: min(260px, 70vw); }
+}
+@media (pointer: coarse) {
+  /* no toque, o tutorial fica no alto para não cobrir joystick e botões */
+  .tutorial { top: calc(76px + var(--safe-t)); bottom: auto; }
+}
+@media (max-height: 520px) {
+  .tutorial { width: min(440px, 64vw); padding: 10px 14px; font-size: .88em; top: calc(64px + var(--safe-t)); bottom: auto; }
+  .tutorial h4 { font-size: 1.05em; margin-bottom: 2px; }
+  .tutorial p { margin-bottom: 8px !important; }
+  .hud-menu .btn { padding: 7px 10px; }
+  .hud-menu .icon-btn { width: 40px; height: 40px; }
+  .profile-chip .lvl { width: 34px; height: 34px; }
+  .vbtn { width: 44px; height: 44px; }
+  .voice-dock { top: 34%; }
+  .toasts { top: calc(58px + var(--safe-t)); }
+  .toast { padding: 7px 12px; font-size: .88em; }
+}

@@ -150,7 +150,12 @@ export class Environment {
   }
 
   clearClouds(): void {
-    for (const c of [...this.clouds.children]) this.clouds.remove(c);
+    for (const c of [...this.clouds.children]) {
+      this.clouds.remove(c);
+      const im = c as THREE.InstancedMesh;
+      (im.material as THREE.Material).dispose();
+      im.dispose();
+    }
   }
 
   /** mantém a sombra centrada no foco (jogador) */

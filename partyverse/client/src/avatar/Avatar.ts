@@ -125,6 +125,7 @@ function faceTexture(style: string, closed: boolean): THREE.CanvasTexture {
         c.beginPath(); c.moveTo(98, 166); c.quadraticCurveTo(128, 198, 158, 166); c.stroke();
     }
   });
+  t.userData.cached = true;
   faceCache.set(key, t);
   return t;
 }

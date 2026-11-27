@@ -23,6 +23,7 @@ const FLIGHT_MS = FAST ? 6_000 : 32_000;
 const BOARD_TIMEOUT_MS = FAST ? 1_500 : 75_000;
 const DISEMBARK_TIMEOUT_MS = FAST ? 1_500 : 30_000;
 const DEPART_COUNTDOWN_MS = FAST ? 1_000 : 5_000;
+const RESULTS_TIMEOUT_MS = 120_000;
 
 export type MatchPhase = 'boarding' | 'departing' | 'flight' | 'arrived' | 'game' | 'results';
 
@@ -270,6 +271,8 @@ export class MatchWorld extends World {
       }
       case 'results':
         this.minigame.tick(dt, now);
+        // ninguém fica preso: após 2 min na tela de resultados, todos voltam ao lobby
+        if (now - this.resultsAt > RESULTS_TIMEOUT_MS) for (const p of [...this.players.values()]) this.game.toLobby(p.session);
         break;
     }
   }
@@ -297,8 +300,11 @@ export class MatchWorld extends World {
     }
   }
 
+  private resultsAt = 0;
+
   private finish(res: GameResult): void {
     this.phase = 'results';
+    this.resultsAt = Date.now();
     this.resultSent = res;
     this.room.state = 'results';
     this.game.rooms.push(this.room);

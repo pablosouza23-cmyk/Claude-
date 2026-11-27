@@ -425,6 +425,7 @@ export class UI {
   /* ------------------------------ resultados ------------------------------ */
 
   results(res: { win: boolean; score: number; stars: number; summary: { label: string; value: string }[]; mvp?: { userId: string; title: string }[] }, game: GameId, diff: Difficulty): void {
+    if (this.panels.current !== 'results') this.panels.lastReward = null;
     this.panels.open('results', { res, game, diff });
     audio.play(res.win ? 'success' : 'fail');
   }

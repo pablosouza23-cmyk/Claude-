@@ -81,6 +81,7 @@ export class MatchView extends View {
     this.app.ui.setMatchHud(this.minigame.hud);
     audio.setMood(this.phase === 'game' ? this.minigame.mood : 'flight');
     if (this.phase === 'game' || this.phase === 'results') this.startGame(false);
+    if (this.phase === 'results' && this.initState.result) setTimeout(() => this.app.ui.results(this.initState.result as never, this.game, this.difficulty), 300);
     progress(1, 'Embarque!');
   }
 
@@ -261,6 +262,15 @@ export class MatchView extends View {
   }
 
   /* ------------------------------ estado ------------------------------ */
+
+  /** reconexão no mesmo mundo: reaplica o estado completo (itens podem ter mudado) */
+  reapply(state: { train: TrainState; game: unknown; phase: Phase; result: unknown }): void {
+    if (!state) return;
+    this.schedule = state.train;
+    if (state.phase !== this.phase) this.setPhase(state.phase);
+    this.minigame?.applyState(state.game);
+    if (state.phase === 'results' && state.result) this.app.ui.results(state.result as never, this.game, this.difficulty);
+  }
 
   onWorld(w: unknown): void {
     const d = w as { ph: Phase; tr: TrainState; g?: unknown };

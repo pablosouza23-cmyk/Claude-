@@ -26,6 +26,18 @@ export class Session {
     if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg));
   }
 
+  private rtcBucket = 400;
+  private rtcAt = Date.now();
+  /** sinalização WebRTC tem rajadas (ofertas + candidatos ICE para até 9 pares) */
+  allowRtc(): boolean {
+    const now = Date.now();
+    this.rtcBucket = Math.min(400, this.rtcBucket + ((now - this.rtcAt) / 1000) * 80);
+    this.rtcAt = now;
+    if (this.rtcBucket < 1) return false;
+    this.rtcBucket -= 1;
+    return true;
+  }
+
   /** token bucket: ~60 msgs/s sustentado, rajada de 120 */
   allow(): boolean {
     const now = Date.now();

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { disposeTree } from '../core/Assets';
 import type { CollisionWorld } from '../../../shared/collision';
 import type { Platform } from '../../../shared/protocol';
 import type { App } from '../app/App';
@@ -20,5 +21,8 @@ export abstract class View {
   update(_dt: number, _now: number): void {}
   onWorld(_w: unknown): void {}
   onEvent(_e: string, _d: unknown): void {}
-  dispose(): void { this.root.removeFromParent(); }
+  dispose(): void {
+    this.root.removeFromParent();
+    disposeTree(this.root);
+  }
 }

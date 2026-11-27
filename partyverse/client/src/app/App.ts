@@ -180,6 +180,8 @@ export class App {
     // mesmo mundo (reconexão): só ressincroniza jogadores
     if (this.view && m.worldId === (this.view as unknown as { worldId?: string }).worldId) {
       this.syncPlayers(m);
+      if (this.view instanceof MatchView) this.view.reapply(m.state as never);
+      if (this.voice.state === 'on' || this.voice.state === 'listen-only') this.net.send({ t: 'voice', on: true, mic: this.voice.state === 'on' && !this.voice.micMuted });
       return;
     }
     this.loadingWorld = true;

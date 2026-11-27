@@ -13,6 +13,8 @@ export function loadGLB(path: string): Promise<GLTF> {
       g.scene.traverse((o) => {
         const m = o as THREE.Mesh;
         if (m.isMesh) {
+          m.geometry.userData.cached = true;
+          for (const mm of Array.isArray(m.material) ? m.material : [m.material]) { mm.userData.cached = true; const t = (mm as THREE.MeshStandardMaterial).map; if (t) t.userData.cached = true; }
           m.castShadow = true;
           m.receiveShadow = true;
           const mats = Array.isArray(m.material) ? m.material : [m.material];
@@ -52,6 +54,7 @@ export function mat(color: string | number, rough = 0.7, metal = 0, emissive?: s
   let m = matCache.get(key);
   if (!m) {
     m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
+    m.userData.cached = true;
     if (emissive !== undefined) { m.emissive = new THREE.Color(emissive); m.emissiveIntensity = emissiveIntensity; }
     matCache.set(key, m);
   }
@@ -65,6 +68,7 @@ export function rbox(w: number, h: number, d: number, r = Math.min(w, h, d) * 0.
   let g = geoCache.get(key);
   if (!g) {
     g = new RoundedBoxGeometry(w, h, d, seg, Math.min(r, Math.min(w, h, d) / 2 - 1e-4));
+    g.userData.cached = true;
     geoCache.set(key, g);
   }
   return g;
@@ -88,4 +92,25 @@ export function canvasTexture(w: number, h: number, draw: (c: CanvasRenderingCon
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
   return t;
+}
+
+/**
+ * Libera da GPU tudo que pertence a uma cena descartada (geometrias, materiais
+ * e texturas não compartilhados). Recursos em cache (mat/rbox/GLB) são mantidos.
+ */
+export function disposeTree(root: THREE.Object3D): void {
+  const mats = new Set<THREE.Material>();
+  const geos = new Set<THREE.BufferGeometry>();
+  root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.geometry && !m.geometry.userData.cached) geos.add(m.geometry);
+    const mm = (m as { material?: THREE.Material | THREE.Material[] }).material;
+    if (mm) for (const x of Array.isArray(mm) ? mm : [mm]) if (!x.userData.cached) mats.add(x);
+    if ((o as THREE.InstancedMesh).isInstancedMesh) (o as THREE.InstancedMesh).dispose();
+  });
+  for (const g of geos) g.dispose();
+  for (const m of mats) {
+    for (const v of Object.values(m)) if (v && (v as THREE.Texture).isTexture && !(v as THREE.Texture).userData.cached) (v as THREE.Texture).dispose();
+    m.dispose();
+  }
 }

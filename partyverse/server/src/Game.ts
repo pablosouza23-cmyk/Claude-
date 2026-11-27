@@ -5,7 +5,7 @@
 import type { WebSocket } from 'ws';
 import { MAX_LOBBY_SHARD, PROTOCOL_VERSION, RECONNECT_GRACE_MS, SERVER_TICK, SNAPSHOT_RATE, sanitizeChat, sanitizeName } from '../../shared/constants';
 import { COSMETIC_BY_ID, validateOutfit } from '../../shared/cosmetics';
-import { NAME_MAX } from '../../shared/constants';
+import { EMOTES, NAME_MAX } from '../../shared/constants';
 import { isDifficulty, isGameId, type GameId } from '../../shared/minigames';
 import type { C2S, FriendEntry, PrivateProfile } from '../../shared/protocol';
 import { ACH_BY_ID, computeReward, levelFromXp } from '../../shared/progression';
@@ -77,7 +77,7 @@ export class Game {
         return;
       }
       if (session.ws !== ws) return; // conexão antiga
-      if (!session.allow()) return;
+      if (msg.t === 'rtc' ? !session.allowRtc() : !session.allow()) return;
       try { this.handle(session, msg); } catch (e) { console.error('[msg]', msg.t, e); }
     });
     ws.on('close', () => {
@@ -219,7 +219,7 @@ export class Game {
       case 'move': if (w && p) w.handleMove(p, m); break;
       case 'interact': if (w && p && typeof m.id === 'string') w.onInteract(p, m.id, m.arg); break;
       case 'act': if (w && p && typeof m.a === 'string') w.onAct(p, m.a, m.d); break;
-      case 'emote': if (w && p && typeof m.id === 'string' && m.id.length < 20) w.broadcast({ t: 'emote', id: p.id, e: m.id }); break;
+      case 'emote': if (w && p && (EMOTES as readonly string[]).includes(m.id)) w.broadcast({ t: 'emote', id: p.id, e: m.id }); break;
       case 'chat': {
         const text = sanitizeChat(m.text);
         if (text && w) w.broadcast({ t: 'chat', from: s.id, name: s.user.name, text });

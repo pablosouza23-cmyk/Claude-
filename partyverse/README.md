@@ -34,7 +34,7 @@ npm run build && npm start   # produção: http://localhost:8787
 
 Para testar o multiplayer no mesmo PC, abra duas abas com perfis diferentes: `?profile=a` e `?profile=b`.
 
-Para os testes E2E, suba o servidor com `PV_FAST_TRAIN=1 PV_DEBUG=1` (viagem curta e logs de diagnóstico) e rode `node tests/e2e/train-flow.cjs` ou `node tests/e2e/mudanca-play.cjs`.
+Para os testes E2E, suba o servidor com `PV_FAST_TRAIN=1 PV_DEBUG=1` (viagem curta e logs de diagnóstico) e rode `node tests/e2e/train-flow.cjs`, `node tests/e2e/mudanca-play.cjs` ou `node tests/e2e/nave-play.cjs` (use `PV_URL` para outra porta e `OUT` para a pasta das capturas).
 
 ## Controles
 
@@ -57,7 +57,8 @@ Para os testes E2E, suba o servidor com `PV_FAST_TRAIN=1 PV_DEBUG=1` (viagem cur
 | Progressão: XP, níveis, moedas, 16 conquistas, histórico, recordes, bônus com amigos | ✅ | parcial (recompensa exibida no E2E) |
 | Loja e guarda-roupa com prévia 3D (só cosméticos) | ✅ implementado | ⚠️ sem E2E de compra |
 | Qualidade Baixa/Média/Alta, resolução dinâmica, instancing, partículas limitadas, minigames sob demanda | ✅ | parcial |
-| Roubo Perfeito, Loja em Caos, Hotel Estranho, Oficina Impossível, Nave em Perigo | ❌ **não implementados** (aparecem como "EM BREVE" e não podem ser iniciados) | — |
+| **Nave em Perigo** (estação orbital + passarela, interior em módulos que muda com 2/3–5/6–7/8–10 jogadores, papéis automáticos com bônus, manche com mapa estelar, asteroides, falhas com prazo e reparo por etapas, tarefas em dupla, painel de energia, células de combustível, O₂/escudo/casco, estrelas, resultados) | ✅ jogável | E2E 2 clientes (nave pequena): embarque, conserto, energia, pilotagem, abastecimento, chuva de asteroides, resultados. ⚠️ layouts de 4/6/8–10 só com teste unitário de mapa (sem E2E com muitos jogadores); balanceamento de partida completa não validado |
+| Roubo Perfeito, Loja em Caos, Hotel Estranho, Oficina Impossível | ❌ **não implementados** (aparecem como "EM BREVE" e não podem ser iniciados) | — |
 | APK Android / app iOS / instalador Windows | ❌ não gerados (sem Android SDK/Xcode neste ambiente) | — |
 | Voz, moderação de chat, contas com login (e-mail/Google) | ❌ | — |
 

@@ -44,7 +44,7 @@ export const GAMES: Record<GameId, GameDef> = {
   nave: {
     id: 'nave', name: 'Nave em Perigo', tagline: 'Houston, temos vários problemas.',
     description: 'Pilote, mantenha energia, combustível e motores funcionando e sobreviva à jornada espacial.',
-    min: 2, max: 10, color: '#3a7bd5', accent: '#9ad1ff', destination: 'Órbita Kepler', playable: false,
+    min: 2, max: 10, color: '#3a7bd5', accent: '#9ad1ff', destination: 'Órbita Kepler', playable: true,
   },
 };
 

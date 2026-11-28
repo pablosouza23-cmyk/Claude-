@@ -20,8 +20,6 @@ export class Input {
   sprintToggle = false;
   private dragId: number | null = null;
   private dragLast = { x: 0, y: 0 };
-  private pinch: { id1: number; id2: number; d: number } | null = null;
-  private touches = new Map<number, { x: number; y: number }>();
   onKey: ((code: string) => void) | null = null;
 
   constructor(el: HTMLElement) {
@@ -52,41 +50,58 @@ export class Input {
     addEventListener('blur', () => { this.keys.clear(); this.held.clear(); });
 
     el.addEventListener('contextmenu', (e) => e.preventDefault());
-    el.addEventListener('pointerdown', (e) => {
-      if (e.pointerType === 'touch') {
-        this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        if (this.touches.size === 2) {
-          const [a, b] = [...this.touches.entries()];
-          this.pinch = { id1: a[0], id2: b[0], d: dist(a[1], b[1]) };
-          this.dragId = null;
-          return;
-        }
+    // ---- toque: eventos de toque nativos (funcionam em Android e iPhone) ----
+    let tid: number | null = null;
+    let tlast = { x: 0, y: 0 };
+    let pinchD = 0;
+    const two = (t: TouchList) => (t.length >= 2 ? Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY) : 0);
+    el.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (e.touches.length >= 2) { pinchD = two(e.touches); tid = null; return; }
+      const t = e.changedTouches[0];
+      tid = t.identifier;
+      tlast = { x: t.clientX, y: t.clientY };
+    }, { passive: false });
+    el.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (e.touches.length >= 2 && pinchD) {
+        const d = two(e.touches);
+        this.zoom += (pinchD - d) * 0.02;
+        pinchD = d;
+        return;
       }
+      for (const t of Array.from(e.changedTouches)) {
+        if (t.identifier !== tid) continue;
+        const sens = settings.data.sensitivity * 1.3;
+        this.look.x += (t.clientX - tlast.x) * 0.0055 * sens;
+        this.look.y += (t.clientY - tlast.y) * 0.0045 * sens * (settings.data.invertY ? -1 : 1);
+        tlast = { x: t.clientX, y: t.clientY };
+      }
+    }, { passive: false });
+    const tend = (e: TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) if (t.identifier === tid) tid = null;
+      if (e.touches.length < 2) pinchD = 0;
+      if (e.touches.length === 1 && tid === null) { tid = e.touches[0].identifier; tlast = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }
+    };
+    el.addEventListener('touchend', tend);
+    el.addEventListener('touchcancel', tend);
+
+    // ---- mouse / caneta ----
+    el.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch') return; // tratado pelos eventos de toque
       if (this.dragId !== null) return;
       this.dragId = e.pointerId;
       this.dragLast = { x: e.clientX, y: e.clientY };
       el.setPointerCapture?.(e.pointerId);
     });
     el.addEventListener('pointermove', (e) => {
-      if (e.pointerType === 'touch') this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (this.pinch) {
-        const a = this.touches.get(this.pinch.id1), b = this.touches.get(this.pinch.id2);
-        if (a && b) {
-          const d = dist(a, b);
-          this.zoom += (this.pinch.d - d) * 0.02;
-          this.pinch.d = d;
-        }
-        return;
-      }
-      if (e.pointerId !== this.dragId) return;
-      const s = settings.data.sensitivity * (e.pointerType === 'touch' ? 1.25 : 1);
+      if (e.pointerType === 'touch' || e.pointerId !== this.dragId) return;
+      const s = settings.data.sensitivity;
       this.look.x += (e.clientX - this.dragLast.x) * 0.0055 * s;
       this.look.y += (e.clientY - this.dragLast.y) * 0.0045 * s * (settings.data.invertY ? -1 : 1);
       this.dragLast = { x: e.clientX, y: e.clientY };
     });
     const end = (e: PointerEvent) => {
-      this.touches.delete(e.pointerId);
-      if (this.pinch && (e.pointerId === this.pinch.id1 || e.pointerId === this.pinch.id2)) this.pinch = null;
       if (e.pointerId === this.dragId) this.dragId = null;
     };
     el.addEventListener('pointerup', end);
@@ -123,6 +138,11 @@ export class Input {
     if (l > 1) { x /= l; y /= l; }
     this.move.x = x;
     this.move.y = y;
+    // Z/C giram a câmera (alternativa a arrastar o mouse)
+    if (this.enabled) {
+      if (this.keys.has('KeyZ')) this.look.x -= 0.045 * settings.data.sensitivity;
+      if (this.keys.has('KeyC')) this.look.x += 0.045 * settings.data.sensitivity;
+    }
     if (!this.enabled) { this.pressed.clear(); this.look.x = this.look.y = 0; }
   }
 
@@ -134,9 +154,6 @@ export class Input {
   }
 }
 
-function dist(a: { x: number; y: number }, b: { x: number; y: number }) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
 export function isTyping(t: EventTarget | null): boolean {
   const el = t as HTMLElement | null;
   return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);

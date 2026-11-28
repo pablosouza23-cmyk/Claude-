@@ -217,7 +217,7 @@ export class UI {
     if (this.tutorialEl || this.mode !== 'lobby') return;
     const touch = useTouch();
     const steps = [
-      { t: 'Bem-vindo ao PARTYVERSE!', d: touch ? 'Use o joystick à esquerda para andar e arraste a tela para girar a câmera.' : 'Ande com WASD, corra com Shift, pule com Espaço. Arraste o mouse para girar a câmera.' },
+      { t: 'Bem-vindo ao PARTYVERSE!', d: touch ? 'Use o joystick à esquerda para andar e arraste a tela para girar a câmera.' : 'Ande com WASD, corra com Shift, pule com Espaço. Arraste o mouse (ou use Z e C) para girar a câmera.' },
       { t: 'Interaja com tudo', d: `Chegue perto de bancos, quiosques, da loja e do trem. Quando aparecer um balão, ${touch ? 'toque no botão de mão' : 'aperte E'}.` },
       { t: 'Jogue com amigos', d: 'Em "Jogar", crie uma sala (pública ou privada) ou entre com um código. Em "Amigos", troque códigos e mande convites.' },
       { t: 'Embarque no Trem Voador', d: 'Quando o líder iniciar, todos vão para a estação: entrem no trem, sentem e aproveitem a viagem até a missão.' },

@@ -415,7 +415,7 @@ export class Panels {
       <button class="btn big block" data-close>Continuar</button>
       <button class="btn block light" data-open="settings">${icon('gear')} Configurações</button>
       ${match ? `<button class="btn block red" data-act="leavematch">Sair da partida</button>` : `<button class="btn block light" data-open="profile">${icon('trophy')} Perfil e conquistas</button>`}
-      <p class="muted" style="text-align:center;margin:6px 0 0">PC: WASD mover • Shift correr • Espaço pular • E interagir • F ação • G acenar • Enter chat • Arraste o mouse para girar a câmera</p>
+      <p class="muted" style="text-align:center;margin:6px 0 0">PC: WASD mover • Shift correr • Espaço pular • E interagir • F ação • G acenar • Enter chat • Arraste o mouse (ou Z/C) para girar a câmera</p>
     </div>`, true);
   }
 
